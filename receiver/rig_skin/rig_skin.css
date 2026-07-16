@@ -337,6 +337,20 @@ body.theme-rig #owrx-rig-knob-line {
     letter-spacing: 1px;
 }
 
+/* invisible select covering the TS key, opens the native step picker */
+.owrx-rig-ts-select {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+}
+
 .owrx-rig-key-led {
     position: absolute;
     top: 4px;
@@ -370,12 +384,17 @@ body.theme-rig #owrx-rig-knob-line {
     animation: owrx-rig-led-blink 0.5s step-end infinite;
 }
 
+/* the dial sits in a recessed well, carved into the panel like the LCD */
 #owrx-rig-knob {
     position: relative;
     flex: 0 0 auto;
-    width: 120px;
-    height: 120px;
+    width: 132px;
+    height: 132px;
     border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #07080a 0%, #0d0f12 70%, #14161a 100%);
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.85),
+                inset 0 -1px 2px rgba(255, 255, 255, 0.06),
+                0 1px 1px rgba(255, 255, 255, 0.04);
     cursor: grab;
     touch-action: none;
     user-select: none;
@@ -390,13 +409,13 @@ body.theme-rig #owrx-rig-knob-line {
     cursor: not-allowed;
 }
 
-/* chrome bezel is the outer edge of the dial */
+/* chrome bezel of the dial, inset within the well */
 .owrx-rig-knob-ring {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
     border-radius: 50%;
     background: conic-gradient(from 210deg,
         #eef1f3 0deg, #8b9095 30deg, #4a4e53 70deg, #c8ccd0 110deg,
@@ -409,10 +428,10 @@ body.theme-rig #owrx-rig-knob-line {
 
 .owrx-rig-knob-face {
     position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
     border-radius: 50%;
     background:
         linear-gradient(155deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 42%),
@@ -441,15 +460,22 @@ body.theme-rig #owrx-rig-knob-line {
 /* Shorter screens: shrink the dial so the panel keeps fitting */
 @media (max-height: 820px) {
     #owrx-rig-knob {
-        width: 90px;
-        height: 90px;
+        width: 100px;
+        height: 100px;
+    }
+
+    .owrx-rig-knob-ring {
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
     }
 
     .owrx-rig-knob-face {
-        top: 7px;
-        left: 7px;
-        right: 7px;
-        bottom: 7px;
+        top: 11px;
+        left: 11px;
+        right: 11px;
+        bottom: 11px;
     }
 
     .owrx-rig-knob-dimple {

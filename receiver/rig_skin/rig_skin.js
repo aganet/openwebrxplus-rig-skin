@@ -271,22 +271,35 @@ Plugins.rig_skin.createSideKeys = function ($line) {
     var pulse = Plugins.rig_skin.pulseKey;
     var $nr = makeKey('NR', 'Noise reduction on/off');
     var $lock = makeKey('LOCK', 'Lock the dial').addClass('owrx-rig-key-lock');
-    var $ts = makeKey('TS', 'Tuning step: click to cycle, right-click to cycle back');
+    var $ts = makeKey('TS', 'Tuning step');
 
-    function stepBy(dir) {
-        var lb = $('#openwebrx-tuning-step-listbox')[0];
-        if (!lb || !lb.options.length || typeof tuning_step_changed !== 'function') return;
-        var n = lb.options.length;
-        lb.selectedIndex = (lb.selectedIndex + dir + n) % n;
-        tuning_step_changed();
-        pulse($ts);
+    // an invisible select stretched over the TS key: tapping the key
+    // opens the native picker with all steps
+    var $orig = $('#openwebrx-tuning-step-listbox');
+    if ($orig.length && typeof tuning_step_changed === 'function') {
+        var $pick = $orig.clone().removeAttr('id onchange style').addClass('owrx-rig-ts-select');
+        $pick.val($orig.val());
+        $pick.on('change', function () {
+            $orig.val(this.value);
+            tuning_step_changed();
+            pulse($ts);
+        });
+        $ts.append($pick);
+
+        // follow changes made through the stock control or profile resets
+        var origChanged = tuning_step_changed;
+        tuning_step_changed = function () {
+            origChanged();
+            $pick.val($orig.val());
+        };
+        if (typeof tuning_step_reset === 'function') {
+            var origReset = tuning_step_reset;
+            tuning_step_reset = function () {
+                origReset();
+                $pick.val($orig.val());
+            };
+        }
     }
-
-    $ts.on('click', function () { stepBy(1); });
-    $ts.on('contextmenu', function (e) {
-        e.preventDefault();
-        stepBy(-1);
-    });
 
     $nr.on('click', function () {
         if (typeof UI !== 'undefined' && typeof UI.toggleNR === 'function') UI.toggleNR();
