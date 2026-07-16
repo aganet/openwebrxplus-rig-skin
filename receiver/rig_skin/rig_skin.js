@@ -46,8 +46,9 @@ Plugins.rig_skin.createVfoLine = function () {
 Plugins.rig_skin.createSignalInfo = function ($container) {
     var $mode = $('<div>').addClass('owrx-rig-info-mode');
     var $filter = $('<div>').addClass('owrx-rig-info-filter');
+    var $step = $('<div>').addClass('owrx-rig-info-step');
     $container.append(
-        $('<div>').attr('id', 'owrx-rig-info').append($mode).append($filter)
+        $('<div>').attr('id', 'owrx-rig-info').append($mode).append($filter).append($step)
     );
 
     function update() {
@@ -62,8 +63,10 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
                 }
             }
         }
+        var stepText = $('#openwebrx-tuning-step-listbox option:selected').text();
         $mode.text(mode);
         $filter.text(filter);
+        $step.text(stepText ? 'TS ' + stepText : '');
     }
 
     update();
@@ -265,8 +268,25 @@ Plugins.rig_skin.pulseKey = function ($key) {
 // tuning (useful on touch devices).
 Plugins.rig_skin.createSideKeys = function ($line) {
     var makeKey = Plugins.rig_skin.makeKey;
+    var pulse = Plugins.rig_skin.pulseKey;
     var $nr = makeKey('NR', 'Noise reduction on/off');
     var $lock = makeKey('LOCK', 'Lock the dial').addClass('owrx-rig-key-lock');
+    var $ts = makeKey('TS', 'Tuning step: click to cycle, right-click to cycle back');
+
+    function stepBy(dir) {
+        var lb = $('#openwebrx-tuning-step-listbox')[0];
+        if (!lb || !lb.options.length || typeof tuning_step_changed !== 'function') return;
+        var n = lb.options.length;
+        lb.selectedIndex = (lb.selectedIndex + dir + n) % n;
+        tuning_step_changed();
+        pulse($ts);
+    }
+
+    $ts.on('click', function () { stepBy(1); });
+    $ts.on('contextmenu', function (e) {
+        e.preventDefault();
+        stepBy(-1);
+    });
 
     $nr.on('click', function () {
         if (typeof UI !== 'undefined' && typeof UI.toggleNR === 'function') UI.toggleNR();
@@ -298,7 +318,7 @@ Plugins.rig_skin.createSideKeys = function ($line) {
     });
 
     $line.append(
-        $('<div>').attr('id', 'owrx-rig-keys-left').append($nr).append($lock)
+        $('<div>').attr('id', 'owrx-rig-keys-left').append($nr).append($lock).append($ts)
     );
 };
 

@@ -143,7 +143,8 @@ body.theme-rig #owrx-rig-info {
     font-weight: bold;
 }
 
-.owrx-rig-info-filter {
+.owrx-rig-info-filter,
+.owrx-rig-info-step {
     color: #8a6a35;
     font-size: 8pt;
 }
