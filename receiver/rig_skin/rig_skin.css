@@ -10,8 +10,9 @@ body.theme-rig {
     --theme-gradient-color1: #1d2126;
     --theme-gradient-color2: #101316;
     --rig-legend: #cfd4d9;
-    --rig-lcd: #ffb350;
-    --rig-lcd-glow: rgba(255, 150, 30, 0.55);
+    --rig-lcd: #f2f5f7;
+    --rig-lcd-glow: rgba(215, 232, 255, 0.35);
+    --rig-lcd-dim: #93a0ab;
 }
 
 /* Front panel */
@@ -136,16 +137,20 @@ body.theme-rig #owrx-rig-info {
     pointer-events: none;
 }
 
+/* mode on a blue badge, like the rig screen */
 .owrx-rig-info-mode {
-    color: var(--rig-lcd);
-    text-shadow: 0 0 6px var(--rig-lcd-glow);
-    font-size: 12pt;
+    display: inline-block;
+    background: #1d5fae;
+    color: #ffffff;
+    border-radius: 3px;
+    padding: 0 6px;
+    font-size: 11pt;
     font-weight: bold;
 }
 
 .owrx-rig-info-filter,
 .owrx-rig-info-step {
-    color: #8a6a35;
+    color: var(--rig-lcd-dim);
     font-size: 8pt;
 }
 
@@ -167,8 +172,8 @@ body.theme-rig .webrx-actual-freq input {
 }
 
 body.theme-rig .webrx-actual-freq .digit:hover {
-    color: #ffe0a8;
-    background: rgba(255, 170, 60, 0.12);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 3px;
 }
 
@@ -180,7 +185,7 @@ body.theme-rig .webrx-actual-freq .input-group select {
 }
 
 body.theme-rig .webrx-mouse-freq {
-    color: #8a6a35;
+    color: var(--rig-lcd-dim);
 }
 
 /* Segmented S-meter inside the frequency LCD, replacing the bar meter */
@@ -225,7 +230,7 @@ body.theme-rig #openwebrx-smeter-db {
 }
 
 body.theme-rig #openwebrx-clock-utc {
-    color: #8a6a35;
+    color: var(--rig-lcd-dim);
 }
 
 /* Inputs and listboxes */
