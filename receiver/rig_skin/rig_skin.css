@@ -29,15 +29,15 @@ body.theme-rig .openwebrx-dialog {
 
 /* Wider front panel, the stock 259px is too narrow for a rig face */
 body.theme-rig #openwebrx-panel-receiver {
-    width: 330px !important;
+    width: 364px !important;
 }
 
 body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-slider {
-    width: 120px;
+    width: 135px;
 }
 
 body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-listbox {
-    width: 120px;
+    width: 135px;
 }
 
 /* Corner screws on the receiver panel */
@@ -198,7 +198,7 @@ body.theme-rig #openwebrx-smeter {
 }
 
 #owrx-rig-meter canvas {
-    width: 310px;
+    width: 340px;
     height: 34px;
 }
 
@@ -214,8 +214,8 @@ body.theme-rig #owrx-rig-scope.visible {
 }
 
 #owrx-rig-scope canvas {
-    width: 310px;
-    height: 40px;
+    width: 340px;
+    height: 64px;
 }
 
 body.theme-rig #openwebrx-smeter-db {

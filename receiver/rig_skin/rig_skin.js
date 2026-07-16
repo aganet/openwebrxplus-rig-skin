@@ -76,7 +76,8 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
 Plugins.rig_skin.createScope = function ($freq) {
     if (!$freq.length) return;
 
-    var W = 310, H = 40;
+    var W = 340, H = 64, PLOT_H = 53;
+    var SPEC_H = 27;  // spectrum in the top half of the left plot, waterfall below
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
@@ -87,8 +88,62 @@ Plugins.rig_skin.createScope = function ($freq) {
     var ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    var FFT_W = 150, WAVE_X = 158, WAVE_W = W - WAVE_X;
+    var FFT_W = 165, WAVE_X = 173, WAVE_W = W - WAVE_X;
     var analyser = null, freqData = null, timeData = null, timer = null;
+
+    // offscreen canvas holding the scrolling audio waterfall
+    var wf = document.createElement('canvas');
+    wf.width = FFT_W - 2;
+    wf.height = PLOT_H - SPEC_H - 2;
+    var wfCtx = wf.getContext('2d');
+
+    // dark blue to white colormap for waterfall intensity
+    var wfPalette = [];
+    (function () {
+        var stops = [[4, 7, 10], [10, 58, 102], [63, 169, 245], [234, 246, 255]];
+        for (var i = 0; i < 256; i++) {
+            var p = i / 255 * (stops.length - 1);
+            var s = Math.min(stops.length - 2, Math.floor(p));
+            var f = p - s;
+            var c = [0, 1, 2].map(function (j) {
+                return Math.round(stops[s][j] + (stops[s + 1][j] - stops[s][j]) * f);
+            });
+            wfPalette.push('rgb(' + c.join(',') + ')');
+        }
+    })();
+
+    function drawFrame() {
+        // framed plot areas with graticule, oscilloscope style
+        ctx.strokeStyle = '#1a2026';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, 0.5, FFT_W - 1, PLOT_H - 1);
+        ctx.strokeRect(WAVE_X + 0.5, 0.5, WAVE_W - 1, PLOT_H - 1);
+
+        ctx.fillStyle = '#1a2026';
+        // FFT grid at 1/2/3 kHz over the spectrum half
+        for (var g = 1; g <= 3; g++) {
+            ctx.fillRect(Math.round(FFT_W * g / 4), 1, 1, SPEC_H - 1);
+        }
+        // waveform graticule: center line and time divisions
+        ctx.fillRect(WAVE_X + 1, Math.round(PLOT_H / 2), WAVE_W - 2, 1);
+        for (var d = 1; d <= 3; d++) {
+            ctx.fillRect(WAVE_X + Math.round(WAVE_W * d / 4), 1, 1, PLOT_H - 2);
+        }
+
+        // axis labels below the plots
+        ctx.fillStyle = '#5c6670';
+        ctx.font = '7px roboto-mono, monospace';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        ctx.fillText('0', 0, PLOT_H + 2);
+        ctx.textAlign = 'center';
+        for (var k = 1; k <= 3; k++) {
+            ctx.fillText(k + 'k', Math.round(FFT_W * k / 4), PLOT_H + 2);
+        }
+        ctx.textAlign = 'right';
+        ctx.fillText('4kHz', FFT_W, PLOT_H + 2);
+        ctx.fillText('2.7ms/Div', W, PLOT_H + 2);
+    }
 
     // the audio graph only exists once audio has started, attach lazily
     function attach() {
@@ -106,37 +161,27 @@ Plugins.rig_skin.createScope = function ($freq) {
 
     function draw() {
         ctx.clearRect(0, 0, W, H);
-        ctx.fillStyle = '#1a2026';
-        ctx.fillRect(FFT_W + 3, 0, 2, H);
+        drawFrame();
 
         if (attach()) {
             analyser.getByteFrequencyData(freqData);
             analyser.getByteTimeDomainData(timeData);
 
-            // audio spectrum 0..4 kHz as a filled area, like a rig's AF scope
             var sr = audioEngine.audioContext.sampleRate;
             var maxBin = Math.max(1, Math.min(freqData.length,
                 Math.round(4000 / (sr / 2) * freqData.length)));
 
-            // faint grid ticks with axis labels at 1/2/3 kHz
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.font = '7px roboto-mono, monospace';
-            for (var g = 1; g <= 3; g++) {
-                var gx = Math.round(FFT_W * g / 4);
-                ctx.fillStyle = '#1a2026';
-                ctx.fillRect(gx, 0, 1, H);
-                ctx.fillStyle = '#4a545e';
-                ctx.fillText(g + 'k', gx, 2);
+            function binAt(x, width) {
+                return freqData[Math.min(maxBin - 1, Math.floor(x * maxBin / width))];
             }
 
+            // audio spectrum as a filled area in the top half
             ctx.beginPath();
-            ctx.moveTo(0, H);
-            for (var x = 0; x <= FFT_W; x++) {
-                var v = freqData[Math.min(maxBin - 1, Math.floor(x * maxBin / FFT_W))];
-                ctx.lineTo(x, H - v / 255 * (H - 2));
+            ctx.moveTo(1, SPEC_H);
+            for (var x = 1; x < FFT_W - 1; x++) {
+                ctx.lineTo(x, SPEC_H - binAt(x, FFT_W) / 255 * (SPEC_H - 2));
             }
-            ctx.lineTo(FFT_W, H);
+            ctx.lineTo(FFT_W - 2, SPEC_H);
             ctx.closePath();
             ctx.fillStyle = 'rgba(63, 169, 245, 0.35)';
             ctx.fill();
@@ -144,15 +189,26 @@ Plugins.rig_skin.createScope = function ($freq) {
             ctx.lineWidth = 1;
             ctx.stroke();
 
+            // audio waterfall scrolling below the spectrum
+            if (wf.height > 1) {
+                var shifted = wfCtx.getImageData(0, 0, wf.width, wf.height - 1);
+                wfCtx.putImageData(shifted, 0, 1);
+            }
+            for (var wx = 0; wx < wf.width; wx++) {
+                wfCtx.fillStyle = wfPalette[binAt(wx, wf.width)];
+                wfCtx.fillRect(wx, 0, 1, 1);
+            }
+            ctx.drawImage(wf, 1, SPEC_H + 1);
+
             // waveform, ~10ms window so voice and tones stay readable
             var wN = Math.floor(timeData.length / 4);
             ctx.strokeStyle = '#3adb4a';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            for (var x = 0; x < WAVE_W; x++) {
-                var s = timeData[Math.floor(x * wN / WAVE_W)] / 255;
-                var y = (1 - s) * (H - 2) + 1;
-                if (x === 0) ctx.moveTo(WAVE_X + x, y); else ctx.lineTo(WAVE_X + x, y);
+            for (var px = 1; px < WAVE_W - 1; px++) {
+                var s = timeData[Math.floor(px * wN / WAVE_W)] / 255;
+                var y = (1 - s) * (PLOT_H - 4) + 2;
+                if (px === 1) ctx.moveTo(WAVE_X + px, y); else ctx.lineTo(WAVE_X + px, y);
             }
             ctx.stroke();
         } else {
@@ -160,8 +216,8 @@ Plugins.rig_skin.createScope = function ($freq) {
             ctx.strokeStyle = '#1f4a26';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(WAVE_X, H / 2);
-            ctx.lineTo(W, H / 2);
+            ctx.moveTo(WAVE_X + 1, PLOT_H / 2);
+            ctx.lineTo(W - 1, PLOT_H / 2);
             ctx.stroke();
         }
         timer = setTimeout(draw, 33);
@@ -320,7 +376,7 @@ Plugins.rig_skin.createScanKeys = function ($line) {
 Plugins.rig_skin.createMeter = function ($freq) {
     if (typeof setSmeterRelativeValue !== 'function' || !$freq.length) return;
 
-    var W = 310, H = 34;
+    var W = 340, H = 34;
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
@@ -331,7 +387,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
     ctx.scale(dpr, dpr);
 
     var S9 = 0.65;                       // bar position of S9, red zone beyond
-    var SEG = 31, SEGW = 8, GAP = 2;     // segment geometry, SEG*(SEGW+GAP) == W
+    var SEG = 34, SEGW = 8, GAP = 2;     // segment geometry, SEG*(SEGW+GAP) == W
     var BAR_Y = 18, BAR_H = 12;
 
     function segColor(t) {
