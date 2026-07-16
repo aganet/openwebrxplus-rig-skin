@@ -300,6 +300,16 @@ body.theme-rig #owrx-rig-knob-line {
                 inset 0 1px 1px rgba(255, 255, 255, 0.3);
 }
 
+/* engaged LOCK blinks as a warning */
+@keyframes owrx-rig-led-blink {
+    0%, 55% { opacity: 1; }
+    56%, 100% { opacity: 0.15; }
+}
+
+.owrx-rig-key-lock.highlighted .owrx-rig-key-led {
+    animation: owrx-rig-led-blink 1.2s step-end infinite;
+}
+
 #owrx-rig-knob {
     position: relative;
     flex: 0 0 auto;

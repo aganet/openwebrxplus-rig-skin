@@ -51,7 +51,7 @@ Plugins.rig_skin.createSideKeys = function ($line) {
     }
 
     var $nr = makeKey('NR', 'Noise reduction on/off');
-    var $lock = makeKey('LOCK', 'Lock the dial');
+    var $lock = makeKey('LOCK', 'Lock the dial').addClass('owrx-rig-key-lock');
 
     $nr.on('click', function () {
         if (typeof UI !== 'undefined' && typeof UI.toggleNR === 'function') UI.toggleNR();
