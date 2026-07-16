@@ -33,11 +33,41 @@ Plugins.rig_skin.createVfoLine = function () {
 
     Plugins.rig_skin.createMeter($container.find('.frequencies'));
     Plugins.rig_skin.createScope($container.find('.frequencies'));
+    Plugins.rig_skin.createSignalInfo($container);
     var $line = $('<div>').attr('id', 'owrx-rig-knob-line').addClass('openwebrx-panel-line');
     $container.after($line);
     Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
     Plugins.rig_skin.createScanKeys($line);
+};
+
+// Mode and filter width readout in the LCD's top right corner,
+// updated by polling the demodulator state.
+Plugins.rig_skin.createSignalInfo = function ($container) {
+    var $mode = $('<div>').addClass('owrx-rig-info-mode');
+    var $filter = $('<div>').addClass('owrx-rig-info-filter');
+    $container.append(
+        $('<div>').attr('id', 'owrx-rig-info').append($mode).append($filter)
+    );
+
+    function update() {
+        var mode = '', filter = '';
+        if (typeof UI !== 'undefined' && typeof UI.getDemodulator === 'function') {
+            var demod = UI.getDemodulator();
+            if (demod) {
+                mode = (UI.getModulation() || '').toUpperCase();
+                if (typeof demod.low_cut === 'number' && typeof demod.high_cut === 'number') {
+                    var w = demod.high_cut - demod.low_cut;
+                    filter = 'FIL ' + (w >= 1000 ? (w / 1000).toFixed(1) + 'k' : w);
+                }
+            }
+        }
+        $mode.text(mode);
+        $filter.text(filter);
+    }
+
+    update();
+    setInterval(update, 500);
 };
 
 // Audio scope inside the LCD: audio spectrum on the left, waveform on
@@ -46,7 +76,7 @@ Plugins.rig_skin.createVfoLine = function () {
 Plugins.rig_skin.createScope = function ($freq) {
     if (!$freq.length) return;
 
-    var W = 280, H = 40;
+    var W = 310, H = 40;
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
@@ -57,7 +87,7 @@ Plugins.rig_skin.createScope = function ($freq) {
     var ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    var FFT_W = 136, WAVE_X = 144, WAVE_W = W - WAVE_X;
+    var FFT_W = 150, WAVE_X = 158, WAVE_W = W - WAVE_X;
     var analyser = null, freqData = null, timeData = null, timer = null;
 
     // the audio graph only exists once audio has started, attach lazily
@@ -274,7 +304,7 @@ Plugins.rig_skin.createScanKeys = function ($line) {
 Plugins.rig_skin.createMeter = function ($freq) {
     if (typeof setSmeterRelativeValue !== 'function' || !$freq.length) return;
 
-    var W = 280, H = 34;
+    var W = 310, H = 34;
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
@@ -285,7 +315,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
     ctx.scale(dpr, dpr);
 
     var S9 = 0.65;                       // bar position of S9, red zone beyond
-    var SEG = 28, SEGW = 8, GAP = 2;     // segment geometry, SEG*(SEGW+GAP) == W
+    var SEG = 31, SEGW = 8, GAP = 2;     // segment geometry, SEG*(SEGW+GAP) == W
     var BAR_Y = 18, BAR_H = 12;
 
     function segColor(t) {
