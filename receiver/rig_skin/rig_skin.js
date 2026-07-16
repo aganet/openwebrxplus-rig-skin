@@ -201,8 +201,8 @@ Plugins.rig_skin.createScope = function ($freq) {
 
         // axis labels below the plots, following the current span
         var q = span / 4000;
-        ctx.fillStyle = '#5c6670';
-        ctx.font = '7px roboto-mono, monospace';
+        ctx.fillStyle = '#5db8ff';
+        ctx.font = '8px roboto-mono, monospace';
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
         ctx.fillText('0', 0, PLOT_H + 2);
@@ -501,11 +501,11 @@ Plugins.rig_skin.createMeter = function ($freq) {
 
     function drawScale() {
         ctx.clearRect(0, 0, W, H);
-        ctx.font = 'bold 9px roboto-mono, monospace';
+        ctx.font = 'bold 11px roboto-mono, monospace';
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
-        ctx.fillStyle = '#8a939c';
-        ctx.fillText('S', 0, 2);
+        ctx.fillStyle = '#aab4bd';
+        ctx.fillText('S', 0, 1);
 
         var marks = [];
         for (var s = 1; s <= 9; s += 2) marks.push({ t: s / 9 * S9, label: '' + s });
@@ -516,9 +516,9 @@ Plugins.rig_skin.createMeter = function ($freq) {
         marks.forEach(function (m) {
             var x = Math.min(m.t * W, W - 1);
             ctx.fillStyle = segColor(m.t);
-            ctx.textAlign = x > W - 10 ? 'right' : 'center';
-            ctx.fillText(m.label, x, 2);
-            ctx.fillRect(x - 0.5, 13, 1, 4);
+            ctx.textAlign = x > W - 12 ? 'right' : 'center';
+            ctx.fillText(m.label, x, 1);
+            ctx.fillRect(x - 0.5, 14, 1, 3);
         });
     }
 
