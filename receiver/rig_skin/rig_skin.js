@@ -59,6 +59,38 @@ Plugins.rig_skin.makeZoomRow = function () {
     return $('<div>').addClass('owrx-rig-zoom-row').append($out).append($in);
 };
 
+// Waterfall paging pair: shift the zoomed view left/right by one visible
+// span, like flipping pages through the capture window.
+Plugins.rig_skin.makePageRow = function () {
+    function pageBy(dir) {
+        if (typeof zoom_level === 'undefined' || zoom_level === 0) return;
+        if (typeof waterfallWidth !== 'function' || typeof resize_canvases !== 'function') return;
+
+        var winsize = waterfallWidth();
+        var canvasWidth = winsize * zoom_levels[zoom_level];
+        var visible = bandwidth / zoom_levels[zoom_level];
+        // frequency offset currently at the screen center
+        var centerOff = ((-zoom_offset_px + winsize / 2) / canvasWidth) * bandwidth - bandwidth / 2;
+        var half = bandwidth / 2 - visible / 2;
+        zoom_center_rel = Math.max(-half, Math.min(half, centerOff + dir * visible));
+        zoom_center_where = 0.5;
+        resize_canvases(true);
+        mkscale();
+        bandplan.draw();
+        bookmarks.position();
+    }
+
+    var $left = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
+        .attr('title', 'Page waterfall down in frequency').text('◀');
+    var $right = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
+        .attr('title', 'Page waterfall up in frequency').text('▶');
+
+    $left.on('click', function () { pageBy(-1); });
+    $right.on('click', function () { pageBy(1); });
+
+    return $('<div>').addClass('owrx-rig-zoom-row').append($left).append($right);
+};
+
 // Mode and filter width readout in the LCD's top right corner,
 // updated by polling the demodulator state.
 Plugins.rig_skin.createSignalInfo = function ($container) {
@@ -436,7 +468,9 @@ Plugins.rig_skin.createScanKeys = function ($line) {
     });
 
     $line.append(
-        $('<div>').attr('id', 'owrx-rig-keys-right').append($scan).append($sql).append($mw)
+        $('<div>').attr('id', 'owrx-rig-keys-right')
+            .append($scan).append($sql).append($mw)
+            .append(Plugins.rig_skin.makePageRow())
     );
 };
 
