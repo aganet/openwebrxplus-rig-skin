@@ -60,33 +60,53 @@ Plugins.rig_skin.makeZoomRow = function () {
 };
 
 // Waterfall paging pair: shift the zoomed view left/right by one visible
-// span, like flipping pages through the capture window.
+// span; at the window edge (or unzoomed) retune the SDR to the next chunk
+// of spectrum, so paging can walk the whole band.
 Plugins.rig_skin.makePageRow = function () {
     function pageBy(dir) {
-        if (typeof zoom_level === 'undefined' || zoom_level === 0) return;
         if (typeof waterfallWidth !== 'function' || typeof resize_canvases !== 'function') return;
 
-        var winsize = waterfallWidth();
-        var canvasWidth = winsize * zoom_levels[zoom_level];
-        var visible = bandwidth / zoom_levels[zoom_level];
-        // frequency offset currently at the screen center
-        var centerOff = ((-zoom_offset_px + winsize / 2) / canvasWidth) * bandwidth - bandwidth / 2;
-        var half = bandwidth / 2 - visible / 2;
-        zoom_center_rel = Math.max(-half, Math.min(half, centerOff + dir * visible));
-        zoom_center_where = 0.5;
-        resize_canvases(true);
-        mkscale();
-        bandplan.draw();
-        bookmarks.position();
+        if (typeof zoom_level !== 'undefined' && zoom_level > 0) {
+            var winsize = waterfallWidth();
+            var canvasWidth = winsize * zoom_levels[zoom_level];
+            var visible = bandwidth / zoom_levels[zoom_level];
+            // frequency offset currently at the screen center
+            var centerOff = ((-zoom_offset_px + winsize / 2) / canvasWidth) * bandwidth - bandwidth / 2;
+            var half = bandwidth / 2 - visible / 2;
+            var atEdge = (dir > 0 && centerOff >= half - 1) || (dir < 0 && centerOff <= -half + 1);
+            if (!atEdge) {
+                zoom_center_rel = Math.max(-half, Math.min(half, centerOff + dir * visible));
+                zoom_center_where = 0.5;
+                resize_canvases(true);
+                mkscale();
+                bandplan.draw();
+                bookmarks.position();
+                return;
+            }
+        }
+
+        // unzoomed, or already at the capture window edge: move the window
+        // itself (requires the server to allow center frequency changes)
+        if (typeof jumpBySteps === 'function') jumpBySteps(dir);
     }
 
     var $left = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
-        .attr('title', 'Page waterfall down in frequency').text('◀');
+        .attr('title', 'Page waterfall down (right-click: move the receiver window)').text('◀');
     var $right = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
-        .attr('title', 'Page waterfall up in frequency').text('▶');
+        .attr('title', 'Page waterfall up (right-click: move the receiver window)').text('▶');
 
     $left.on('click', function () { pageBy(-1); });
     $right.on('click', function () { pageBy(1); });
+
+    // right-click always moves the receiver window, like the stock arrows
+    $left.on('contextmenu', function (e) {
+        e.preventDefault();
+        if (typeof jumpBySteps === 'function') jumpBySteps(-1);
+    });
+    $right.on('contextmenu', function (e) {
+        e.preventDefault();
+        if (typeof jumpBySteps === 'function') jumpBySteps(1);
+    });
 
     return $('<div>').addClass('owrx-rig-zoom-row').append($left).append($right);
 };
