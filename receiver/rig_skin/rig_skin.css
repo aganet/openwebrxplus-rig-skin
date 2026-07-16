@@ -116,6 +116,11 @@ body.theme-rig .openwebrx-demodulator-button.same-mod {
     color: #e8d5a8;
 }
 
+/* hide the stock bookmark ribbon in the LCD corner, the MW key covers it */
+body.theme-rig #openwebrx-panel-receiver .openwebrx-bookmark-button {
+    display: none;
+}
+
 /* Frequency display as a backlit LCD window */
 body.theme-rig #openwebrx-panel-receiver .frequencies-container {
     background: linear-gradient(180deg, #04070a 0%, #0a0f13 70%, #0d1216 100%);

@@ -139,8 +139,9 @@ Plugins.rig_skin.createScope = function ($freq) {
             if (typeof LS !== 'undefined') LS.save('rig_scope', on);
         });
 
+    // visible by default, click the meter to hide
     setVisible((typeof LS !== 'undefined' && LS.has('rig_scope'))
-        ? LS.loadBool('rig_scope') : false);
+        ? LS.loadBool('rig_scope') : true);
 };
 
 Plugins.rig_skin.makeKey = function (label, title) {
