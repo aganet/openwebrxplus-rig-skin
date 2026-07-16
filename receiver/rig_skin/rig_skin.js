@@ -118,10 +118,16 @@ Plugins.rig_skin.createScope = function ($freq) {
             var maxBin = Math.max(1, Math.min(freqData.length,
                 Math.round(4000 / (sr / 2) * freqData.length)));
 
-            // faint grid ticks at 1/2/3 kHz
-            ctx.fillStyle = '#1a2026';
+            // faint grid ticks with axis labels at 1/2/3 kHz
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.font = '7px roboto-mono, monospace';
             for (var g = 1; g <= 3; g++) {
-                ctx.fillRect(Math.round(FFT_W * g / 4), 0, 1, H);
+                var gx = Math.round(FFT_W * g / 4);
+                ctx.fillStyle = '#1a2026';
+                ctx.fillRect(gx, 0, 1, H);
+                ctx.fillStyle = '#4a545e';
+                ctx.fillText(g + 'k', gx, 2);
             }
 
             ctx.beginPath();
