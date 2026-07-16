@@ -113,20 +113,30 @@ Plugins.rig_skin.createScope = function ($freq) {
             analyser.getByteFrequencyData(freqData);
             analyser.getByteTimeDomainData(timeData);
 
-            // audio spectrum 0..4 kHz as bars
+            // audio spectrum 0..4 kHz as a filled area, like a rig's AF scope
             var sr = audioEngine.audioContext.sampleRate;
             var maxBin = Math.max(1, Math.min(freqData.length,
                 Math.round(4000 / (sr / 2) * freqData.length)));
-            var BARS = 34, bw = FFT_W / BARS;
-            ctx.fillStyle = '#3fa9f5';
-            for (var b = 0; b < BARS; b++) {
-                var i0 = Math.floor(b * maxBin / BARS);
-                var i1 = Math.max(i0 + 1, Math.floor((b + 1) * maxBin / BARS));
-                var v = 0;
-                for (var i = i0; i < i1; i++) v = Math.max(v, freqData[i]);
-                var h = v / 255 * (H - 2);
-                ctx.fillRect(b * bw, H - h, bw - 1, h);
+
+            // faint grid ticks at 1/2/3 kHz
+            ctx.fillStyle = '#1a2026';
+            for (var g = 1; g <= 3; g++) {
+                ctx.fillRect(Math.round(FFT_W * g / 4), 0, 1, H);
             }
+
+            ctx.beginPath();
+            ctx.moveTo(0, H);
+            for (var x = 0; x <= FFT_W; x++) {
+                var v = freqData[Math.min(maxBin - 1, Math.floor(x * maxBin / FFT_W))];
+                ctx.lineTo(x, H - v / 255 * (H - 2));
+            }
+            ctx.lineTo(FFT_W, H);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(63, 169, 245, 0.35)';
+            ctx.fill();
+            ctx.strokeStyle = '#3fa9f5';
+            ctx.lineWidth = 1;
+            ctx.stroke();
 
             // waveform, ~10ms window so voice and tones stay readable
             var wN = Math.floor(timeData.length / 4);
