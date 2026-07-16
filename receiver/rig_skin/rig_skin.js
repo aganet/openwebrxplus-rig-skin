@@ -94,6 +94,22 @@ Plugins.rig_skin.createScope = function ($freq) {
     var FFT_W = 165, WAVE_X = 173, WAVE_W = W - WAVE_X;
     var analyser = null, freqData = null, timeData = null, timer = null;
 
+    // spectrum span follows the demodulator passband: 4k for voice modes,
+    // 8k/16k when the filter is wider (NFM, WFM)
+    var span = 4000;
+
+    function updateSpan() {
+        var hb = 4000;
+        if (typeof UI !== 'undefined' && typeof UI.getDemodulator === 'function') {
+            var d = UI.getDemodulator();
+            if (d && typeof d.high_cut === 'number' && typeof d.low_cut === 'number') {
+                hb = Math.max(Math.abs(d.high_cut), Math.abs(d.low_cut));
+            }
+        }
+        span = hb <= 4000 ? 4000 : (hb <= 8000 ? 8000 : 16000);
+        canvas.dataset.span = span;
+    }
+
     // offscreen canvas holding the scrolling audio waterfall
     var wf = document.createElement('canvas');
     wf.width = FFT_W - 2;
@@ -133,7 +149,8 @@ Plugins.rig_skin.createScope = function ($freq) {
             ctx.fillRect(WAVE_X + Math.round(WAVE_W * d / 4), 1, 1, PLOT_H - 2);
         }
 
-        // axis labels below the plots
+        // axis labels below the plots, following the current span
+        var q = span / 4000;
         ctx.fillStyle = '#5c6670';
         ctx.font = '7px roboto-mono, monospace';
         ctx.textBaseline = 'top';
@@ -141,10 +158,10 @@ Plugins.rig_skin.createScope = function ($freq) {
         ctx.fillText('0', 0, PLOT_H + 2);
         ctx.textAlign = 'center';
         for (var k = 1; k <= 3; k++) {
-            ctx.fillText(k + 'k', Math.round(FFT_W * k / 4), PLOT_H + 2);
+            ctx.fillText((k * q) + 'k', Math.round(FFT_W * k / 4), PLOT_H + 2);
         }
         ctx.textAlign = 'right';
-        ctx.fillText('4kHz', FFT_W, PLOT_H + 2);
+        ctx.fillText((4 * q) + 'kHz', FFT_W, PLOT_H + 2);
         ctx.fillText('2.7ms/Div', W, PLOT_H + 2);
     }
 
@@ -164,6 +181,7 @@ Plugins.rig_skin.createScope = function ($freq) {
 
     function draw() {
         ctx.clearRect(0, 0, W, H);
+        updateSpan();
         drawFrame();
 
         if (attach()) {
@@ -172,7 +190,7 @@ Plugins.rig_skin.createScope = function ($freq) {
 
             var sr = audioEngine.audioContext.sampleRate;
             var maxBin = Math.max(1, Math.min(freqData.length,
-                Math.round(4000 / (sr / 2) * freqData.length)));
+                Math.round(span / (sr / 2) * freqData.length)));
 
             function binAt(x, width) {
                 return freqData[Math.min(maxBin - 1, Math.floor(x * maxBin / width))];
