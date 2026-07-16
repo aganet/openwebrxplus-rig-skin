@@ -1,0 +1,351 @@
+/*
+ * rig_skin: dark receiver front-panel theme for OpenWebRX+.
+ * All rules are scoped to body.theme-rig so the skin only applies
+ * when the "Rig" theme is selected.
+ */
+
+body.theme-rig {
+    --theme-color1: #0d1013;
+    --theme-color2: #171b1f;
+    --theme-gradient-color1: #1d2126;
+    --theme-gradient-color2: #101316;
+    --rig-legend: #cfd4d9;
+    --rig-lcd: #ffb350;
+    --rig-lcd-glow: rgba(255, 150, 30, 0.55);
+}
+
+/* Front panel */
+body.theme-rig .openwebrx-panel,
+body.theme-rig .openwebrx-dialog {
+    position: relative;
+    background: linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
+    border-radius: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+                0 0 0 1px #060708,
+                0 6px 18px rgba(0, 0, 0, 0.65);
+    color: var(--rig-legend);
+}
+
+/* Wider front panel, the stock 259px is too narrow for a rig face */
+body.theme-rig #openwebrx-panel-receiver {
+    width: 330px !important;
+}
+
+body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-slider {
+    width: 120px;
+}
+
+body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-listbox {
+    width: 120px;
+}
+
+/* Corner screws on the receiver panel */
+body.theme-rig #openwebrx-panel-receiver::before,
+body.theme-rig #openwebrx-panel-receiver::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #565d66, #23272b 70%, #0c0e10);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.8),
+                0 1px 0 rgba(255, 255, 255, 0.06);
+}
+body.theme-rig #openwebrx-panel-receiver::before { left: 4px; }
+body.theme-rig #openwebrx-panel-receiver::after { right: 4px; }
+
+/* Domed black keys with bright legends */
+body.theme-rig .openwebrx-button {
+    position: relative;
+    background: radial-gradient(ellipse 120% 90% at 50% 28%, #3b3f45 0%, #26292d 55%, #16181b 100%);
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px #050607,
+                inset 0 1px 0 rgba(255, 255, 255, 0.20),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.55),
+                0 3px 5px rgba(0, 0, 0, 0.65),
+                0 1px 0 rgba(255, 255, 255, 0.04);
+    color: #f3f5f7;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
+}
+
+/* specular sheen across the top of each key */
+body.theme-rig .openwebrx-button::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    top: 1px;
+    height: 45%;
+    border-radius: 5px 5px 40% 40%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0));
+    pointer-events: none;
+}
+
+body.theme-rig .openwebrx-button:hover {
+    background: radial-gradient(ellipse 120% 90% at 50% 28%, #474c53 0%, #2f333a 55%, #1d2024 100%);
+    color: #ffffff;
+    filter: none;
+}
+
+body.theme-rig .openwebrx-button:active {
+    transform: translateY(1px);
+}
+
+/* Pressed / engaged: sunken key with backlit amber legend */
+body.theme-rig .openwebrx-button:active,
+body.theme-rig .openwebrx-button.highlighted,
+body.theme-rig .openwebrx-demodulator-button.highlighted {
+    background: radial-gradient(ellipse 120% 90% at 50% 70%, #212428 0%, #17191c 60%, #0f1113 100%);
+    box-shadow: 0 0 0 1px #050607,
+                inset 0 2px 4px rgba(0, 0, 0, 0.7),
+                inset 0 0 8px rgba(0, 0, 0, 0.5);
+    color: var(--rig-lcd);
+    text-shadow: 0 0 6px var(--rig-lcd-glow);
+    filter: none;
+}
+
+body.theme-rig .openwebrx-button:active::after,
+body.theme-rig .openwebrx-button.highlighted::after,
+body.theme-rig .openwebrx-demodulator-button.highlighted::after {
+    opacity: 0.3;
+}
+
+body.theme-rig .openwebrx-demodulator-button.same-mod {
+    color: #e8d5a8;
+}
+
+/* Frequency display as a backlit LCD window */
+body.theme-rig #openwebrx-panel-receiver .frequencies-container {
+    background: linear-gradient(180deg, #04070a 0%, #0a0f13 70%, #0d1216 100%);
+    border-radius: 5px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9),
+                inset 0 0 2px #000000,
+                0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 6px 8px 2px 8px;
+}
+
+body.theme-rig .webrx-actual-freq,
+body.theme-rig .webrx-actual-freq input {
+    color: var(--rig-lcd);
+    text-shadow: 0 0 8px var(--rig-lcd-glow);
+}
+
+body.theme-rig .webrx-actual-freq .digit:hover {
+    color: #ffe0a8;
+    background: rgba(255, 170, 60, 0.12);
+    border-radius: 3px;
+}
+
+body.theme-rig .webrx-actual-freq .input-group input,
+body.theme-rig .webrx-actual-freq .input-group select {
+    background: transparent;
+    color: var(--rig-lcd);
+    border-color: #23282d;
+}
+
+body.theme-rig .webrx-mouse-freq {
+    color: #8a6a35;
+}
+
+/* Segmented S-meter inside the frequency LCD, replacing the bar meter */
+#owrx-rig-meter {
+    display: none;
+    margin: 4px 0 2px 0;
+    line-height: 0;
+}
+
+body.theme-rig #owrx-rig-meter {
+    display: block;
+}
+
+body.theme-rig #openwebrx-smeter {
+    display: none;
+}
+
+#owrx-rig-meter canvas {
+    width: 280px;
+    height: 34px;
+}
+
+body.theme-rig #openwebrx-smeter-db {
+    color: var(--rig-lcd);
+    text-shadow: 0 0 6px var(--rig-lcd-glow);
+}
+
+body.theme-rig #openwebrx-clock-utc {
+    color: #8a6a35;
+}
+
+/* Inputs and listboxes */
+body.theme-rig .openwebrx-panel select,
+body.theme-rig .openwebrx-panel input:not([type=range]):not([type=checkbox]),
+body.theme-rig .openwebrx-dialog select,
+body.theme-rig .openwebrx-dialog input:not([type=range]):not([type=checkbox]) {
+    background: linear-gradient(180deg, #101316 0%, #1a1e22 100%);
+    color: var(--rig-legend);
+    border: 1px solid #060708;
+    border-radius: 3px;
+}
+
+body.theme-rig .openwebrx-panel select option,
+body.theme-rig .openwebrx-dialog select option {
+    background-color: #14171a;
+}
+
+/* Sliders: recessed groove with a round metal thumb */
+body.theme-rig .openwebrx-panel-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    background: transparent;
+}
+
+body.theme-rig .openwebrx-panel-slider::-webkit-slider-runnable-track {
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #04070a 0%, #14191d 100%);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+body.theme-rig .openwebrx-panel-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    margin-top: -5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4a5058, #24282c 65%, #17191c);
+    box-shadow: 0 0 0 1px #060708,
+                inset 0 1px 1px rgba(255, 255, 255, 0.25),
+                0 2px 3px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+}
+
+body.theme-rig .openwebrx-panel-slider::-moz-range-track {
+    height: 5px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #04070a 0%, #14191d 100%);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+body.theme-rig .openwebrx-panel-slider::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    border: none;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4a5058, #24282c 65%, #17191c);
+    box-shadow: 0 0 0 1px #060708,
+                inset 0 1px 1px rgba(255, 255, 255, 0.25),
+                0 2px 3px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+}
+
+/* Section dividers as engraved panel legends */
+body.theme-rig .openwebrx-section-divider {
+    border-bottom: 1px solid #060708;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    color: #9aa3ab;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Main dial: chrome bezel and a glossy black dome with a deep
+   finger cup */
+#owrx-rig-knob-line {
+    display: none;
+}
+
+body.theme-rig #owrx-rig-knob-line {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    padding: 8px 0 4px 0;
+}
+
+#owrx-rig-knob {
+    position: relative;
+    flex: 0 0 auto;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#owrx-rig-knob.grabbing {
+    cursor: grabbing;
+}
+
+/* chrome bezel is the outer edge of the dial */
+.owrx-rig-knob-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 210deg,
+        #eef1f3 0deg, #8b9095 30deg, #4a4e53 70deg, #c8ccd0 110deg,
+        #ffffff 140deg, #7d8287 180deg, #43474b 220deg, #d6dade 260deg,
+        #f4f6f8 300deg, #90959a 340deg, #eef1f3 360deg);
+    box-shadow: 0 0 0 1px #000000,
+                0 6px 14px rgba(0, 0, 0, 0.8),
+                0 2px 3px rgba(0, 0, 0, 0.6);
+}
+
+.owrx-rig-knob-face {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    border-radius: 50%;
+    background:
+        linear-gradient(155deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 42%),
+        radial-gradient(circle at 35% 28%, #43484e 0%, #2a2e32 32%, #17191c 64%, #0b0d0e 100%);
+    box-shadow: 0 0 0 1px #08090a,
+                inset 0 1px 2px rgba(255, 255, 255, 0.16),
+                inset 0 -2px 6px rgba(0, 0, 0, 0.55);
+    will-change: transform;
+}
+
+.owrx-rig-knob-dimple {
+    position: absolute;
+    left: 50%;
+    top: 10%;
+    width: 30px;
+    height: 30px;
+    margin-left: -15px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 32%, #000000 45%, #101214 75%, #303439 98%);
+    box-shadow: inset 0 5px 9px rgba(0, 0, 0, 0.95),
+                inset 0 -2px 3px rgba(255, 255, 255, 0.10),
+                inset 2px 0 4px rgba(0, 0, 0, 0.6),
+                0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Shorter screens: shrink the dial so the panel keeps fitting */
+@media (max-height: 820px) {
+    #owrx-rig-knob {
+        width: 90px;
+        height: 90px;
+    }
+
+    .owrx-rig-knob-face {
+        top: 7px;
+        left: 7px;
+        right: 7px;
+        bottom: 7px;
+    }
+
+    .owrx-rig-knob-dimple {
+        width: 24px;
+        height: 24px;
+        margin-left: -12px;
+    }
+}
