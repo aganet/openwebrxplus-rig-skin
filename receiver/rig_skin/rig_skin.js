@@ -34,7 +34,57 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createMeter($container.find('.frequencies'));
     var $line = $('<div>').attr('id', 'owrx-rig-knob-line').addClass('openwebrx-panel-line');
     $container.after($line);
+    Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
+};
+
+// NR and LOCK keys with status LEDs, left of the dial. NR mirrors the
+// stock noise reduction toggle; LOCK freezes the dial against accidental
+// tuning (useful on touch devices).
+Plugins.rig_skin.createSideKeys = function ($line) {
+    function makeKey(label, title) {
+        return $('<div>')
+            .addClass('openwebrx-button owrx-rig-key')
+            .attr('title', title)
+            .append($('<span>').addClass('owrx-rig-key-led'))
+            .append(label);
+    }
+
+    var $nr = makeKey('NR', 'Noise reduction on/off');
+    var $lock = makeKey('LOCK', 'Lock the dial');
+
+    $nr.on('click', function () {
+        if (typeof UI !== 'undefined' && typeof UI.toggleNR === 'function') UI.toggleNR();
+    });
+
+    // sync the NR LED with every state change, from this key or elsewhere
+    if (typeof UI !== 'undefined' && typeof UI.toggleNR === 'function') {
+        var origToggleNR = UI.toggleNR;
+        UI.toggleNR = function (on) {
+            var res = origToggleNR.call(this, on);
+            $nr.toggleClass('highlighted', !!UI.nrEnabled);
+            return res;
+        };
+        $nr.toggleClass('highlighted', !!UI.nrEnabled);
+    }
+
+    function applyLock(locked) {
+        Plugins.rig_skin.dialLocked = locked;
+        $lock.toggleClass('highlighted', locked);
+        $('#owrx-rig-knob').toggleClass('locked', locked);
+    }
+
+    applyLock((typeof LS !== 'undefined' && LS.has('rig_dial_lock'))
+        ? LS.loadBool('rig_dial_lock') : false);
+
+    $lock.on('click', function () {
+        applyLock(!Plugins.rig_skin.dialLocked);
+        if (typeof LS !== 'undefined') LS.save('rig_dial_lock', Plugins.rig_skin.dialLocked);
+    });
+
+    $line.append(
+        $('<div>').attr('id', 'owrx-rig-keys-left').append($nr).append($lock)
+    );
 };
 
 // Horizontal segmented S-meter (rig style), drawn into the frequency
@@ -155,6 +205,7 @@ Plugins.rig_skin.createKnob = function ($line) {
         .attr('title', 'VFO dial: drag, flick or scroll to tune')
         .append($('<div>').addClass('owrx-rig-knob-ring'))
         .append($face);
+    $knob.toggleClass('locked', !!Plugins.rig_skin.dialLocked);
     $line.append($knob);
 
     var knob = $knob[0];
@@ -202,6 +253,10 @@ Plugins.rig_skin.createKnob = function ($line) {
     function spin(v) {
         var prev = null;
         function frame(t) {
+            if (Plugins.rig_skin.dialLocked) {
+                spinning = null;
+                return;
+            }
             if (prev !== null) {
                 var dt = t - prev;
                 turnBy(v * dt);
@@ -220,6 +275,7 @@ Plugins.rig_skin.createKnob = function ($line) {
     knob.addEventListener('pointerdown', function (e) {
         e.preventDefault();
         stopSpin();
+        if (Plugins.rig_skin.dialLocked) return;
         try { knob.setPointerCapture(e.pointerId); } catch (err) {}
         dragging = true;
         knob.classList.add('grabbing');
@@ -260,6 +316,7 @@ Plugins.rig_skin.createKnob = function ($line) {
         e.preventDefault();
         e.stopPropagation();
         stopSpin();
+        if (Plugins.rig_skin.dialLocked) return;
         var steps = e.deltaY < 0 ? 1 : -1;
         angle += steps * DEG_PER_STEP;
         render();

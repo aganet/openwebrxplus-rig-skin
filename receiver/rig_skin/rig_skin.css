@@ -265,6 +265,41 @@ body.theme-rig #owrx-rig-knob-line {
     padding: 8px 0 4px 0;
 }
 
+/* NR and LOCK keys, stacked left of the dial */
+#owrx-rig-keys-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+}
+
+.owrx-rig-key {
+    width: 52px;
+    padding: 10px 4px 5px 4px;
+    text-align: center;
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.owrx-rig-key-led {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 14px;
+    height: 4px;
+    margin-left: -7px;
+    border-radius: 2px;
+    background: #1a1e21;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.owrx-rig-key.highlighted .owrx-rig-key-led {
+    background: #3adb4a;
+    box-shadow: 0 0 6px rgba(60, 220, 80, 0.8),
+                inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
 #owrx-rig-knob {
     position: relative;
     flex: 0 0 auto;
@@ -279,6 +314,10 @@ body.theme-rig #owrx-rig-knob-line {
 
 #owrx-rig-knob.grabbing {
     cursor: grabbing;
+}
+
+#owrx-rig-knob.locked {
+    cursor: not-allowed;
 }
 
 /* chrome bezel is the outer edge of the dial */
