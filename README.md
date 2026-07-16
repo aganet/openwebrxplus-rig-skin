@@ -47,25 +47,58 @@ On a Debian package install the plugins folder is
 
 ### Docker
 
-Follow the official plugin layout for the
-[openwebrxplus image](https://hub.docker.com/r/slechev/openwebrxplus):
-bind-mount a host folder over the container plugins directory and put the
-plugin there.
+Keep the plugins next to your `docker-compose.yml` and bind-mount them into
+the container.
+
+1. Go to the folder that holds your `docker-compose.yml` and create the
+   plugins tree with the plugin in it:
 
 ```sh
-mkdir -p /opt/owrx-docker/plugins/receiver
-cp -r receiver/rig_skin /opt/owrx-docker/plugins/receiver/
-echo "Plugins.load('rig_skin');" >> /opt/owrx-docker/plugins/receiver/init.js
+cd /path/to/your/compose/folder
+git clone https://github.com/aganet/openwebrxplus-rig-skin.git
+mkdir -p plugins/receiver
+cp -r openwebrxplus-rig-skin/receiver/rig_skin plugins/receiver/
+echo "Plugins.load('rig_skin');" >> plugins/receiver/init.js
+rm -rf openwebrxplus-rig-skin
 ```
+
+You end up with this layout:
+
+```
+docker-compose.yml
+plugins/
+  receiver/
+    init.js
+    rig_skin/
+      rig_skin.js
+      rig_skin.css
+```
+
+2. Add the volume to the openwebrx service in `docker-compose.yml`
+   (relative paths work in compose):
 
 ```yaml
-# docker-compose.yml
-volumes:
-  - /opt/owrx-docker/plugins:/usr/lib/python3/dist-packages/htdocs/plugins
+services:
+  openwebrx:
+    volumes:
+      - ./plugins:/usr/lib/python3/dist-packages/htdocs/plugins
 ```
 
-Then select "Rig" in the theme dropdown and hard-refresh the browser once
-(Ctrl+Shift+R) if the theme does not show up.
+3. Recreate the container and refresh the browser:
+
+```sh
+docker compose up -d
+```
+
+Then select "Rig" in the theme dropdown (Settings section of the receiver
+panel) and hard-refresh the browser once (Ctrl+Shift+R) if the theme does
+not show up.
+
+If you use `docker run` instead of compose, the same mount is
+`-v "$PWD/plugins:/usr/lib/python3/dist-packages/htdocs/plugins"`.
+
+Note: if you already have a `plugins/receiver/init.js` loading other
+plugins, only add the `Plugins.load('rig_skin');` line to it.
 
 ## License
 
