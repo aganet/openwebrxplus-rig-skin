@@ -169,6 +169,22 @@ body.theme-rig #openwebrx-smeter {
     height: 34px;
 }
 
+/* audio scope strip below the meter, shown on demand */
+#owrx-rig-scope {
+    display: none;
+    margin: 4px 0 2px 0;
+    line-height: 0;
+}
+
+body.theme-rig #owrx-rig-scope.visible {
+    display: block;
+}
+
+#owrx-rig-scope canvas {
+    width: 280px;
+    height: 40px;
+}
+
 body.theme-rig #openwebrx-smeter-db {
     color: var(--rig-lcd);
     text-shadow: 0 0 6px var(--rig-lcd-glow);

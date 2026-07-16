@@ -32,11 +32,115 @@ Plugins.rig_skin.createVfoLine = function () {
     if (!$container.length) return;
 
     Plugins.rig_skin.createMeter($container.find('.frequencies'));
+    Plugins.rig_skin.createScope($container.find('.frequencies'));
     var $line = $('<div>').attr('id', 'owrx-rig-knob-line').addClass('openwebrx-panel-line');
     $container.after($line);
     Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
     Plugins.rig_skin.createScanKeys($line);
+};
+
+// Audio scope inside the LCD: audio spectrum on the left, waveform on
+// the right, fed by an AnalyserNode tapped into the audio output chain.
+// Toggled by clicking the S-meter; off by default.
+Plugins.rig_skin.createScope = function ($freq) {
+    if (!$freq.length) return;
+
+    var W = 280, H = 40;
+    var canvas = document.createElement('canvas');
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    var $scope = $('<div>').attr('id', 'owrx-rig-scope').append(canvas);
+    $freq.append($scope);
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    var FFT_W = 136, WAVE_X = 144, WAVE_W = W - WAVE_X;
+    var analyser = null, freqData = null, timeData = null, timer = null;
+
+    // the audio graph only exists once audio has started, attach lazily
+    function attach() {
+        if (analyser) return true;
+        if (typeof audioEngine === 'undefined' || !audioEngine ||
+            !audioEngine.audioContext || !audioEngine.gainNode) return false;
+        analyser = audioEngine.audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.5;
+        audioEngine.gainNode.connect(analyser);
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        timeData = new Uint8Array(analyser.fftSize);
+        return true;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#1a2026';
+        ctx.fillRect(FFT_W + 3, 0, 2, H);
+
+        if (attach()) {
+            analyser.getByteFrequencyData(freqData);
+            analyser.getByteTimeDomainData(timeData);
+
+            // audio spectrum 0..4 kHz as bars
+            var sr = audioEngine.audioContext.sampleRate;
+            var maxBin = Math.max(1, Math.min(freqData.length,
+                Math.round(4000 / (sr / 2) * freqData.length)));
+            var BARS = 34, bw = FFT_W / BARS;
+            ctx.fillStyle = '#3fa9f5';
+            for (var b = 0; b < BARS; b++) {
+                var i0 = Math.floor(b * maxBin / BARS);
+                var i1 = Math.max(i0 + 1, Math.floor((b + 1) * maxBin / BARS));
+                var v = 0;
+                for (var i = i0; i < i1; i++) v = Math.max(v, freqData[i]);
+                var h = v / 255 * (H - 2);
+                ctx.fillRect(b * bw, H - h, bw - 1, h);
+            }
+
+            // waveform, ~10ms window so voice and tones stay readable
+            var wN = Math.floor(timeData.length / 4);
+            ctx.strokeStyle = '#3adb4a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (var x = 0; x < WAVE_W; x++) {
+                var s = timeData[Math.floor(x * wN / WAVE_W)] / 255;
+                var y = (1 - s) * (H - 2) + 1;
+                if (x === 0) ctx.moveTo(WAVE_X + x, y); else ctx.lineTo(WAVE_X + x, y);
+            }
+            ctx.stroke();
+        } else {
+            // no audio yet: flat baseline
+            ctx.strokeStyle = '#1f4a26';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(WAVE_X, H / 2);
+            ctx.lineTo(W, H / 2);
+            ctx.stroke();
+        }
+        timer = setTimeout(draw, 33);
+    }
+
+    function setVisible(on) {
+        $scope.toggleClass('visible', on);
+        if (on && !timer) draw();
+        if (!on && timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+    }
+
+    $('#owrx-rig-meter')
+        .css('cursor', 'pointer')
+        .attr('title', 'Toggle audio scope')
+        .on('click', function () {
+            var on = !$scope.hasClass('visible');
+            setVisible(on);
+            if (typeof LS !== 'undefined') LS.save('rig_scope', on);
+        });
+
+    setVisible((typeof LS !== 'undefined' && LS.has('rig_scope'))
+        ? LS.loadBool('rig_scope') : false);
 };
 
 Plugins.rig_skin.makeKey = function (label, title) {
@@ -105,7 +209,7 @@ Plugins.rig_skin.createScanKeys = function ($line) {
 
     var $scan = makeKey('SCAN', 'Scan bookmarks, stop where the squelch opens')
         .addClass('owrx-rig-key-scan');
-    var $sql = makeKey('SQL', 'Auto-set squelch level');
+    var $sql = makeKey('SQL', 'Squelch on/off (level is set automatically)');
     var $mw = makeKey('MW', 'Write a bookmark at the current frequency');
 
     $scan.on('click', function () {
@@ -123,10 +227,34 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         };
     }
 
+    // SQL is a toggle: ON auto-sets the squelch level from the current
+    // signal, OFF drops the slider to minimum (squelch fully open)
+    function getSquelchSlider() {
+        return $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+    }
+
+    function squelchEngaged() {
+        var $s = getSquelchSlider();
+        return $s.length > 0 && Number($s.val()) > Number($s.attr('min'));
+    }
+
+    function syncSql() {
+        $sql.toggleClass('highlighted', squelchEngaged());
+    }
+
     $sql.on('click', function () {
-        $('#openwebrx-panel-receiver .openwebrx-squelch-auto').trigger('click');
-        pulse($sql);
+        if (squelchEngaged()) {
+            var $s = getSquelchSlider();
+            $s.val($s.attr('min')).trigger('change');
+        } else {
+            $('#openwebrx-panel-receiver .openwebrx-squelch-auto').trigger('click');
+        }
+        syncSql();
     });
+
+    // follow manual slider moves too
+    $(document).on('change input', '.openwebrx-squelch-slider', syncSql);
+    syncSql();
 
     $mw.on('click', function () {
         $('#openwebrx-panel-receiver .openwebrx-bookmark-button').trigger('click');
