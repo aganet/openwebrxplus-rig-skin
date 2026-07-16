@@ -5,7 +5,7 @@ theme selector with an amber LCD frequency display, a segmented S-meter with
 peak hold, domed keys, and a working VFO dial (drag, flick or scroll to tune,
 following the tuning step).
 
-![screenshot](screenshot.png)
+![screenshot](../../docs/screenshot.png)
 
 ## Load
 

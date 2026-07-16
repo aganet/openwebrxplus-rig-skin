@@ -4,7 +4,7 @@ A receiver plugin for [OpenWebRX+](https://fms.komkon.org/OWRX/) that adds a
 "Rig" theme: a dark transceiver front panel with a working VFO dial and a
 segmented S-meter.
 
-![screenshot](receiver/rig_skin/screenshot.png)
+![screenshot](docs/screenshot.png)
 
 ## Features
 
