@@ -328,10 +328,6 @@ body.theme-rig #owrx-rig-knob-line {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 12px;
-}
-
-#owrx-rig-keys-right {
     gap: 8px;
 }
 
@@ -459,32 +455,19 @@ body.theme-rig #owrx-rig-knob-line {
                 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
-/* waterfall zoom keys under the dial */
-#owrx-rig-zoom-line {
-    display: none;
-}
-
-body.theme-rig #owrx-rig-zoom-line {
+/* waterfall zoom pair, two half-width keys in one key slot */
+.owrx-rig-zoom-row {
     display: flex;
     justify-content: center;
-    align-items: center;
-    gap: 10px;
-    padding: 2px 0 4px 0;
-}
-
-.owrx-rig-zoom-label {
-    color: #9aa3ab;
-    font-size: 8pt;
-    letter-spacing: 1px;
-    margin-right: 4px;
+    gap: 4px;
 }
 
 .owrx-rig-zoom-key {
-    width: 44px;
+    width: 24px;
     text-align: center;
-    font-size: 12pt;
+    font-size: 10pt;
     font-weight: bold;
-    padding: 1px 0 3px 0;
+    padding: 2px 0 4px 0;
 }
 
 /* Shorter screens: shrink the dial so the panel keeps fitting */

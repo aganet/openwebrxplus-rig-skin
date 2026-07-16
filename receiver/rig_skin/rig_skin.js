@@ -39,12 +39,11 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
     Plugins.rig_skin.createScanKeys($line);
-    Plugins.rig_skin.createZoomKeys($line);
 };
 
-// Waterfall zoom keys under the dial, easier than pinch zoom on touch
-// devices; they drive the stock zoom step functions.
-Plugins.rig_skin.createZoomKeys = function ($knobLine) {
+// Waterfall zoom pair, two half-width keys sharing one key slot,
+// easier than pinch zoom on touch devices.
+Plugins.rig_skin.makeZoomRow = function () {
     var $out = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
         .attr('title', 'Zoom waterfall out').text('−');
     var $in = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
@@ -57,12 +56,7 @@ Plugins.rig_skin.createZoomKeys = function ($knobLine) {
         if (typeof zoomInOneStep === 'function') zoomInOneStep();
     });
 
-    $knobLine.after(
-        $('<div>').attr('id', 'owrx-rig-zoom-line').addClass('openwebrx-panel-line')
-            .append($('<div>').addClass('owrx-rig-zoom-label').text('ZOOM'))
-            .append($out)
-            .append($in)
-    );
+    return $('<div>').addClass('owrx-rig-zoom-row').append($out).append($in);
 };
 
 // Mode and filter width readout in the LCD's top right corner,
@@ -373,7 +367,9 @@ Plugins.rig_skin.createSideKeys = function ($line) {
     });
 
     $line.append(
-        $('<div>').attr('id', 'owrx-rig-keys-left').append($nr).append($lock).append($ts)
+        $('<div>').attr('id', 'owrx-rig-keys-left')
+            .append($nr).append($lock).append($ts)
+            .append(Plugins.rig_skin.makeZoomRow())
     );
 };
 
