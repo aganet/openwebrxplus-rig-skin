@@ -265,12 +265,17 @@ body.theme-rig #owrx-rig-knob-line {
     padding: 8px 0 4px 0;
 }
 
-/* NR and LOCK keys, stacked left of the dial */
-#owrx-rig-keys-left {
+/* key columns flanking the dial */
+#owrx-rig-keys-left,
+#owrx-rig-keys-right {
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: 12px;
+}
+
+#owrx-rig-keys-right {
+    gap: 8px;
 }
 
 .owrx-rig-key {
@@ -308,6 +313,11 @@ body.theme-rig #owrx-rig-knob-line {
 
 .owrx-rig-key-lock.highlighted .owrx-rig-key-led {
     animation: owrx-rig-led-blink 1.2s step-end infinite;
+}
+
+/* running SCAN blinks fast */
+.owrx-rig-key-scan.highlighted .owrx-rig-key-led {
+    animation: owrx-rig-led-blink 0.5s step-end infinite;
 }
 
 #owrx-rig-knob {

@@ -36,20 +36,28 @@ Plugins.rig_skin.createVfoLine = function () {
     $container.after($line);
     Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
+    Plugins.rig_skin.createScanKeys($line);
+};
+
+Plugins.rig_skin.makeKey = function (label, title) {
+    return $('<div>')
+        .addClass('openwebrx-button owrx-rig-key')
+        .attr('title', title)
+        .append($('<span>').addClass('owrx-rig-key-led'))
+        .append(label);
+};
+
+// momentary LED feedback for one-shot keys
+Plugins.rig_skin.pulseKey = function ($key) {
+    $key.addClass('highlighted');
+    setTimeout(function () { $key.removeClass('highlighted'); }, 300);
 };
 
 // NR and LOCK keys with status LEDs, left of the dial. NR mirrors the
 // stock noise reduction toggle; LOCK freezes the dial against accidental
 // tuning (useful on touch devices).
 Plugins.rig_skin.createSideKeys = function ($line) {
-    function makeKey(label, title) {
-        return $('<div>')
-            .addClass('openwebrx-button owrx-rig-key')
-            .attr('title', title)
-            .append($('<span>').addClass('owrx-rig-key-led'))
-            .append(label);
-    }
-
+    var makeKey = Plugins.rig_skin.makeKey;
     var $nr = makeKey('NR', 'Noise reduction on/off');
     var $lock = makeKey('LOCK', 'Lock the dial').addClass('owrx-rig-key-lock');
 
@@ -84,6 +92,49 @@ Plugins.rig_skin.createSideKeys = function ($line) {
 
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-left').append($nr).append($lock)
+    );
+};
+
+// SCAN, SQL and MW keys right of the dial. SCAN runs the stock bookmark
+// scanner (otherwise only reachable by right-clicking the squelch button),
+// SQL auto-sets the squelch level, MW opens the bookmark editor at the
+// tuned frequency.
+Plugins.rig_skin.createScanKeys = function ($line) {
+    var makeKey = Plugins.rig_skin.makeKey;
+    var pulse = Plugins.rig_skin.pulseKey;
+
+    var $scan = makeKey('SCAN', 'Scan bookmarks, stop where the squelch opens')
+        .addClass('owrx-rig-key-scan');
+    var $sql = makeKey('SQL', 'Auto-set squelch level');
+    var $mw = makeKey('MW', 'Write a bookmark at the current frequency');
+
+    $scan.on('click', function () {
+        if (typeof UI !== 'undefined' && typeof UI.toggleScanner === 'function') UI.toggleScanner();
+    });
+
+    // sync the SCAN LED with every state change, incl. auto-stop on tuning
+    if (typeof UI !== 'undefined' && typeof UI.toggleScanner === 'function') {
+        var origToggleScanner = UI.toggleScanner;
+        UI.toggleScanner = function (on) {
+            var res = origToggleScanner.call(this, on);
+            var running = typeof scanner !== 'undefined' && scanner && scanner.isRunning();
+            $scan.toggleClass('highlighted', !!running);
+            return res;
+        };
+    }
+
+    $sql.on('click', function () {
+        $('#openwebrx-panel-receiver .openwebrx-squelch-auto').trigger('click');
+        pulse($sql);
+    });
+
+    $mw.on('click', function () {
+        $('#openwebrx-panel-receiver .openwebrx-bookmark-button').trigger('click');
+        pulse($mw);
+    });
+
+    $line.append(
+        $('<div>').attr('id', 'owrx-rig-keys-right').append($scan).append($sql).append($mw)
     );
 };
 
