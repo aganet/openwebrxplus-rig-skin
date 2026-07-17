@@ -113,6 +113,13 @@ body.theme-rig .openwebrx-demodulator-button.highlighted::after {
     opacity: 0.3;
 }
 
+/* mode keys use the same legend size as the keys around the dial */
+body.theme-rig .openwebrx-demodulator-button {
+    font-size: 8pt;
+    letter-spacing: 1px;
+    line-height: 19px;
+}
+
 /* every mode key carries an LED bar like physical keys; only the
    active one is lit */
 body.theme-rig .openwebrx-demodulator-button::before {
@@ -336,8 +343,8 @@ body.theme-rig #owrx-rig-knob-line {
     align-items: center;
     gap: 16px;
     padding: 0 0 4px 0;
-    /* let the big dial rise slightly into the empty strip at the LCD's bottom */
-    margin-top: -5px;
+    /* a little air between the LCD and the dial row */
+    margin-top: 4px;
 }
 
 /* key columns flanking the dial */
