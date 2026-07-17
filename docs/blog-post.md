@@ -30,12 +30,31 @@ panel into a dark, transceiver-style front panel.
 * **A real VFO dial.** Drag it, flick it, and let it keep spinning with
   inertia. Use the scroll wheel for single-step tuning. The dial follows the
   tuning step selected in OpenWebRX+.
-* **An amber LCD frequency display** with a segmented S-meter, proper meter
-  ballistics, and peak hold.
-* **Domed keys** with backlit legends that reflect the active mode.
-* **Touch support out of the box.** The dial works naturally with a finger
-  on phones and tablets, turning a mounted tablet into a convincing remote
-  control head for your receiver.
+* **A rig-style LCD.** White frequency digits with the mode on a blue
+  badge, plus live readouts for the filter width (FIL) and the tuning step
+  (TS), so the screen always tells you what one click of the dial will do.
+* **A segmented S-meter with peak hold**, spanning the full width of the
+  display, with proper meter ballistics.
+* **An audio scope, like a modern transceiver screen.** The audio spectrum
+  with a scrolling waterfall on the left, an oscilloscope waveform on the
+  right, complete with graticules and a labeled kHz axis. It is a genuine
+  tuning aid: on SSB you can see the voice energy sit in the passband, on CW
+  the tone spike lands right where it should. Click the S-meter to show or
+  hide it.
+* **Front panel keys around the dial**, each with a status LED:
+  * **NR** toggles noise reduction.
+  * **LOCK** freezes the dial against accidental tuning, with a blinking
+    LED. Very handy on a wall-mounted tablet.
+  * **TS** opens the tuning step picker, on a phone it is the native
+    selection wheel.
+  * **SCAN** runs the bookmark scanner, a feature the stock UI hides behind
+    a right-click.
+  * **SQL** switches the squelch on with an automatically chosen level, and
+    off again.
+  * **MW** writes a bookmark at the tuned frequency.
+* **Touch support out of the box.** The dial spins with a finger on phones
+  and tablets, turning a mounted tablet into a convincing remote control
+  head for your receiver.
 
 Most importantly, it is a **plain OpenWebRX+ plugin**.
 

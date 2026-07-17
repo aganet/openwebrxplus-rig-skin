@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.2;
+Plugins.rig_skin._version = 0.3;
 
 Plugins.rig_skin.init = function () {
     // Register the theme in the selector

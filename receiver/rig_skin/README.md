@@ -1,9 +1,11 @@
 # rig_skin
 
 Dark transceiver front-panel theme for OpenWebRX+. Adds a "Rig" entry to the
-theme selector with an amber LCD frequency display, a segmented S-meter with
-peak hold, domed keys, and a working VFO dial (drag, flick or scroll to tune,
-following the tuning step).
+theme selector with a white LCD frequency display (mode badge, FIL and TS
+readouts), a segmented S-meter with peak hold, an audio scope with waterfall
+and roll-mode waveform, LED keys around a working VFO dial (drag, flick or
+scroll to tune), waterfall zoom and paging keys, and a jet-style waterfall
+palette.
 
 ![screenshot](../../docs/screenshot.png)
 

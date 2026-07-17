@@ -14,12 +14,25 @@ segmented S-meter.
 - VFO dial with chrome bezel and finger cup. Drag around its center to tune
   (one tuning step per 15 degrees), scroll for single steps, or flick it and
   it keeps spinning with flywheel inertia.
-- Segmented horizontal S-meter drawn inside the frequency LCD, with S1..S9
-  plus red 20/40/60 dB scale, meter ballistics (fast attack, slow decay) and
-  a peak-hold segment.
-- Amber backlit LCD frequency display, domed keys with backlit active state,
-  recessed sliders with metal thumbs.
-- The receiver panel widens to 330 px while the theme is active; the dial
+- Rig-style LCD: white frequency digits, the mode on a blue badge, and live
+  FIL (filter width) and TS (tuning step) readouts.
+- Segmented S-meter with S1..S9 plus red 20/40/60 dB scale, meter ballistics
+  and a peak-hold segment, spanning the full LCD width.
+- Audio scope like a modern transceiver screen: audio spectrum with a
+  scrolling waterfall on the left, roll-mode waveform (300ms/Div) on the
+  right, kHz axis that follows the demodulator passband. Click the S-meter
+  to show or hide it.
+- Front panel keys around the dial, each with an LED window: NR, LOCK
+  (blinking LED), TS (opens the tuning step picker), SCAN (bookmark
+  scanner), SQL (squelch on/off with automatic level), MW (write a
+  bookmark). The active mode key lights a green LED too.
+- Waterfall zoom (- / +) and paging (left / right) key pairs beside the
+  dial, made for touch devices. Paging walks the zoomed view through the
+  capture window and, at the edge or when unzoomed, moves the receiver
+  window itself if the server allows center frequency changes.
+- "Rig" waterfall color palette in the waterfall theme selector, a standard
+  jet-style ramp tuned for weak-signal visibility.
+- The receiver panel widens to 364 px while the theme is active; the dial
   shrinks automatically on short screens.
 
 ## Install
