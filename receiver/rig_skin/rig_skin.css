@@ -463,11 +463,11 @@ body.theme-rig #owrx-rig-knob-line {
 }
 
 .owrx-rig-zoom-key {
-    width: 24px;
+    width: 28px;
     text-align: center;
     font-size: 10pt;
     font-weight: bold;
-    padding: 2px 0 4px 0;
+    padding: 4px 0 6px 0;
 }
 
 /* Shorter screens: shrink the dial so the panel keeps fitting */

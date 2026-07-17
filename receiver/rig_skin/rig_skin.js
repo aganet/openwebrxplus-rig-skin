@@ -186,6 +186,13 @@ Plugins.rig_skin.createScope = function ($freq) {
     wf.height = PLOT_H - SPEC_H - 2;
     var wfCtx = wf.getContext('2d');
 
+    // offscreen canvas holding the scrolling waveform (roll mode)
+    var wave = document.createElement('canvas');
+    wave.width = WAVE_W - 2;
+    wave.height = PLOT_H - 2;
+    var waveCtx = wave.getContext('2d');
+    var WAVE_STEP = 4;  // pixels scrolled per frame
+
     // dark blue to white colormap for waterfall intensity
     var wfPalette = [];
     (function () {
@@ -232,7 +239,7 @@ Plugins.rig_skin.createScope = function ($freq) {
         }
         ctx.textAlign = 'right';
         ctx.fillText((4 * q) + 'kHz', FFT_W, PLOT_H + 2);
-        ctx.fillText('2.7ms/Div', W, PLOT_H + 2);
+        ctx.fillText('0.3s/Div', W, PLOT_H + 2);
     }
 
     // the audio graph only exists once audio has started, attach lazily
@@ -291,17 +298,31 @@ Plugins.rig_skin.createScope = function ($freq) {
             }
             ctx.drawImage(wf, 1, SPEC_H + 1);
 
-            // waveform, ~10ms window so voice and tones stay readable
-            var wN = Math.floor(timeData.length / 4);
-            ctx.strokeStyle = '#3adb4a';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            for (var px = 1; px < WAVE_W - 1; px++) {
-                var s = timeData[Math.floor(px * wN / WAVE_W)] / 255;
-                var y = (1 - s) * (PLOT_H - 4) + 2;
-                if (px === 1) ctx.moveTo(WAVE_X + px, y); else ctx.lineTo(WAVE_X + px, y);
+            // waveform in roll mode: scroll left, append the newest audio
+            // envelope at the right edge
+            var shiftedWave = waveCtx.getImageData(WAVE_STEP, 0, wave.width - WAVE_STEP, wave.height);
+            waveCtx.putImageData(shiftedWave, 0, 0);
+            waveCtx.clearRect(wave.width - WAVE_STEP, 0, WAVE_STEP, wave.height);
+            waveCtx.strokeStyle = '#3adb4a';
+            waveCtx.lineWidth = 1;
+            for (var c = 0; c < WAVE_STEP; c++) {
+                var i0 = Math.floor(c * timeData.length / WAVE_STEP);
+                var i1 = Math.floor((c + 1) * timeData.length / WAVE_STEP);
+                var mn = 255, mx = 0;
+                for (var i = i0; i < i1; i++) {
+                    var s = timeData[i];
+                    if (s < mn) mn = s;
+                    if (s > mx) mx = s;
+                }
+                var cx2 = wave.width - WAVE_STEP + c + 0.5;
+                var y1 = (1 - mx / 255) * (wave.height - 1);
+                var y2 = Math.max((1 - mn / 255) * (wave.height - 1), y1 + 1);
+                waveCtx.beginPath();
+                waveCtx.moveTo(cx2, y1);
+                waveCtx.lineTo(cx2, y2);
+                waveCtx.stroke();
             }
-            ctx.stroke();
+            ctx.drawImage(wave, WAVE_X + 1, 1);
         } else {
             // no audio yet: flat baseline
             ctx.strokeStyle = '#1f4a26';
