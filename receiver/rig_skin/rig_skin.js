@@ -261,7 +261,8 @@ Plugins.rig_skin.createScope = function ($freq) {
         ctx.fillText('300ms/Div', W, PLOT_H + 2);
     }
 
-    // the audio graph only exists once audio has started, attach lazily
+    // the audio graph only exists once audio has started, attach lazily;
+    // tap before the volume gain so the display is level-independent
     function attach() {
         if (analyser) return true;
         if (typeof audioEngine === 'undefined' || !audioEngine ||
@@ -269,11 +270,15 @@ Plugins.rig_skin.createScope = function ($freq) {
         analyser = audioEngine.audioContext.createAnalyser();
         analyser.fftSize = 2048;
         analyser.smoothingTimeConstant = 0.5;
-        audioEngine.gainNode.connect(analyser);
+        (audioEngine.audioNode || audioEngine.gainNode).connect(analyser);
         freqData = new Uint8Array(analyser.frequencyBinCount);
         timeData = new Uint8Array(analyser.fftSize);
         return true;
     }
+
+    // display auto-scaling: track the recent peak deviation so the
+    // waveform fills the plot regardless of signal level
+    var wavePeak = 0.3;
 
     function draw() {
         ctx.clearRect(0, 0, W, H);
@@ -322,6 +327,17 @@ Plugins.rig_skin.createScope = function ($freq) {
             var shiftedWave = waveCtx.getImageData(WAVE_STEP, 0, wave.width - WAVE_STEP, wave.height);
             waveCtx.putImageData(shiftedWave, 0, 0);
             waveCtx.clearRect(wave.width - WAVE_STEP, 0, WAVE_STEP, wave.height);
+
+            // slowly decaying peak tracker, capped so silence stays thin
+            var dev = 0;
+            for (var d = 0; d < timeData.length; d++) {
+                var dv = Math.abs(timeData[d] - 128);
+                if (dv > dev) dev = dv;
+            }
+            wavePeak = Math.max(dev / 128, wavePeak * 0.995, 0.05);
+            var wScale = 0.9 / wavePeak;
+
+            var center = (wave.height - 1) / 2;
             waveCtx.strokeStyle = '#3adb4a';
             waveCtx.lineWidth = 1;
             for (var c = 0; c < WAVE_STEP; c++) {
@@ -334,8 +350,9 @@ Plugins.rig_skin.createScope = function ($freq) {
                     if (s > mx) mx = s;
                 }
                 var cx2 = wave.width - WAVE_STEP + c + 0.5;
-                var y1 = (1 - mx / 255) * (wave.height - 1);
-                var y2 = Math.max((1 - mn / 255) * (wave.height - 1), y1 + 1);
+                var y1 = center - Math.min((mx - 128) / 128 * wScale, 1) * center;
+                var y2 = center - Math.max((mn - 128) / 128 * wScale, -1) * center;
+                if (y2 < y1 + 1) y2 = y1 + 1;
                 waveCtx.beginPath();
                 waveCtx.moveTo(cx2, y1);
                 waveCtx.lineTo(cx2, y2);
