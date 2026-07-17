@@ -32,8 +32,8 @@ Plugins.rig_skin.registerWfTheme = function () {
     if (typeof UI === 'undefined' || !UI.wfThemes) return;
 
     UI.wfThemes['rig'] = [
-        0x000008, 0x000020, 0x001040, 0x002870, 0x0050A8,
-        0x1080D8, 0x40B0F0, 0x90E0FF, 0xFFFFFF
+        0x000010, 0x001048, 0x0040C0, 0x00A0F0, 0x50E0D0,
+        0xB0F090, 0xFFF040, 0xFF7020, 0xFFFFFF
     ];
     $('#openwebrx-wf-themes-listbox').append($('<option>').val('rig').text('Rig'));
 
