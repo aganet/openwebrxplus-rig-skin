@@ -239,7 +239,7 @@ Plugins.rig_skin.createScope = function ($freq) {
         }
         ctx.textAlign = 'right';
         ctx.fillText((4 * q) + 'kHz', FFT_W, PLOT_H + 2);
-        ctx.fillText('0.3s/Div', W, PLOT_H + 2);
+        ctx.fillText('300ms/Div', W, PLOT_H + 2);
     }
 
     // the audio graph only exists once audio has started, attach lazily
