@@ -134,14 +134,6 @@ body.theme-rig .openwebrx-demodulator-button.highlighted::before {
     box-shadow: 0 0 5px rgba(60, 220, 80, 0.8);
 }
 
-/* dim inactive mode legends so the lit key stands out */
-body.theme-rig #openwebrx-panel-receiver .openwebrx-demodulator-button:not(.highlighted) {
-    color: #8f99a2;
-}
-
-body.theme-rig #openwebrx-panel-receiver .openwebrx-demodulator-button.same-mod:not(.highlighted) {
-    color: #b9c4ad;
-}
 
 /* hide the stock bookmark ribbon in the LCD corner, the MW key covers it */
 body.theme-rig #openwebrx-panel-receiver .openwebrx-bookmark-button {

@@ -21,8 +21,27 @@ Plugins.rig_skin.init = function () {
         $('#openwebrx-themes-listbox').val('rig');
     }
 
+    Plugins.rig_skin.registerWfTheme();
     Plugins.rig_skin.createVfoLine();
     return true;
+};
+
+// Rig-style waterfall palette: most of the gradient lives in the low
+// dB range, so weak signals stand out against the noise floor.
+Plugins.rig_skin.registerWfTheme = function () {
+    if (typeof UI === 'undefined' || !UI.wfThemes) return;
+
+    UI.wfThemes['rig'] = [
+        0x000008, 0x000020, 0x001040, 0x002870, 0x0050A8,
+        0x1080D8, 0x40B0F0, 0x90E0FF, 0xFFFFFF
+    ];
+    $('#openwebrx-wf-themes-listbox').append($('<option>').val('rig').text('Rig'));
+
+    // re-apply a saved selection that predates this plugin loading
+    if (typeof LS !== 'undefined' && LS.has('wf_theme') &&
+        LS.loadStr('wf_theme') === 'rig' && UI.wfTheme !== 'rig') {
+        UI.setWfTheme('rig');
+    }
 };
 
 // The S-meter goes inside the frequency LCD window (like a modern
