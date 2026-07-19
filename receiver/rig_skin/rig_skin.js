@@ -1294,13 +1294,28 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         if (Plugins.rig_skin._satToggle) Plugins.rig_skin._satToggle();
     });
 
+    // quick mute, LED lit while muted
+    var $mute = makeKey('MUTE', 'Mute audio');
+    $mute.on('click', function () {
+        if (typeof UI !== 'undefined' && typeof UI.toggleMute === 'function') UI.toggleMute();
+    });
+    if (typeof UI !== 'undefined' && typeof UI.toggleMute === 'function') {
+        var origToggleMute = UI.toggleMute;
+        UI.toggleMute = function (on) {
+            var res = origToggleMute.call(this, on);
+            $mute.toggleClass('highlighted', UI.volumeMuted >= 0);
+            return res;
+        };
+        $mute.toggleClass('highlighted', UI.volumeMuted >= 0);
+    }
+
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-right')
             .append($scan).append($sql).append($mw)
             .append(Plugins.rig_skin.makePageRow())
     ).append(
         $('<div>').attr('id', 'owrx-rig-keys-right2')
-            .append($propKey).append($satKey)
+            .append($propKey).append($mute).append($satKey)
     );
 };
 
