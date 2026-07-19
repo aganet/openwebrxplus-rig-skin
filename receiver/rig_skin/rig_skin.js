@@ -58,6 +58,7 @@ Plugins.rig_skin.createVfoLine = function () {
     if (!$container.length) return;
 
     Plugins.rig_skin.createMeter($container.find('.frequencies'));
+    Plugins.rig_skin.createBandScope($container.find('.frequencies'));
     Plugins.rig_skin.createScope($container.find('.frequencies'));
     Plugins.rig_skin.createSignalInfo($container);
     var $line = $('<div>').attr('id', 'owrx-rig-knob-line').addClass('openwebrx-panel-line');
@@ -167,6 +168,185 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
 
     update();
     setInterval(update, 500);
+};
+
+// Band scope inside the LCD: a narrow spectrum and waterfall centered
+// on the tuned frequency, like a rig's center-mode scope. Click to
+// tune, scroll for single steps, click SPAN to change the width.
+Plugins.rig_skin.createBandScope = function ($freq) {
+    if (!$freq.length || typeof waterfall_add !== 'function') return;
+
+    var W = 340, TRACE_H = 36, WF_H = 22, AXIS_H = 12, H = TRACE_H + WF_H + AXIS_H;
+    var SPANS = [50000, 24000, 10000];
+    var spanIdx = 1;
+
+    var canvas = document.createElement('canvas');
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    var $bs = $('<div>').attr('id', 'owrx-rig-bscope').append(canvas);
+    var $bar = $('<div>').attr('id', 'owrx-rig-bscope-bar').text('BAND SCOPE');
+    $freq.append($bs).append($bar);
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    // scrolling waterfall backing store
+    var wf = document.createElement('canvas');
+    wf.width = W - 2;
+    wf.height = WF_H;
+    var wfCtx = wf.getContext('2d');
+
+    var wfPalette = [];
+    (function () {
+        var stops = [[4, 7, 10], [10, 58, 102], [63, 169, 245], [234, 246, 255]];
+        for (var i = 0; i < 256; i++) {
+            var p = i / 255 * (stops.length - 1);
+            var s = Math.min(stops.length - 2, Math.floor(p));
+            var f = p - s;
+            var c = [0, 1, 2].map(function (j) {
+                return Math.round(stops[s][j] + (stops[s + 1][j] - stops[s][j]) * f);
+            });
+            wfPalette.push('rgb(' + c.join(',') + ')');
+        }
+    })();
+
+    function visible() {
+        return $bs.hasClass('visible');
+    }
+
+    function setVisible(on) {
+        $bs.toggleClass('visible', on);
+        $bar.toggleClass('visible', !on);
+        if (typeof LS !== 'undefined') LS.save('rig_bscope', on);
+    }
+
+    function span() {
+        return SPANS[spanIdx];
+    }
+
+    function tunedOffset() {
+        if (typeof UI === 'undefined' || typeof center_freq === 'undefined') return 0;
+        var f = UI.getFrequency();
+        return f > 0 ? f - center_freq : 0;
+    }
+
+    // level at x, taking the strongest FFT bin covered by that pixel
+    function levelAt(data, off, x) {
+        var f0 = off + ((x - 0.5) / W - 0.5) * span();
+        var f1 = off + ((x + 0.5) / W - 0.5) * span();
+        var b0 = Math.floor((f0 / bandwidth + 0.5) * data.length);
+        var b1 = Math.max(b0 + 1, Math.ceil((f1 / bandwidth + 0.5) * data.length));
+        if (b1 <= 0 || b0 >= data.length) return null;
+        var v = -1000;
+        for (var b = Math.max(0, b0); b < Math.min(data.length, b1); b++) {
+            if (data[b] > v) v = data[b];
+        }
+        return v;
+    }
+
+    function draw(data) {
+        var off = tunedOffset();
+        var range = typeof Waterfall !== 'undefined' && Waterfall.getRange ? Waterfall.getRange() : { min: -100, max: 0 };
+        var lo = range.min - 10, hi = range.max + 10;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // passband shading around the center
+        var demod = typeof UI !== 'undefined' && UI.getDemodulator ? UI.getDemodulator() : null;
+        if (demod && typeof demod.low_cut === 'number' && typeof demod.high_cut === 'number') {
+            var cwOff = UI.getFrequency() - center_freq - demod.get_offset_frequency();
+            var px0 = ((demod.low_cut - cwOff) / span() + 0.5) * W;
+            var px1 = ((demod.high_cut - cwOff) / span() + 0.5) * W;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+            ctx.fillRect(px0, 0, Math.max(1, px1 - px0), TRACE_H + WF_H);
+        }
+
+        // spectrum trace
+        ctx.beginPath();
+        ctx.moveTo(0, TRACE_H);
+        for (var x = 0; x < W; x++) {
+            var v = levelAt(data, off, x);
+            var t = v === null ? 0 : Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+            ctx.lineTo(x, TRACE_H - t * (TRACE_H - 2));
+        }
+        ctx.lineTo(W, TRACE_H);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(63, 169, 245, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = '#3fa9f5';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // waterfall: scroll down, paint the new line on top
+        if (wf.height > 1) {
+            var img = wfCtx.getImageData(0, 0, wf.width, wf.height - 1);
+            wfCtx.putImageData(img, 0, 1);
+        }
+        for (var wx = 0; wx < wf.width; wx++) {
+            var wv = levelAt(data, off, wx + 1);
+            var wt = wv === null ? 0 : Math.max(0, Math.min(1, (wv - lo) / (hi - lo)));
+            wfCtx.fillStyle = wfPalette[Math.round(wt * 255)];
+            wfCtx.fillRect(wx, 0, 1, 1);
+        }
+        ctx.drawImage(wf, 1, TRACE_H);
+
+        // fixed center marker
+        ctx.fillStyle = '#ff4a33';
+        ctx.fillRect(W / 2 - 0.5, 0, 1, TRACE_H + WF_H);
+
+        // axis: span control and edge labels
+        var k = span() / 2000;
+        ctx.font = '8px roboto-mono, monospace';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#5db8ff';
+        ctx.textAlign = 'left';
+        ctx.fillText('SPAN ' + (span() / 1000) + 'k', 2, TRACE_H + WF_H + 3);
+        ctx.textAlign = 'center';
+        ctx.fillText('-' + k + 'k', W * 0.25, TRACE_H + WF_H + 3);
+        ctx.fillText('+' + k + 'k', W * 0.75, TRACE_H + WF_H + 3);
+        ctx.fillStyle = '#5c6670';
+        ctx.textAlign = 'right';
+        ctx.fillText('HIDE', W - 2, TRACE_H + WF_H + 3);
+    }
+
+    // feed from the waterfall FFT stream
+    var origWaterfallAdd = waterfall_add;
+    waterfall_add = function (data) {
+        var res = origWaterfallAdd.apply(this, arguments);
+        if (visible() && data && data.length && typeof bandwidth !== 'undefined') {
+            try { draw(data); } catch (e) {}
+        }
+        return res;
+    };
+
+    canvas.addEventListener('click', function (e) {
+        var r = canvas.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width * W;
+        var y = (e.clientY - r.top) / r.height * H;
+        if (y > TRACE_H + WF_H) {
+            // axis strip: SPAN cycles, HIDE collapses
+            if (x < 70) spanIdx = (spanIdx + 1) % SPANS.length;
+            else if (x > W - 40) setVisible(false);
+            return;
+        }
+        // tune to the clicked frequency
+        var f = center_freq + tunedOffset() + (x / W - 0.5) * span();
+        if (typeof UI !== 'undefined') UI.setFrequency(f);
+    });
+
+    canvas.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof tuneBySteps === 'function') tuneBySteps(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+
+    $bar.on('click', function () {
+        setVisible(true);
+    });
+
+    setVisible((typeof LS !== 'undefined' && LS.has('rig_bscope'))
+        ? LS.loadBool('rig_bscope') : true);
 };
 
 // Audio scope inside the LCD: audio spectrum on the left, waveform on

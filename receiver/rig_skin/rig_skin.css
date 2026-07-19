@@ -233,6 +233,36 @@ body.theme-rig #openwebrx-smeter {
     height: 34px;
 }
 
+/* band scope strip: narrow spectrum centered on the tuned frequency */
+#owrx-rig-bscope,
+#owrx-rig-bscope-bar {
+    display: none;
+    margin: 4px 0 2px 0;
+    line-height: 0;
+}
+
+body.theme-rig #owrx-rig-bscope.visible {
+    display: block;
+}
+
+#owrx-rig-bscope canvas {
+    width: 340px;
+    height: 70px;
+    cursor: crosshair;
+}
+
+body.theme-rig #owrx-rig-bscope-bar.visible {
+    display: block;
+    color: #5c6670;
+    font-size: 7pt;
+    letter-spacing: 1px;
+    line-height: 12px;
+    text-align: center;
+    border: 1px solid #1a2026;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
 /* audio scope strip below the meter, shown on demand */
 #owrx-rig-scope {
     display: none;
