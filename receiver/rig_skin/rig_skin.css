@@ -416,7 +416,7 @@ body.theme-rig #owrx-rig-knob-line {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 16px;
+    gap: 9px;
     padding: 0 0 4px 0;
     /* a little air between the LCD and the dial row */
     margin-top: 4px;
@@ -424,7 +424,8 @@ body.theme-rig #owrx-rig-knob-line {
 
 /* key columns flanking the dial */
 #owrx-rig-keys-left,
-#owrx-rig-keys-right {
+#owrx-rig-keys-right,
+#owrx-rig-keys-right2 {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -571,9 +572,8 @@ body.theme-rig #owrx-rig-knob-line {
     padding: 4px 0 6px 0;
 }
 
-/* propagation screen: hamqsl banner and MUF map in an LCD window */
-#owrx-rig-prop,
-#owrx-rig-prop-bar {
+/* propagation screen: band conditions and MUF map in an LCD window */
+#owrx-rig-prop {
     display: none;
     margin: 6px 0 2px 0;
 }
@@ -588,18 +588,6 @@ body.theme-rig #owrx-rig-prop.visible {
                 inset 0 0 2px #000000,
                 0 1px 0 rgba(255, 255, 255, 0.05);
     padding: 6px;
-}
-
-body.theme-rig #owrx-rig-prop-bar.visible {
-    display: block;
-    color: #5c6670;
-    font-size: 7pt;
-    letter-spacing: 1px;
-    line-height: 12px;
-    text-align: center;
-    border: 1px solid #1a2026;
-    border-radius: 3px;
-    cursor: pointer;
 }
 
 .owrx-rig-prop-view {
@@ -706,6 +694,77 @@ body.theme-rig .rig-wide #owrx-rig-prop.visible .owrx-rig-prop-view {
     background: #330f0d;
     color: #ff4a33;
     text-shadow: 0 0 6px rgba(255, 74, 51, 0.6);
+}
+
+/* satellite passes screen */
+#owrx-rig-sats {
+    display: none;
+    margin: 6px 0 2px 0;
+}
+
+body.theme-rig #owrx-rig-sats.visible {
+    display: block;
+    background: linear-gradient(180deg, #04070a 0%, #0a0f13 70%, #0d1216 100%);
+    border-radius: 5px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9),
+                inset 0 0 2px #000000,
+                0 1px 0 rgba(255, 255, 255, 0.05);
+    padding: 6px 8px;
+}
+
+.owrx-rig-sats-head {
+    font-family: 'roboto-mono', monospace;
+    color: var(--rig-lcd);
+    text-shadow: 0 0 6px var(--rig-lcd-glow);
+    font-size: 10pt;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.owrx-rig-sat-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: 'roboto-mono', monospace;
+    font-size: 9pt;
+    color: #cfd4d9;
+    margin: 3px 0;
+}
+
+.owrx-rig-sat-row .swhen {
+    flex: 0 0 108px;
+    color: var(--rig-lcd-dim);
+}
+
+.owrx-rig-sat-row .sname {
+    flex: 1;
+}
+
+.owrx-rig-sat-row .sel {
+    flex: 0 0 34px;
+    text-align: right;
+}
+
+.owrx-rig-sat-row .sel.good { color: #3adb4a; }
+.owrx-rig-sat-row .sel.fair { color: #f0c040; }
+.owrx-rig-sat-row .sel.low { color: #5c6670; }
+
+.owrx-rig-sat-row .sdur {
+    flex: 0 0 44px;
+    text-align: right;
+    color: var(--rig-lcd-dim);
+}
+
+.owrx-rig-sat-row .sfreq {
+    flex: 0 0 112px;
+    text-align: right;
+    color: #5db8ff;
+}
+
+.owrx-rig-sat-row.active,
+.owrx-rig-sat-row.active span {
+    color: #3adb4a;
+    text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
 }
 
 /* Shorter screens: shrink the dial so the panel keeps fitting */

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6 (2026-07-19)
+
+- Satellite passes screen: predicted passes over the receiver location
+  for a curated list of active satellites (ISS, SO-50, AO-91, RS-44,
+  AO-7 with its 10 m downlink, Meteor M2-3 and M2-4), with AOS time and
+  countdown, duration, color coded max elevation, downlink frequency
+  and a live NOW marker during a pass. Adjustable minimum elevation
+  filter (MIN 0/10/20/30 degrees). Orbits come from the public TLE API
+  (cached 12 h); propagation runs in the browser with the MIT licensed
+  satellite.js, loaded on demand.
+- PROP and SAT keys in a third key column right of the dial open the
+  propagation and satellite screens; their LEDs follow the screen
+  state. The slim toggle bars and the header button are gone; the
+  paging keys moved under MW.
+- The band scope span follows the demodulator bandwidth: wide modes
+  (WFM) grow the span so the passband stays a focused slice instead of
+  filling the whole scope.
+
 ## 0.5 (2026-07-19)
 
 - Wide layout: a chevron in the panel's top left corner (large screens

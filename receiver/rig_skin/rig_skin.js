@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.5;
+Plugins.rig_skin._version = 0.6;
 
 Plugins.rig_skin.init = function () {
     // Register the theme in the selector
@@ -74,6 +74,209 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createKnob($line);
     Plugins.rig_skin.createScanKeys($line);
     Plugins.rig_skin.createPropScreen($line);
+    Plugins.rig_skin.createSatScreen();
+};
+
+// Satellite passes over the receiver location. TLEs come from
+// tle.ivanstanojevic.me (cached for 12 hours), orbit propagation uses
+// the MIT licensed satellite.js loaded on demand, and the downlink
+// frequencies are a small built-in table. Collapsed by default.
+Plugins.rig_skin.createSatScreen = function () {
+    var SATS = [
+        { id: 25544, name: 'ISS', freq: '145.800 FM' },
+        { id: 27607, name: 'SO-50', freq: '436.795 FM' },
+        { id: 43017, name: 'AO-91', freq: '145.960 FM' },
+        { id: 44909, name: 'RS-44', freq: '435.640 SSB' },
+        { id: 7530, name: 'AO-7', freq: '29.450 SSB' },
+        { id: 57166, name: 'METEOR M2-3', freq: '137.900 LRPT' },
+        { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT' }
+    ];
+
+    var minEl = (typeof LS !== 'undefined' && LS.has('rig_sat_minel')) ? LS.loadInt('rig_sat_minel') : 10;
+
+    var $head = $('<div>').addClass('owrx-rig-sats-head').text('loading...');
+    var $list = $('<div>').addClass('owrx-rig-sats-list');
+    var $minCtl = $('<span>').addClass('owrx-rig-prop-label');
+    var $sat = $('<div>').attr('id', 'owrx-rig-sats')
+        .append($head).append($list)
+        .append($('<div>').addClass('owrx-rig-prop-cap')
+            .append($('<span>').addClass('owrx-rig-prop-label').text('PASSES over this receiver - TLE: ivanstanojevic.me'))
+            .append($minCtl)
+            .append($('<span>').addClass('owrx-rig-prop-hide').text('HIDE')));
+    $('#owrx-rig-prop').after($sat);
+
+    function minLabel() {
+        $minCtl.text('MIN ' + minEl + '°');
+    }
+    $minCtl.on('click', function () {
+        var opts = [0, 10, 20, 30];
+        minEl = opts[(opts.indexOf(minEl) + 1) % opts.length];
+        if (typeof LS !== 'undefined') LS.save('rig_sat_minel', minEl);
+        minLabel();
+        render();
+    });
+    minLabel();
+
+    $sat.find('.owrx-rig-prop-hide').on('click', function () {
+        setOpen(false);
+    });
+
+    var passes = null, timer = null;
+
+    function ensureLib(cb) {
+        if (typeof satellite !== 'undefined') return cb();
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js';
+        s.onload = cb;
+        s.onerror = function () {
+            $head.text('orbit library unavailable');
+        };
+        document.head.appendChild(s);
+    }
+
+    function ensureTles(cb) {
+        var cached = null;
+        try {
+            cached = JSON.parse(localStorage.getItem('rig_sat_tles') || 'null');
+        } catch (e) {}
+        if (cached && cached.tles && Date.now() - cached.ts < 12 * 3600 * 1000) return cb(cached.tles);
+
+        var tles = {}, pending = SATS.length;
+        function done() {
+            if (--pending > 0) return;
+            if (Object.keys(tles).length === 0) {
+                $head.text('TLE download failed');
+                return;
+            }
+            try {
+                localStorage.setItem('rig_sat_tles', JSON.stringify({ ts: Date.now(), tles: tles }));
+            } catch (e) {}
+            cb(tles);
+        }
+        SATS.forEach(function (s) {
+            fetch('https://tle.ivanstanojevic.me/api/tle/' + s.id)
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j.line1 && j.line2) tles[s.id] = { line1: j.line1, line2: j.line2 };
+                    done();
+                })
+                .catch(done);
+        });
+    }
+
+    function computePasses(tles) {
+        var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;
+        if (!pos || typeof pos.lat !== 'number') {
+            $head.text('receiver position not configured');
+            return;
+        }
+        var obs = {
+            latitude: satellite.degreesToRadians(pos.lat),
+            longitude: satellite.degreesToRadians(pos.lon),
+            height: 0.1
+        };
+        var out = [];
+        SATS.forEach(function (s) {
+            var tle = tles[s.id];
+            if (!tle) return;
+            var rec = satellite.twoline2satrec(tle.line1, tle.line2);
+            var inPass = false, aos = null, maxEl = 0, found = 0;
+            for (var t = 0; t <= 24 * 3600 && found < 3; t += 30) {
+                var d = new Date(Date.now() + t * 1000);
+                var pv = satellite.propagate(rec, d);
+                if (!pv || !pv.position) continue;
+                var la = satellite.ecfToLookAngles(obs, satellite.eciToEcf(pv.position, satellite.gstime(d)));
+                var el = la.elevation * 180 / Math.PI;
+                if (el > 0) {
+                    if (!inPass) {
+                        inPass = true;
+                        aos = d;
+                        maxEl = el;
+                    } else if (el > maxEl) {
+                        maxEl = el;
+                    }
+                } else if (inPass) {
+                    inPass = false;
+                    found++;
+                    out.push({ sat: s, aos: aos, los: d, maxEl: maxEl });
+                }
+            }
+        });
+        out.sort(function (a, b) { return a.aos - b.aos; });
+        passes = out;
+        render();
+    }
+
+    function fmtUtc(d) {
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+    }
+
+    function render() {
+        if (!passes) return;
+        var now = Date.now();
+        $head.text('NEXT PASSES (UTC)');
+        $list.empty();
+        var counted = false, shown = 0;
+        passes.forEach(function (p) {
+            if (p.los.getTime() < now || p.maxEl < minEl || shown >= 10) return;
+            shown++;
+            var active = p.aos.getTime() <= now;
+            var mins = Math.round((p.los - p.aos) / 60000);
+            var when;
+            if (active) {
+                when = 'NOW';
+            } else if (!counted) {
+                counted = true;
+                var toGo = Math.round((p.aos.getTime() - now) / 60000);
+                when = fmtUtc(p.aos) + ' (in ' + (toGo >= 60 ? Math.floor(toGo / 60) + 'h' + (toGo % 60) : toGo + 'm') + ')';
+            } else {
+                when = fmtUtc(p.aos);
+            }
+            var elClass = p.maxEl >= 40 ? 'good' : p.maxEl >= 20 ? 'fair' : 'low';
+            $list.append(
+                $('<div>').addClass('owrx-rig-sat-row' + (active ? ' active' : ''))
+                    .append($('<span>').addClass('swhen').text(when))
+                    .append($('<span>').addClass('sname').text(p.sat.name))
+                    .append($('<span>').addClass('sel ' + elClass).text(Math.round(p.maxEl) + '°'))
+                    .append($('<span>').addClass('sdur').text(mins + 'min'))
+                    .append($('<span>').addClass('sfreq').text(p.sat.freq))
+            );
+        });
+    }
+
+    function refresh() {
+        ensureLib(function () {
+            ensureTles(computePasses);
+        });
+    }
+
+    function setOpen(on) {
+        $sat.toggleClass('visible', on);
+        if (Plugins.rig_skin._satKey) Plugins.rig_skin._satKey.toggleClass('highlighted', on);
+        if (typeof LS !== 'undefined') LS.save('rig_sats', on);
+        if (on) {
+            refresh();
+            if (!timer) {
+                timer = setInterval(function () {
+                    if (!passes) return;
+                    // recompute once the front pass has ended, else re-render times
+                    if (passes.length && passes[0].los.getTime() < Date.now()) refresh();
+                    else render();
+                }, 15000);
+            }
+        } else if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    Plugins.rig_skin._satToggle = function () {
+        setOpen(!$sat.hasClass('visible'));
+    };
+
+    setOpen((typeof LS !== 'undefined' && LS.has('rig_sats'))
+        ? LS.loadBool('rig_sats') : false);
 };
 
 // Second LCD screen with HF propagation: our own band conditions view
@@ -149,7 +352,6 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
     ];
 
     var $prop = $('<div>').attr('id', 'owrx-rig-prop');
-    var $bar = $('<div>').attr('id', 'owrx-rig-prop-bar').text('PROPAGATION');
 
     var imgs = [];
     views.forEach(function (v, i) {
@@ -176,7 +378,7 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         );
     });
 
-    $knobLine.after($prop).after($bar);
+    $knobLine.after($prop);
 
     var viewIdx = 0;
 
@@ -201,14 +403,14 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
 
     function setOpen(on) {
         $prop.toggleClass('visible', on);
-        $bar.toggleClass('visible', !on);
+        if (Plugins.rig_skin._propKey) Plugins.rig_skin._propKey.toggleClass('highlighted', on);
         if (on) refresh();
         if (typeof LS !== 'undefined') LS.save('rig_prop', on);
     }
 
-    $bar.on('click', function () {
-        setOpen(true);
-    });
+    Plugins.rig_skin._propToggle = function () {
+        setOpen(!$prop.hasClass('visible'));
+    };
 
     setView((typeof LS !== 'undefined' && LS.has('rig_prop_view')) ? LS.loadInt('rig_prop_view') : 0);
     setOpen((typeof LS !== 'undefined' && LS.has('rig_prop')) ? LS.loadBool('rig_prop') : false);
@@ -414,7 +616,17 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     }
 
     function span() {
-        return SPANS[spanIdx];
+        var s = SPANS[spanIdx];
+        // wide modes (WFM, DAB) would fill the whole scope: grow the span
+        // so the passband stays a focused slice of the view
+        if (typeof UI !== 'undefined' && UI.getDemodulator) {
+            var d = UI.getDemodulator();
+            if (d && typeof d.low_cut === 'number' && typeof d.high_cut === 'number') {
+                var w = d.high_cut - d.low_cut;
+                if (w > s * 0.6) s = Math.ceil(w * 2.5 / 50000) * 50000;
+            }
+        }
+        return s;
     }
 
     function tunedOffset() {
@@ -1033,10 +1245,25 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         pulse($mw);
     });
 
+    // PROP and SAT open the extra LCD screens; their LEDs follow
+    var $propKey = makeKey('PROP', 'HF propagation screen');
+    var $satKey = makeKey('SAT', 'Satellite passes screen');
+    Plugins.rig_skin._propKey = $propKey;
+    Plugins.rig_skin._satKey = $satKey;
+    $propKey.on('click', function () {
+        if (Plugins.rig_skin._propToggle) Plugins.rig_skin._propToggle();
+    });
+    $satKey.on('click', function () {
+        if (Plugins.rig_skin._satToggle) Plugins.rig_skin._satToggle();
+    });
+
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-right')
             .append($scan).append($sql).append($mw)
             .append(Plugins.rig_skin.makePageRow())
+    ).append(
+        $('<div>').attr('id', 'owrx-rig-keys-right2')
+            .append($propKey).append($satKey)
     );
 };
 

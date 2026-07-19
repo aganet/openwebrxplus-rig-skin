@@ -39,6 +39,7 @@ Keys around the dial, each with a status LED:
 - SCAN: runs the bookmark scanner
 - SQL: squelch on/off, level set automatically
 - MW: writes a bookmark at the current frequency
+- PROP and SAT: open the propagation and satellite screens
 - small - / + and left / right pairs for waterfall zoom and paging, so you
   never need to pinch the waterfall on a phone. Paging can also move the
   receiver window itself if the server allows center frequency changes.
@@ -60,6 +61,22 @@ and the live MUF world map from prop.kc2g.com. Click the caption to
 switch views; the wide layout shows both at once.
 
 ![band conditions](docs/screenshot-prop.png)
+
+The SAT key opens a satellite screen: predicted passes over the receiver
+location for a small list of active satellites (ISS, SO-50, AO-91, RS-44,
+AO-7 with its 10 m downlink, Meteor M2-3/M2-4), with countdown, duration,
+color coded max elevation, the downlink frequency, and a NOW marker while
+a pass is in progress. A MIN control filters out low passes. Orbits come
+from the public TLE API and are computed in the browser.
+
+![satellite passes](docs/screenshot-sats.png)
+
+## Credits
+
+- Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
+- Solar data: NOAA SWPC (public domain)
+- MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
+- TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/)
 
 ## Install
 
