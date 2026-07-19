@@ -37,11 +37,18 @@ Plugins.rig_skin.registerWfTheme = function () {
     ];
     $('#openwebrx-wf-themes-listbox').append($('<option>').val('rig').text('Rig'));
 
-    // re-apply a saved selection that predates this plugin loading
-    if (typeof LS !== 'undefined' && LS.has('wf_theme') &&
-        LS.loadStr('wf_theme') === 'rig' && UI.wfTheme !== 'rig') {
-        UI.setWfTheme('rig');
+    // re-apply a saved selection regardless of whether this plugin loads
+    // before or after the core UI restores its settings
+    function restore() {
+        if (typeof LS !== 'undefined' && LS.has('wf_theme') &&
+            LS.loadStr('wf_theme') === 'rig' && UI.wfTheme !== 'rig') {
+            UI.setWfTheme('rig');
+        }
     }
+    restore();
+    $(document).on('event:owrx_initialized', restore);
+    setTimeout(restore, 2000);
+    setTimeout(restore, 6000);
 };
 
 // The S-meter goes inside the frequency LCD window (like a modern
