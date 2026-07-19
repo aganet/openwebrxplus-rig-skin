@@ -1213,9 +1213,13 @@ Plugins.rig_skin.createSideKeys = function ($line) {
         if (typeof LS !== 'undefined') LS.save('rig_dial_lock', Plugins.rig_skin.dialLocked);
     });
 
+    // LOCK lives in the third column; created here because the lock
+    // logic belongs with the dial code
+    Plugins.rig_skin._lockKey = $lock;
+
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-left')
-            .append($nr).append($lock).append($ts)
+            .append($nr).append($ts)
             .append(Plugins.rig_skin.makeZoomRow())
     );
 };
@@ -1309,13 +1313,18 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         $mute.toggleClass('highlighted', UI.volumeMuted >= 0);
     }
 
+    // MUTE sits top left; LOCK takes its place in the third column
+    $('#owrx-rig-keys-left').prepend($mute);
+
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-right')
             .append($scan).append($sql).append($mw)
             .append(Plugins.rig_skin.makePageRow())
     ).append(
         $('<div>').attr('id', 'owrx-rig-keys-right2')
-            .append($propKey).append($mute).append($satKey)
+            .append($propKey)
+            .append(Plugins.rig_skin._lockKey)
+            .append($satKey)
     );
 };
 
