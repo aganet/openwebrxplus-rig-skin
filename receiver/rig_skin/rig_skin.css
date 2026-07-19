@@ -767,6 +767,64 @@ body.theme-rig #owrx-rig-sats.visible {
     text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
 }
 
+/* Narrow phone screens: let the panel fit the viewport, scale the LCD
+   canvases and compact the dial row */
+@media (max-width: 430px) {
+    body.theme-rig #openwebrx-panel-receiver {
+        width: calc(100vw - 30px) !important;
+    }
+
+    #owrx-rig-meter canvas,
+    #owrx-rig-bscope canvas,
+    #owrx-rig-scope canvas {
+        width: 100%;
+        height: auto;
+    }
+
+    body.theme-rig #owrx-rig-knob-line {
+        gap: 6px;
+    }
+
+    #owrx-rig-knob {
+        width: 104px;
+        height: 104px;
+    }
+
+    .owrx-rig-key {
+        width: 46px;
+    }
+
+    .owrx-rig-zoom-key {
+        width: 25px;
+    }
+
+    .owrx-rig-sat-row {
+        font-size: 8pt;
+        gap: 5px;
+    }
+
+    .owrx-rig-sat-row .swhen {
+        flex-basis: 84px;
+    }
+
+    .owrx-rig-sat-row .sname {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .owrx-rig-sat-row .sfreq {
+        flex-basis: 94px;
+    }
+
+    #owrx-rig-sats .owrx-rig-prop-cap span:first-child {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 55%;
+    }
+}
+
 /* Shorter screens: shrink the dial so the panel keeps fitting */
 @media (max-height: 820px) {
     #owrx-rig-knob {
