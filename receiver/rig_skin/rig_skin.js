@@ -342,7 +342,8 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     canvas.addEventListener('wheel', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (typeof tuneBySteps === 'function') tuneBySteps(e.deltaY < 0 ? 1 : -1);
+        var steps = Plugins.rig_skin.wheelSteps(e);
+        if (steps && typeof tuneBySteps === 'function') tuneBySteps(steps);
     }, { passive: false });
 
     $bar.on('click', function () {
@@ -598,6 +599,22 @@ Plugins.rig_skin.pulseKey = function ($key) {
     $key.addClass('highlighted');
     setTimeout(function () { $key.removeClass('highlighted'); }, 300);
 };
+
+// normalize wheel events to whole steps: high resolution wheels and
+// trackpads fire many small deltas per notch, accumulate to 100 units
+// (one classic mouse notch) per step
+Plugins.rig_skin.wheelSteps = (function () {
+    var acc = 0;
+    return function (e) {
+        var d = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1);
+        // direction change drops the leftover so the first notch back counts
+        if (acc !== 0 && (d > 0) !== (acc > 0)) acc = 0;
+        acc += d;
+        var n = Math.trunc(acc / 100);
+        if (n) acc -= n * 100;
+        return -n;
+    };
+})();
 
 // NR and LOCK keys with status LEDs, left of the dial. NR mirrors the
 // stock noise reduction toggle; LOCK freezes the dial against accidental
@@ -1047,7 +1064,8 @@ Plugins.rig_skin.createKnob = function ($line) {
         e.stopPropagation();
         stopSpin();
         if (Plugins.rig_skin.dialLocked) return;
-        var steps = e.deltaY < 0 ? 1 : -1;
+        var steps = Plugins.rig_skin.wheelSteps(e);
+        if (!steps) return;
         angle += steps * DEG_PER_STEP;
         render();
         tuneBySteps(steps);
