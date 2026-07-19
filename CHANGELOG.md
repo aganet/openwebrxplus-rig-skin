@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.7 (2026-07-19)
+
+- NCDXF/IARU beacon tracker as a propagation screen view: shows which
+  of the 18 synchronized beacons transmits right now on each of the
+  five beacon frequencies, with the slot countdown. Click a frequency
+  to listen in CW; while tuned to a beacon frequency the row turns
+  green and shows the live S reading, a real time world path check.
+  Pure UTC clock math, no external data.
+- AUTO key: snaps the VFO onto the strongest signal near the current
+  frequency (search window follows the mode bandwidth), like a rig's
+  auto tune. Lands within a few Hz using an FFT centroid.
+- MUTE key (LED lit while muted); key layout rearranged: MUTE/NR/TS
+  left, LOCK/SQL/MW middle, SCAN/PROP/SAT/AUTO right.
+- Satellite frequencies are clickable: the receiver window moves there
+  if needed and the right mode is set.
+- Mobile fixes: text inflation disabled on the panel, satellite rows
+  can no longer overflow, panel fits narrow phone viewports.
+
 ## 0.6 (2026-07-19)
 
 - Satellite passes screen: predicted passes over the receiver location

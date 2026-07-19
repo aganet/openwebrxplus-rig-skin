@@ -699,6 +699,64 @@ body.theme-rig .rig-wide #owrx-rig-prop.visible .owrx-rig-prop-view {
     text-shadow: 0 0 6px rgba(255, 74, 51, 0.6);
 }
 
+/* NCDXF beacon view */
+.owrx-rig-beacons {
+    font-family: 'roboto-mono', monospace;
+    padding: 4px 6px 2px 6px;
+}
+
+.owrx-rig-beacon-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 9pt;
+    color: #cfd4d9;
+    margin: 4px 0;
+}
+
+.owrx-rig-beacon-row .bfreq {
+    flex: 0 0 auto;
+    min-width: 52px;
+    color: #5db8ff;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.owrx-rig-beacon-row .bfreq:hover {
+    color: #9fd4ff;
+    text-decoration: underline;
+}
+
+.owrx-rig-beacon-row .bcall {
+    flex: 0 0 auto;
+    min-width: 62px;
+    color: #f2f5f7;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.owrx-rig-beacon-row .bwhere {
+    flex: 1 1 30px;
+    min-width: 0;
+    color: var(--rig-lcd-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.owrx-rig-beacon-row .bslot {
+    flex: 0 0 auto;
+    text-align: right;
+    color: var(--rig-lcd-dim);
+    white-space: nowrap;
+}
+
+.owrx-rig-beacon-row.listening,
+.owrx-rig-beacon-row.listening span {
+    color: #3adb4a;
+    text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
+}
+
 /* satellite passes screen */
 #owrx-rig-sats {
     display: none;

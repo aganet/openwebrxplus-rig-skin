@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.6;
+Plugins.rig_skin._version = 0.7;
 
 Plugins.rig_skin.init = function () {
     // Register the theme in the selector
@@ -77,6 +77,40 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createSatScreen();
 };
 
+// Tune the VFO to any frequency; if it lies outside the current capture
+// window, move the receiver window first (needs the server to allow
+// center frequency changes).
+Plugins.rig_skin.tuneTo = function (f, mode) {
+    if (!f || typeof UI === 'undefined') return;
+    if (typeof UI.toggleScanner === 'function') UI.toggleScanner(false);
+
+    function land() {
+        if (mode) UI.setModulation(mode);
+        UI.setFrequency(f, false);
+    }
+
+    var inWindow = typeof center_freq !== 'undefined' && typeof bandwidth !== 'undefined' &&
+        Math.abs(f - center_freq) < bandwidth / 2 - 10000;
+    if (inWindow) {
+        land();
+        return;
+    }
+    if (typeof ws === 'undefined') return;
+    var key;
+    try { key = UI.getDemodulatorPanel().getMagicKey(); } catch (e) {}
+    ws.send(JSON.stringify({ type: 'setfrequency', params: { frequency: f, key: key } }));
+    var tries = 0;
+    var iv = setInterval(function () {
+        if (Math.abs(f - center_freq) < bandwidth / 2) {
+            clearInterval(iv);
+            // give the demodulator a moment to restart on the new window
+            setTimeout(land, 500);
+        } else if (++tries > 20) {
+            clearInterval(iv);
+        }
+    }, 250);
+};
+
 // Satellite passes over the receiver location. TLEs come from
 // tle.ivanstanojevic.me (cached for 12 hours), orbit propagation uses
 // the MIT licensed satellite.js loaded on demand, and the downlink
@@ -92,38 +126,8 @@ Plugins.rig_skin.createSatScreen = function () {
         { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT', f: 137100000, mode: 'nfm' }
     ];
 
-    // tune the VFO to a satellite downlink; if it lies outside the
-    // current capture window, move the receiver window first (needs the
-    // server to allow center frequency changes)
     function tuneSat(s) {
-        if (!s.f || typeof UI === 'undefined') return;
-        if (typeof UI.toggleScanner === 'function') UI.toggleScanner(false);
-
-        function land() {
-            if (s.mode) UI.setModulation(s.mode);
-            UI.setFrequency(s.f, false);
-        }
-
-        var inWindow = typeof center_freq !== 'undefined' && typeof bandwidth !== 'undefined' &&
-            Math.abs(s.f - center_freq) < bandwidth / 2 - 10000;
-        if (inWindow) {
-            land();
-            return;
-        }
-        if (typeof ws === 'undefined') return;
-        var key;
-        try { key = UI.getDemodulatorPanel().getMagicKey(); } catch (e) {}
-        ws.send(JSON.stringify({ type: 'setfrequency', params: { frequency: s.f, key: key } }));
-        var tries = 0;
-        var iv = setInterval(function () {
-            if (Math.abs(s.f - center_freq) < bandwidth / 2) {
-                clearInterval(iv);
-                // give the demodulator a moment to restart on the new window
-                setTimeout(land, 500);
-            } else if (++tries > 20) {
-                clearInterval(iv);
-            }
-        }, 250);
+        Plugins.rig_skin.tuneTo(s.f, s.mode);
     }
 
     var minEl = (typeof LS !== 'undefined' && LS.has('rig_sat_minel')) ? LS.loadInt('rig_sat_minel') : 10;
@@ -383,8 +387,63 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         });
     }
 
+    // NCDXF/IARU beacon network: 18 beacons in a fixed, UTC synchronized
+    // 3 minute rotation, 10 seconds per beacon per band. Pure clock math,
+    // no external data needed.
+    var BEACONS = [
+        ['4U1UN', 'United Nations NY'], ['VE8AT', 'Canada'], ['W6WX', 'USA West'],
+        ['KH6RS', 'Hawaii'], ['ZL6B', 'New Zealand'], ['VK6RBP', 'Australia'],
+        ['JA2IGY', 'Japan'], ['RR9O', 'Russia'], ['VR2B', 'Hong Kong'],
+        ['4S7B', 'Sri Lanka'], ['ZS6DN', 'South Africa'], ['5Z4B', 'Kenya'],
+        ['4X6TU', 'Israel'], ['OH2B', 'Finland'], ['CS3B', 'Madeira'],
+        ['LU4AA', 'Argentina'], ['OA4B', 'Peru'], ['YV5B', 'Venezuela']
+    ];
+    var BFREQ = [14100000, 18110000, 21150000, 24930000, 28200000];
+
+    var $beacons = $('<div>').addClass('owrx-rig-beacons');
+    var beaconRows = [];
+    BFREQ.forEach(function (f) {
+        var $freq = $('<span>').addClass('bfreq').text((f / 1000000).toFixed(3))
+            .attr('title', 'Tune here in CW')
+            .on('click', function () { Plugins.rig_skin.tuneTo(f, 'cw'); });
+        var $call = $('<span>').addClass('bcall');
+        var $where = $('<span>').addClass('bwhere');
+        var $slot = $('<span>').addClass('bslot');
+        beaconRows.push({ f: f, $call: $call, $where: $where, $slot: $slot, $row: null });
+        var $row = $('<div>').addClass('owrx-rig-beacon-row')
+            .append($freq).append($call).append($where).append($slot);
+        beaconRows[beaconRows.length - 1].$row = $row;
+        $beacons.append($row);
+    });
+
+    function updateBeacons() {
+        var sec = Math.floor(Date.now() / 1000) % 180;
+        var tenIdx = Math.floor(sec / 10);
+        var tuned = typeof UI !== 'undefined' && UI.getFrequency ? UI.getFrequency() : 0;
+        beaconRows.forEach(function (r, b) {
+            var i = ((tenIdx - b) % 18 + 18) % 18;
+            r.$call.text(BEACONS[i][0]);
+            r.$where.text(BEACONS[i][1]);
+            r.$slot.text((10 - (sec % 10)) + 's');
+            var listening = Math.abs(tuned - r.f) < 3000;
+            r.$row.toggleClass('listening', listening);
+            if (listening && typeof Plugins.rig_skin._sLevel === 'number') {
+                var v = Plugins.rig_skin._sLevel;
+                var s = v <= 0 ? 'S0' : v <= 0.65 ? 'S' + Math.round(v / 0.65 * 9)
+                    : 'S9+' + (Math.round((v - 0.65) / 0.35 * 12) * 5);
+                r.$slot.text((10 - (sec % 10)) + 's ' + s);
+            }
+        });
+    }
+
+    updateBeacons();
+    setInterval(function () {
+        if ($prop.hasClass('visible')) updateBeacons();
+    }, 1000);
+
     var views = [
         { key: 'bands', label: 'BAND CONDITIONS - est. from NOAA SWPC', content: $bands, refresh: refreshBands },
+        { key: 'beacons', label: 'NCDXF/IARU BEACONS - click to listen', content: $beacons, refresh: updateBeacons },
         { key: 'muf', label: 'MUF MAP - prop.kc2g.com', url: 'https://prop.kc2g.com/renders/current/mufd-normal-now.svg' }
     ];
 
@@ -769,12 +828,16 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         ctx.fillText('HIDE', W - 2, TRACE_H + WF_H + 3);
     }
 
-    // feed from the waterfall FFT stream
+    // feed from the waterfall FFT stream; keep the latest line around
+    // for the auto tune key as well
     var origWaterfallAdd = waterfall_add;
     waterfall_add = function (data) {
         var res = origWaterfallAdd.apply(this, arguments);
-        if (visible() && data && data.length && typeof bandwidth !== 'undefined') {
-            try { draw(data); } catch (e) {}
+        if (data && data.length) {
+            Plugins.rig_skin._lastFft = data;
+            if (visible() && typeof bandwidth !== 'undefined') {
+                try { draw(data); } catch (e) {}
+            }
         }
         return res;
     };
@@ -1298,6 +1361,37 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         if (Plugins.rig_skin._satToggle) Plugins.rig_skin._satToggle();
     });
 
+    // auto tune: snap the VFO onto the strongest signal near the
+    // current frequency, like a rig's auto tune key
+    var $auto = makeKey('AUTO', 'Auto tune: snap to the nearest signal');
+    $auto.on('click', function () {
+        pulse($auto);
+        var data = Plugins.rig_skin._lastFft;
+        if (!data || typeof UI === 'undefined' || typeof center_freq === 'undefined') return;
+        var demod = UI.getDemodulator ? UI.getDemodulator() : null;
+        var bw = demod && typeof demod.high_cut === 'number' && typeof demod.low_cut === 'number'
+            ? demod.high_cut - demod.low_cut : 3000;
+        var search = Math.max(5000, bw * 1.5);
+        var off = UI.getFrequency() - center_freq;
+        var hzPerBin = bandwidth / data.length;
+        var b0 = Math.max(0, Math.floor((off - search) / hzPerBin + data.length / 2));
+        var b1 = Math.min(data.length - 1, Math.ceil((off + search) / hzPerBin + data.length / 2));
+        var best = b0;
+        for (var b = b0; b <= b1; b++) {
+            if (data[b] > data[best]) best = b;
+        }
+        // centroid over the neighbors for sub-bin accuracy
+        var num = 0, den = 0;
+        for (var n = Math.max(0, best - 2); n <= Math.min(data.length - 1, best + 2); n++) {
+            var w = Math.pow(10, data[n] / 10);
+            num += n * w;
+            den += w;
+        }
+        var bin = den > 0 ? num / den : best;
+        var f = center_freq + (bin - data.length / 2) * hzPerBin;
+        UI.setFrequency(Math.round(f / 10) * 10, false);
+    });
+
     // quick mute, LED lit while muted
     var $mute = makeKey('MUTE', 'Mute audio');
     $mute.on('click', function () {
@@ -1326,6 +1420,7 @@ Plugins.rig_skin.createScanKeys = function ($line) {
             .append($scan)
             .append($propKey)
             .append($satKey)
+            .append($auto)
     );
 };
 

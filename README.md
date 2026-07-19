@@ -2,81 +2,102 @@
 
 This plugin makes the OpenWebRX+ receiver panel look and work like a real
 rig: dark front panel, a VFO dial you can actually turn, an LCD with proper
-readouts and meters. I wrote it for my own receiver because I never got
-used to tuning with sliders.
+readouts, meters and scopes. I wrote it for my own receiver (SDRplay on a
+magnetic loop) because I never got used to tuning with sliders, and it
+grew from there.
 
 It is a plain receiver plugin. No fork, nothing patched. It adds a "Rig"
-entry to the normal theme dropdown, so you can switch between this and the
-stock look any time.
+entry to the normal theme dropdown, so you and your visitors can switch
+between this and the stock look any time.
 
 ![screenshot](docs/screenshot.png)
 
-## What it does
+## The dial and the keys
 
 The dial tunes. Drag it, flick it and it keeps spinning, or use the mouse
-wheel for single steps. It follows the tuning step. Works with a finger on
-phones and tablets too.
+wheel: one notch is exactly one tuning step, whatever your mouse. Works
+with a finger on phones and tablets.
 
-The LCD shows the frequency in white digits, the mode on a blue badge, and
-FIL / TS readouts so you always know the filter width and what one dial
-click does. The S-meter is segmented with peak hold.
+Around the dial there are three key columns, every key with a status LED:
 
-Under the meter sit two scopes:
+- MUTE, NR and TS on the left. TS opens the tuning step picker and has an
+  Auto entry that follows the mode (100 Hz on SSB/CW, 5 or 9 kHz on AM,
+  12.5 kHz on FM and so on).
+- LOCK, SQL and MW in the middle. LOCK freezes the dial, which has saved
+  me more than once on a wall mounted tablet. SQL switches the squelch on
+  with an automatically chosen level. MW writes a bookmark where you are.
+- SCAN, PROP, SAT and AUTO on the right. SCAN runs the bookmark scanner
+  that the stock UI hides behind a right click. AUTO snaps the VFO onto
+  the strongest signal nearby, handy when you are roughly on a station
+  and want to land exactly on it.
 
-- A band scope centered on the tuned frequency. Click it to tune, scroll
-  it to step, SPAN switches between 50/24/10 kHz, HIDE collapses it. It
-  uses the same colors and levels as the main waterfall and averages the
-  trace, so weak signals are easy to spot and click.
-- An audio scope: audio spectrum with a small waterfall on the left,
-  scrolling waveform on the right. Good for tuning SSB by eye. Click the
-  S-meter to show or hide it.
+Below the keys sit small - / + and left / right pairs: waterfall zoom and
+paging, so you never have to pinch the waterfall on a phone. Paging walks
+the zoomed view through the capture window, and at the edge it moves the
+receiver window itself if the server allows center frequency changes.
 
-Keys around the dial, each with a status LED:
+## The LCD
 
-- NR: noise reduction
-- LOCK: freezes the dial (blinking LED), saves you on a wall mounted tablet
-- TS: tuning step picker, including an Auto entry that follows the mode
-- SCAN: runs the bookmark scanner
-- SQL: squelch on/off, level set automatically
-- MW: writes a bookmark at the current frequency
-- PROP and SAT: open the propagation and satellite screens
-- small - / + and left / right pairs for waterfall zoom and paging, so you
-  never need to pinch the waterfall on a phone. Paging can also move the
-  receiver window itself if the server allows center frequency changes.
+White frequency digits, the mode on a blue badge, and FIL / TS readouts so
+you always know the filter width and what one dial click does. The S-meter
+is segmented with peak hold. Under it, two scopes:
 
-The active mode key lights a green LED, like the rest. There is also a
-"Rig" waterfall palette in the waterfall theme selector, a jet style ramp
-that keeps weak signals visible. The panel is a bit wider than stock
-(364 px) and the dial shrinks on short screens.
+- A band scope centered on the tuned frequency, like the center mode scope
+  on a rig. Click it to tune, scroll it to step, SPAN switches the width
+  and grows automatically on wide FM. It shares the palette and levels of
+  the main waterfall and averages its trace, so weak signals are easy to
+  spot and click.
+- An audio scope: spectrum of what you are hearing with a small waterfall,
+  and a scrolling waveform. Good for tuning SSB by eye. Click the S-meter
+  to show or hide it.
 
-On large screens a chevron in the top left corner expands the rig to a
-wide, two column face: readouts on the left, scopes on the right, plus
-extra readouts on the LCD (current band, S units, squelch, mute, UTC).
+On large screens a chevron in the top left corner widens the rig into a
+two column face, readouts left, scopes right, and the LCD gains a line
+with the current band, S units, squelch state, mute flag and UTC clock.
 
 ![wide layout with propagation](docs/screenshot-wide.png)
 
-There is also a second, collapsible LCD under the dial showing HF
-propagation: band conditions estimated from NOAA SWPC data (SFI and K),
-and the live MUF world map from prop.kc2g.com. Click the caption to
-switch views; the wide layout shows both at once.
+## Propagation
+
+The PROP key opens a second LCD with three views (click the caption to
+switch, the wide layout shows them side by side):
+
+- Band conditions estimated from NOAA SWPC data (solar flux and K index),
+  drawn as day/night pills per band group.
+- The NCDXF/IARU beacon tracker. The 18 beacons transmit in a fixed,
+  UTC synchronized rotation on 14.100, 18.110, 21.150, 24.930 and 28.200,
+  so the rig knows which beacon is on the air on each frequency at any
+  second. Click a frequency to listen in CW; while you sit on it the row
+  turns green and shows your live S reading. Three minutes on 14.100
+  tells you more about the state of 20 m than any prediction.
+- The live MUF world map from prop.kc2g.com.
 
 ![band conditions](docs/screenshot-prop.png)
 
-The SAT key opens a satellite screen: predicted passes over the receiver
-location for a small list of active satellites (ISS, SO-50, AO-91, RS-44,
-AO-7 with its 10 m downlink, Meteor M2-3/M2-4), with countdown, duration,
-color coded max elevation, the downlink frequency, and a NOW marker while
-a pass is in progress. A MIN control filters out low passes. Orbits come
-from the public TLE API and are computed in the browser.
+![beacon tracker](docs/screenshot-beacons.png)
+
+## Satellites
+
+The SAT key opens the pass list: predicted passes over the receiver's own
+location for a handful of satellites worth listening to (ISS, SO-50,
+AO-91, RS-44, AO-7 with its 10 m downlink you can hear on an HF antenna,
+Meteor M2-3 and M2-4 for weather images). Each row shows the time and a
+countdown, duration, max elevation color coded by how good the pass is,
+and the downlink. A pass in progress glows green with NOW. The MIN control
+hides passes too low to be useful. Click the frequency and the receiver
+jumps there with the right mode, across bands if the server allows it.
+
+Orbits come from a public TLE API, cached for half a day, and the pass
+math runs in your browser.
 
 ![satellite passes](docs/screenshot-sats.png)
 
-## Credits
+## Waterfall
 
-- Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
-- Solar data: NOAA SWPC (public domain)
-- MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
-- TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/)
+There is a "Rig" palette in the waterfall theme selector, a jet style ramp
+with a steep low end that keeps weak signals visible. The band scope picks
+it up automatically. Works best together with auto adjusting waterfall
+levels on the server.
 
 ## Install
 
@@ -177,6 +198,9 @@ Tip: if an edit to `plugins/receiver/init.js` does not show up, restart the
 container. Some editors replace the file on save, which breaks a
 single-file bind mount until a restart.
 
-## License
+## Credits
 
-MIT, see [LICENSE](LICENSE).
+- Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
+- Solar data: NOAA SWPC (public domain)
+- MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
+- TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/)
