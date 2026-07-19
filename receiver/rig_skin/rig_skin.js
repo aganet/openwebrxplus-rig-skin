@@ -610,31 +610,106 @@ Plugins.rig_skin.createSideKeys = function ($line) {
     var $ts = makeKey('TS', 'Tuning step');
 
     // an invisible select stretched over the TS key: tapping the key
-    // opens the native picker with all steps
+    // opens the native picker with all steps, plus an AUTO entry that
+    // follows the modulation mode
     var $orig = $('#openwebrx-tuning-step-listbox');
     if ($orig.length && typeof tuning_step_changed === 'function') {
         var $pick = $orig.clone().removeAttr('id onchange style').addClass('owrx-rig-ts-select');
+        $pick.prepend($('<option>').val('auto').text('Auto'));
+
+        function autoStepFor(mode, freq) {
+            switch (mode) {
+                case 'cw':
+                case 'lsb':
+                case 'usb':
+                case 'freedv':
+                    return 100;
+                case 'am':
+                case 'sam':
+                    return freq > 0 && freq < 2000000 ? 9000 : 5000;
+                case 'nfm':
+                case 'dmr':
+                case 'ysf':
+                case 'dstar':
+                case 'nxdn':
+                case 'm17':
+                    return 12500;
+                case 'wfm':
+                    return 100000;
+                default:
+                    return 1000;
+            }
+        }
+
+        var autoStep = typeof LS !== 'undefined' && LS.has('rig_ts_auto')
+            ? LS.loadBool('rig_ts_auto') : false;
+        var applying = false;
+
+        // snap to the closest step the stock list actually offers
+        function nearestStepOption(target) {
+            var best = null, bestDiff = Infinity;
+            $orig.find('option').each(function () {
+                var v = parseInt(this.value);
+                if (!isNaN(v) && Math.abs(v - target) < bestDiff) {
+                    bestDiff = Math.abs(v - target);
+                    best = this.value;
+                }
+            });
+            return best;
+        }
+
+        function applyAutoStep() {
+            if (!autoStep || typeof UI === 'undefined' || !UI.getModulation) return;
+            var step = nearestStepOption(autoStepFor(UI.getModulation() || '', UI.getFrequency()));
+            if (step && $orig.val() !== step) {
+                applying = true;
+                $orig.val(step);
+                tuning_step_changed();
+                applying = false;
+            }
+        }
+
+        function setAutoStep(on) {
+            autoStep = on;
+            $ts.toggleClass('highlighted', on);
+            if (typeof LS !== 'undefined') LS.save('rig_ts_auto', on);
+            if (on) applyAutoStep();
+        }
+
         $pick.val($orig.val());
         $pick.on('change', function () {
-            $orig.val(this.value);
-            tuning_step_changed();
-            pulse($ts);
+            if (this.value === 'auto') {
+                // the LED turning on is the feedback, no pulse
+                setAutoStep(true);
+            } else {
+                setAutoStep(false);
+                $orig.val(this.value);
+                tuning_step_changed();
+                pulse($ts);
+            }
         });
         $ts.append($pick);
 
-        // follow changes made through the stock control or profile resets
+        // follow changes made through the stock control or profile resets;
+        // a manual step change anywhere disengages AUTO
         var origChanged = tuning_step_changed;
         tuning_step_changed = function () {
             origChanged();
-            $pick.val($orig.val());
+            if (!applying && autoStep) setAutoStep(false);
+            $pick.val(autoStep ? 'auto' : $orig.val());
         };
         if (typeof tuning_step_reset === 'function') {
             var origReset = tuning_step_reset;
             tuning_step_reset = function () {
                 origReset();
-                $pick.val($orig.val());
+                if (autoStep) applyAutoStep();
+                $pick.val(autoStep ? 'auto' : $orig.val());
             };
         }
+
+        // track mode changes
+        setInterval(applyAutoStep, 500);
+        setAutoStep(autoStep);
     }
 
     $nr.on('click', function () {
