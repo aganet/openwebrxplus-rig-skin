@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4 (2026-07-19)
+
+- Band scope in the LCD: a narrow spectrum and waterfall centered on the
+  tuned frequency, like a rig's center-mode scope. Click to tune (about
+  70 Hz per pixel at the 24 kHz span), scroll for single steps, click
+  SPAN to cycle 50/24/10 kHz, click HIDE to collapse it to a slim bar.
+  It shares the main waterfall's palette and level range and averages
+  its trace, so weak signals stand out and are easy to click.
+- AUTO tuning step: the TS picker gains an Auto entry that follows the
+  mode (SSB/CW 100 Hz, AM 5 kHz or 9 kHz below 2 MHz, NFM and digital
+  voice 12.5 kHz, WFM 50 kHz). Any manual step choice disengages it.
+- Audio scope fixes: the analyser taps the audio before the volume gain
+  and the waveform display auto-scales, so speech is clearly visible at
+  any volume setting.
+- The saved rig waterfall theme is re-applied reliably after page load.
+- Mode key legends match the dial keys in size; spacing between the LCD
+  and the dial row.
+
 ## 0.3 (2026-07-17)
 
 - White LCD palette with the mode shown on a blue badge, following the
@@ -21,7 +39,7 @@
 
 ## 0.2 (2026-07-16)
 
-- Audio scope inside the LCD, styled like a modern transceiver screen:
+- Audio scope inside the LCD, styled like a modern rig screen:
   audio spectrum with a scrolling waterfall on the left, oscilloscope
   waveform with graticule on the right, framed plots with kHz axis labels.
   Toggled by clicking the S-meter, visible by default.

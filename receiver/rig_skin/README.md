@@ -1,11 +1,10 @@
 # rig_skin
 
-Dark transceiver front-panel theme for OpenWebRX+. Adds a "Rig" entry to the
-theme selector with a white LCD frequency display (mode badge, FIL and TS
-readouts), a segmented S-meter with peak hold, an audio scope with waterfall
-and roll-mode waveform, LED keys around a working VFO dial (drag, flick or
-scroll to tune), waterfall zoom and paging keys, and a jet-style waterfall
-palette.
+Makes the OpenWebRX+ receiver panel look and work like a real rig: a VFO
+dial you can turn (drag, flick or scroll), an LCD with mode / FIL / TS
+readouts, a segmented S-meter with peak hold, a click-to-tune band scope,
+an audio scope, and keys with status LEDs for NR, LOCK, tuning step (with
+an Auto mode), scanner, squelch, bookmarks, waterfall zoom and paging.
 
 ![screenshot](../../docs/screenshot.png)
 
@@ -18,5 +17,5 @@ Plugins.load('rig_skin');
 Plugins.load('https://aganet.github.io/openwebrxplus-rig-skin/receiver/rig_skin/rig_skin.js');
 ```
 
-No dependencies. The skin only applies while the "Rig" theme is selected, so
-it is safe to keep loaded at all times.
+No dependencies. The skin only applies while the "Rig" theme is selected,
+so it is safe to keep loaded at all times.

@@ -1,45 +1,58 @@
 # OpenWebRX+ Rig Skin Plugin
 
-A receiver plugin for [OpenWebRX+](https://fms.komkon.org/OWRX/) that adds a
-"Rig" theme: a dark transceiver front panel with a working VFO dial and a
-segmented S-meter.
+This plugin makes the OpenWebRX+ receiver panel look and work like a real
+rig: dark front panel, a VFO dial you can actually turn, an LCD with proper
+readouts and meters. I wrote it for my own receiver because I never got
+used to tuning with sliders.
+
+It is a plain receiver plugin. No fork, nothing patched. It adds a "Rig"
+entry to the normal theme dropdown, so you can switch between this and the
+stock look any time.
 
 ![screenshot](docs/screenshot.png)
 
-## Features
+## What it does
 
-- Dark front-panel theme, selectable from the standard theme dropdown
-  (Settings section of the receiver panel). Switching themes turns the whole
-  skin on and off, no reload needed.
-- VFO dial with chrome bezel and finger cup. Drag around its center to tune
-  (one tuning step per 15 degrees), scroll for single steps, or flick it and
-  it keeps spinning with flywheel inertia.
-- Rig-style LCD: white frequency digits, the mode on a blue badge, and live
-  FIL (filter width) and TS (tuning step) readouts.
-- Segmented S-meter with S1..S9 plus red 20/40/60 dB scale, meter ballistics
-  and a peak-hold segment, spanning the full LCD width.
-- Audio scope like a modern transceiver screen: audio spectrum with a
-  scrolling waterfall on the left, roll-mode waveform (300ms/Div) on the
-  right, kHz axis that follows the demodulator passband. Click the S-meter
-  to show or hide it.
-- Front panel keys around the dial, each with an LED window: NR, LOCK
-  (blinking LED), TS (opens the tuning step picker), SCAN (bookmark
-  scanner), SQL (squelch on/off with automatic level), MW (write a
-  bookmark). The active mode key lights a green LED too.
-- Waterfall zoom (- / +) and paging (left / right) key pairs beside the
-  dial, made for touch devices. Paging walks the zoomed view through the
-  capture window and, at the edge or when unzoomed, moves the receiver
-  window itself if the server allows center frequency changes.
-- "Rig" waterfall color palette in the waterfall theme selector, a standard
-  jet-style ramp tuned for weak-signal visibility.
-- The receiver panel widens to 364 px while the theme is active; the dial
-  shrinks automatically on short screens.
+The dial tunes. Drag it, flick it and it keeps spinning, or use the mouse
+wheel for single steps. It follows the tuning step. Works with a finger on
+phones and tablets too.
+
+The LCD shows the frequency in white digits, the mode on a blue badge, and
+FIL / TS readouts so you always know the filter width and what one dial
+click does. The S-meter is segmented with peak hold.
+
+Under the meter sit two scopes:
+
+- A band scope centered on the tuned frequency. Click it to tune, scroll
+  it to step, SPAN switches between 50/24/10 kHz, HIDE collapses it. It
+  uses the same colors and levels as the main waterfall and averages the
+  trace, so weak signals are easy to spot and click.
+- An audio scope: audio spectrum with a small waterfall on the left,
+  scrolling waveform on the right. Good for tuning SSB by eye. Click the
+  S-meter to show or hide it.
+
+Keys around the dial, each with a status LED:
+
+- NR: noise reduction
+- LOCK: freezes the dial (blinking LED), saves you on a wall mounted tablet
+- TS: tuning step picker, including an Auto entry that follows the mode
+- SCAN: runs the bookmark scanner
+- SQL: squelch on/off, level set automatically
+- MW: writes a bookmark at the current frequency
+- small - / + and left / right pairs for waterfall zoom and paging, so you
+  never need to pinch the waterfall on a phone. Paging can also move the
+  receiver window itself if the server allows center frequency changes.
+
+The active mode key lights a green LED, like the rest. There is also a
+"Rig" waterfall palette in the waterfall theme selector, a jet style ramp
+that keeps weak signals visible. The panel is a bit wider than stock
+(364 px) and the dial shrinks on short screens.
 
 ## Install
 
 ### Remote (no files on the server)
 
-Add this line to your `plugins/receiver/init.js`:
+One line in your `plugins/receiver/init.js`:
 
 ```js
 Plugins.load('https://aganet.github.io/openwebrxplus-rig-skin/receiver/rig_skin/rig_skin.js');
@@ -63,7 +76,7 @@ On a Debian package install the plugins folder is
 Keep the plugins next to your `docker-compose.yml` and bind-mount them into
 the container.
 
-**Step 1.** Go to the folder that holds your `docker-compose.yml` and create
+Step 1: go to the folder that holds your `docker-compose.yml` and create
 the plugins tree with the plugin in it:
 
 ```sh
@@ -87,13 +100,13 @@ plugins/
       rig_skin.css
 ```
 
-**Step 2.** Mount it into the openwebrx service in `docker-compose.yml`.
-Pick one of the two options (relative paths work in compose):
+Step 2: mount it into the openwebrx service in `docker-compose.yml`.
+Relative paths work in compose. Two options:
 
-**Option A: mount the whole plugins folder.** Simple, and the layout the
-official docs use. Note that it hides the plugins bundled inside the image
-(`utils`, the examples) and anything previously copied into the container,
-so use it when this folder is your only source of plugins:
+Option A, mount the whole plugins folder. Simple, and the layout the
+official docs use. It hides the plugins bundled inside the image (`utils`,
+the examples) and anything previously copied into the container, so use it
+when this folder is your only source of plugins:
 
 ```yaml
 services:
@@ -102,10 +115,9 @@ services:
       - ./plugins:/usr/lib/python3/dist-packages/htdocs/plugins
 ```
 
-**Option B: mount only the rig_skin folder plus init.js.** Nothing else in
-the container is touched, so plugins that already exist inside the image or
-container keep working. Use this on an installation that already has
-plugins:
+Option B, mount only the rig_skin folder plus init.js. Nothing else in the
+container is touched, so plugins that already exist inside the image or
+container keep working:
 
 ```yaml
 services:
@@ -116,25 +128,24 @@ services:
 ```
 
 If your installation already has its own `init.js` loading other plugins,
-do not mount a new one over it: drop the second line and instead add
-`Plugins.load('rig_skin');` to the existing file.
+do not mount a new one over it: drop the second line and add
+`Plugins.load('rig_skin');` to the existing file instead.
 
-**Step 3.** Recreate the container and refresh the browser:
+Step 3: recreate the container and refresh the browser:
 
 ```sh
 docker compose up -d
 ```
 
-Then select "Rig" in the theme dropdown (Settings section of the receiver
-panel) and hard-refresh the browser once (Ctrl+Shift+R) if the theme does
-not show up.
+Then pick "Rig" in the theme dropdown (Settings section of the receiver
+panel). Hard-refresh once (Ctrl+Shift+R) if it does not show up.
 
-If you use `docker run` instead of compose, the same mounts work with
-`-v "$PWD/plugins:..."` style arguments.
+With plain `docker run` the same mounts work as `-v "$PWD/plugins:..."`
+arguments.
 
-Tip: after editing `plugins/receiver/init.js` on the host, restart the
-container if the change does not show up; some editors replace the file
-when saving, which breaks a single-file bind mount until a restart.
+Tip: if an edit to `plugins/receiver/init.js` does not show up, restart the
+container. Some editors replace the file on save, which breaks a
+single-file bind mount until a restart.
 
 ## License
 

@@ -21,7 +21,7 @@ Since I am the main user of my own receiver, I decided it should feel more
 like my radio.
 
 So I built **rig_skin**: an OpenWebRX+ plugin that transforms the receiver
-panel into a dark, transceiver-style front panel.
+panel into a dark, rig-style front panel.
 
 ![rig_skin in action](https://aganet.github.io/openwebrxplus-rig-skin/docs/screenshot.png)
 
@@ -35,7 +35,7 @@ panel into a dark, transceiver-style front panel.
   (TS), so the screen always tells you what one click of the dial will do.
 * **A segmented S-meter with peak hold**, spanning the full width of the
   display, with proper meter ballistics.
-* **An audio scope, like a modern transceiver screen.** The audio spectrum
+* **An audio scope, like a modern rig screen.** The audio spectrum
   with a scrolling waterfall on the left, an oscilloscope waveform on the
   right, complete with graticules and a labeled kHz axis. It is a genuine
   tuning aid: on SSB you can see the voice energy sit in the passband, on CW
