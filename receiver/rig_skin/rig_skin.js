@@ -197,20 +197,6 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     wf.height = WF_H;
     var wfCtx = wf.getContext('2d');
 
-    var wfPalette = [];
-    (function () {
-        var stops = [[4, 7, 10], [10, 58, 102], [63, 169, 245], [234, 246, 255]];
-        for (var i = 0; i < 256; i++) {
-            var p = i / 255 * (stops.length - 1);
-            var s = Math.min(stops.length - 2, Math.floor(p));
-            var f = p - s;
-            var c = [0, 1, 2].map(function (j) {
-                return Math.round(stops[s][j] + (stops[s + 1][j] - stops[s][j]) * f);
-            });
-            wfPalette.push('rgb(' + c.join(',') + ')');
-        }
-    })();
-
     function visible() {
         return $bs.hasClass('visible');
     }
@@ -245,10 +231,22 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         return v;
     }
 
+    // trace averaging: smooths the noise so steady weak signals stand out
+    var avg = null, avgOff = null, avgSpan = null;
+
     function draw(data) {
         var off = tunedOffset();
+        // exact same level range as the main waterfall, so signals look
+        // just as strong here, only magnified
         var range = typeof Waterfall !== 'undefined' && Waterfall.getRange ? Waterfall.getRange() : { min: -100, max: 0 };
-        var lo = range.min - 10, hi = range.max + 10;
+        var lo = range.min, hi = range.max;
+
+        // reset the average when the view moves
+        if (!avg || avgOff !== off || avgSpan !== span()) {
+            avg = null;
+            avgOff = off;
+            avgSpan = span();
+        }
 
         ctx.clearRect(0, 0, W, H);
 
@@ -262,13 +260,18 @@ Plugins.rig_skin.createBandScope = function ($freq) {
             ctx.fillRect(px0, 0, Math.max(1, px1 - px0), TRACE_H + WF_H);
         }
 
-        // spectrum trace
+        // spectrum trace, averaged over time and with a gentle low-end
+        // lift so weak signals are easy to spot
+        var fresh = !avg;
+        if (fresh) avg = new Float32Array(W);
         ctx.beginPath();
         ctx.moveTo(0, TRACE_H);
         for (var x = 0; x < W; x++) {
             var v = levelAt(data, off, x);
-            var t = v === null ? 0 : Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
-            ctx.lineTo(x, TRACE_H - t * (TRACE_H - 2));
+            if (v === null) v = lo;
+            avg[x] = fresh ? v : avg[x] * 0.7 + v * 0.3;
+            var t = Math.max(0, Math.min(1, (avg[x] - lo) / (hi - lo)));
+            ctx.lineTo(x, TRACE_H - Math.pow(t, 0.7) * (TRACE_H - 2));
         }
         ctx.lineTo(W, TRACE_H);
         ctx.closePath();
@@ -283,10 +286,11 @@ Plugins.rig_skin.createBandScope = function ($freq) {
             var img = wfCtx.getImageData(0, 0, wf.width, wf.height - 1);
             wfCtx.putImageData(img, 0, 1);
         }
+        // colors come straight from the main waterfall's theme and levels
         for (var wx = 0; wx < wf.width; wx++) {
             var wv = levelAt(data, off, wx + 1);
-            var wt = wv === null ? 0 : Math.max(0, Math.min(1, (wv - lo) / (hi - lo)));
-            wfCtx.fillStyle = wfPalette[Math.round(wt * 255)];
+            var c = Waterfall.makeColor(wv === null ? lo : wv);
+            wfCtx.fillStyle = 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
             wfCtx.fillRect(wx, 0, 1, 1);
         }
         ctx.drawImage(wf, 1, TRACE_H);
