@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5 (2026-07-19)
+
+- Wide layout: a chevron in the panel's top left corner (large screens
+  only) expands the rig to a two column face, readouts left, scopes
+  right. The LCD gains extra readouts in wide mode: current band name,
+  S units, squelch state, a MUTE flag and the UTC clock.
+- Propagation screen: a second collapsible LCD under the dial with two
+  views, band conditions estimated from NOAA SWPC data (SFI and K,
+  rendered as day/night pills per band group) and the live MUF world
+  map from prop.kc2g.com. One view at a time in the normal layout,
+  side by side in the wide layout. Collapsed by default.
+- One wheel notch is one tuning step: high resolution wheel and
+  trackpad deltas are accumulated on the dial and the band scope.
+
 ## 0.4 (2026-07-19)
 
 - Band scope in the LCD: a narrow spectrum and waterfall centered on the

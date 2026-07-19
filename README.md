@@ -48,6 +48,19 @@ The active mode key lights a green LED, like the rest. There is also a
 that keeps weak signals visible. The panel is a bit wider than stock
 (364 px) and the dial shrinks on short screens.
 
+On large screens a chevron in the top left corner expands the rig to a
+wide, two column face: readouts on the left, scopes on the right, plus
+extra readouts on the LCD (current band, S units, squelch, mute, UTC).
+
+![wide layout with propagation](docs/screenshot-wide.png)
+
+There is also a second, collapsible LCD under the dial showing HF
+propagation: band conditions estimated from NOAA SWPC data (SFI and K),
+and the live MUF world map from prop.kc2g.com. Click the caption to
+switch views; the wide layout shows both at once.
+
+![band conditions](docs/screenshot-prop.png)
+
 ## Install
 
 ### Remote (no files on the server)

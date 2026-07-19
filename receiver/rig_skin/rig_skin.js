@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.4;
+Plugins.rig_skin._version = 0.5;
 
 Plugins.rig_skin.init = function () {
     // Register the theme in the selector
@@ -58,14 +58,185 @@ Plugins.rig_skin.createVfoLine = function () {
     if (!$container.length) return;
 
     Plugins.rig_skin.createMeter($container.find('.frequencies'));
-    Plugins.rig_skin.createBandScope($container.find('.frequencies'));
-    Plugins.rig_skin.createScope($container.find('.frequencies'));
+
+    // the scopes live in their own block: below the meter in the normal
+    // layout, in a right-hand column when the panel is expanded
+    var $scopes = $('<div>').attr('id', 'owrx-rig-lcd-right');
+    $container.append($scopes);
+    Plugins.rig_skin.createBandScope($scopes);
+    Plugins.rig_skin.createScope($scopes);
+
     Plugins.rig_skin.createSignalInfo($container);
+    Plugins.rig_skin.createExpandToggle();
     var $line = $('<div>').attr('id', 'owrx-rig-knob-line').addClass('openwebrx-panel-line');
     $container.after($line);
     Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
     Plugins.rig_skin.createScanKeys($line);
+    Plugins.rig_skin.createPropScreen($line);
+};
+
+// Second LCD screen with HF propagation: our own band conditions view
+// computed from NOAA SWPC data, and the live MUF world map from
+// prop.kc2g.com. One view at a time in the normal layout (click the
+// caption to switch), side by side in the wide layout. Collapsed by
+// default.
+Plugins.rig_skin.createPropScreen = function ($knobLine) {
+    // estimated band conditions from solar flux and Kp; a rough but
+    // honest heuristic, labeled as an estimate in the caption
+    function cond(group, night, sfi, k) {
+        switch (group) {
+            case 0:  // 80m-40m
+                if (night) return k <= 2 ? 'good' : k <= 4 ? 'fair' : 'poor';
+                return k <= 3 ? 'fair' : 'poor';
+            case 1:  // 30m-20m
+                if (night) return sfi >= 120 && k <= 3 ? 'good' : sfi >= 90 && k <= 5 ? 'fair' : 'poor';
+                return sfi >= 100 && k <= 3 ? 'good' : sfi >= 80 && k <= 5 ? 'fair' : 'poor';
+            case 2:  // 17m-15m
+                if (night) return sfi >= 105 && k <= 4 ? 'fair' : 'poor';
+                return sfi >= 120 && k <= 3 ? 'good' : sfi >= 95 && k <= 5 ? 'fair' : 'poor';
+            default: // 12m-10m
+                if (night) return 'poor';
+                return sfi >= 160 && k <= 3 ? 'good' : sfi >= 120 && k <= 5 ? 'fair' : 'poor';
+        }
+    }
+
+    var GROUPS = ['80m-40m', '30m-20m', '17m-15m', '12m-10m'];
+    var $bandsHead = $('<div>').addClass('owrx-rig-bands-head').text('waiting for NOAA data...');
+    var $bands = $('<div>').addClass('owrx-rig-bands').append($bandsHead);
+    var bandCells = [];
+    var $hdr = $('<div>').addClass('owrx-rig-band-row owrx-rig-band-hdr')
+        .append($('<span>').addClass('bname'))
+        .append($('<span>').addClass('owrx-rig-cond-hdr').text('DAY'))
+        .append($('<span>').addClass('owrx-rig-cond-hdr').text('NIGHT'));
+    $bands.append($hdr);
+    GROUPS.forEach(function (g) {
+        var $day = $('<span>').addClass('owrx-rig-cond').text('--');
+        var $night = $('<span>').addClass('owrx-rig-cond').text('--');
+        bandCells.push([$day, $night]);
+        $bands.append(
+            $('<div>').addClass('owrx-rig-band-row')
+                .append($('<span>').addClass('bname').text(g))
+                .append($day).append($night)
+        );
+    });
+
+    function refreshBands() {
+        if (typeof fetch !== 'function') return;
+        Promise.all([
+            fetch('https://services.swpc.noaa.gov/json/f107_cm_flux.json').then(function (r) { return r.json(); }),
+            fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json').then(function (r) { return r.json(); })
+        ]).then(function (res) {
+            var sfi = Math.round(Number(res[0][0].flux));
+            var last = res[1][res[1].length - 1];
+            var k = Number(last.Kp);
+            var a = last.a_running;
+            $bandsHead.text('SFI ' + sfi + '   K ' + k.toFixed(1) + (a !== undefined ? '   A ' + a : ''));
+            GROUPS.forEach(function (g, i) {
+                [0, 1].forEach(function (n) {
+                    var c = cond(i, n === 1, sfi, k);
+                    bandCells[i][n].attr('class', 'owrx-rig-cond ' + c).text(c.toUpperCase());
+                });
+            });
+        }).catch(function () {
+            $bandsHead.text('NOAA data unavailable');
+        });
+    }
+
+    var views = [
+        { key: 'bands', label: 'BAND CONDITIONS - est. from NOAA SWPC', content: $bands, refresh: refreshBands },
+        { key: 'muf', label: 'MUF MAP - prop.kc2g.com', url: 'https://prop.kc2g.com/renders/current/mufd-normal-now.svg' }
+    ];
+
+    var $prop = $('<div>').attr('id', 'owrx-rig-prop');
+    var $bar = $('<div>').attr('id', 'owrx-rig-prop-bar').text('PROPAGATION');
+
+    var imgs = [];
+    views.forEach(function (v, i) {
+        var $content;
+        if (v.content) {
+            $content = v.content;
+            imgs.push(null);
+        } else {
+            $content = $('<img>').attr('alt', v.label);
+            imgs.push($content);
+        }
+        var $cap = $('<div>').addClass('owrx-rig-prop-cap')
+            .append($('<span>').addClass('owrx-rig-prop-label').text(v.label))
+            .append($('<span>').addClass('owrx-rig-prop-hide').text('HIDE'));
+        $cap.find('.owrx-rig-prop-label').on('click', function () {
+            setView((viewIdx + 1) % views.length);
+        });
+        $cap.find('.owrx-rig-prop-hide').on('click', function () {
+            setOpen(false);
+        });
+        $prop.append(
+            $('<div>').addClass('owrx-rig-prop-view').attr('data-view', v.key)
+                .append($content).append($cap)
+        );
+    });
+
+    $knobLine.after($prop).after($bar);
+
+    var viewIdx = 0;
+
+    function refresh() {
+        views.forEach(function (v, i) {
+            if (v.refresh) {
+                v.refresh();
+            } else if (imgs[i]) {
+                var sep = v.url.indexOf('?') >= 0 ? '&' : '?';
+                imgs[i].attr('src', v.url + sep + '_=' + Math.floor(Date.now() / 600000));
+            }
+        });
+    }
+
+    function setView(i) {
+        viewIdx = i;
+        $prop.find('.owrx-rig-prop-view').each(function (n) {
+            $(this).toggleClass('active', n === i);
+        });
+        if (typeof LS !== 'undefined') LS.save('rig_prop_view', i);
+    }
+
+    function setOpen(on) {
+        $prop.toggleClass('visible', on);
+        $bar.toggleClass('visible', !on);
+        if (on) refresh();
+        if (typeof LS !== 'undefined') LS.save('rig_prop', on);
+    }
+
+    $bar.on('click', function () {
+        setOpen(true);
+    });
+
+    setView((typeof LS !== 'undefined' && LS.has('rig_prop_view')) ? LS.loadInt('rig_prop_view') : 0);
+    setOpen((typeof LS !== 'undefined' && LS.has('rig_prop')) ? LS.loadBool('rig_prop') : false);
+    setInterval(function () {
+        if ($prop.hasClass('visible')) refresh();
+    }, 600000);
+};
+
+// Chevron in the panel's top left corner: expands the rig to a wide,
+// two-column layout on large screens.
+Plugins.rig_skin.createExpandToggle = function () {
+    var $panel = $('#openwebrx-panel-receiver');
+    var $btn = $('<div>').attr('id', 'owrx-rig-expand').attr('title', 'Expand / shrink the rig');
+
+    function apply(wide) {
+        $panel.toggleClass('rig-wide', wide);
+        // the panel grows to the left, so left chevrons mean expand
+        $btn.text(wide ? '❯❯' : '❮❮');
+        if (typeof LS !== 'undefined') LS.save('rig_wide', wide);
+    }
+
+    $btn.on('click', function () {
+        apply(!$panel.hasClass('rig-wide'));
+    });
+    $panel.append($btn);
+
+    apply((typeof LS !== 'undefined' && LS.has('rig_wide'))
+        ? LS.loadBool('rig_wide') : false);
 };
 
 // Waterfall zoom pair, two half-width keys sharing one key slot,
@@ -148,6 +319,28 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
         $('<div>').attr('id', 'owrx-rig-info').append($mode).append($filter).append($step)
     );
 
+    // extra readouts for the wide layout: S units, squelch, UTC clock
+    var $extra = $('<div>').attr('id', 'owrx-rig-extra');
+    $container.find('.frequencies').append($extra);
+
+    function sUnits() {
+        var v = Plugins.rig_skin._sLevel;
+        if (typeof v !== 'number') return '';
+        if (v <= 0) return 'S0';
+        if (v <= 0.65) return 'S' + Math.round(v / 0.65 * 9);
+        return 'S9+' + (Math.round((v - 0.65) / 0.35 * 12) * 5);
+    }
+
+    function bandName(freq) {
+        if (typeof bandplan === 'undefined' || !bandplan ||
+            !bandplan.bands || !bandplan.bands.length) return '';
+        for (var i = 0; i < bandplan.bands.length; i++) {
+            var b = bandplan.bands[i];
+            if (freq >= b.low_bound && freq <= b.high_bound && b.name) return b.name;
+        }
+        return '';
+    }
+
     function update() {
         var mode = '', filter = '';
         if (typeof UI !== 'undefined' && typeof UI.getDemodulator === 'function') {
@@ -164,6 +357,19 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
         $mode.text(mode);
         $filter.text(filter);
         $step.text(stepText ? 'TS ' + stepText : '');
+
+        var $sql = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+        var sqlOn = $sql.length && Number($sql.val()) > Number($sql.attr('min'));
+        var parts = [];
+        var band = typeof UI !== 'undefined' && UI.getFrequency ? bandName(UI.getFrequency()) : '';
+        if (band) parts.push(band);
+        var s = sUnits();
+        if (s) parts.push(s);
+        parts.push(sqlOn ? 'SQL ' + $sql.val() : 'SQL off');
+        if (typeof UI !== 'undefined' && UI.volumeMuted >= 0) parts.push('MUTE');
+        var clock = $('#openwebrx-clock-utc').text();
+        if (clock) parts.push(clock);
+        $extra.text(parts.join('   '));
     }
 
     update();
@@ -929,6 +1135,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
     }
 
     Plugins.rig_skin.setMeterTarget = function (value) {
+        Plugins.rig_skin._sLevel = Math.max(0, Math.min(1, value));
         target = Math.max(0, Math.min(1, value));
         if (!anim) {
             lastT = null;
