@@ -83,14 +83,48 @@ Plugins.rig_skin.createVfoLine = function () {
 // frequencies are a small built-in table. Collapsed by default.
 Plugins.rig_skin.createSatScreen = function () {
     var SATS = [
-        { id: 25544, name: 'ISS', freq: '145.800 FM' },
-        { id: 27607, name: 'SO-50', freq: '436.795 FM' },
-        { id: 43017, name: 'AO-91', freq: '145.960 FM' },
-        { id: 44909, name: 'RS-44', freq: '435.640 SSB' },
-        { id: 7530, name: 'AO-7', freq: '29.450 SSB' },
-        { id: 57166, name: 'METEOR M2-3', freq: '137.900 LRPT' },
-        { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT' }
+        { id: 25544, name: 'ISS', freq: '145.800 FM', f: 145800000, mode: 'nfm' },
+        { id: 27607, name: 'SO-50', freq: '436.795 FM', f: 436795000, mode: 'nfm' },
+        { id: 43017, name: 'AO-91', freq: '145.960 FM', f: 145960000, mode: 'nfm' },
+        { id: 44909, name: 'RS-44', freq: '435.640 SSB', f: 435640000, mode: 'usb' },
+        { id: 7530, name: 'AO-7', freq: '29.450 SSB', f: 29450000, mode: 'usb' },
+        { id: 57166, name: 'METEOR M2-3', freq: '137.900 LRPT', f: 137900000, mode: 'nfm' },
+        { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT', f: 137100000, mode: 'nfm' }
     ];
+
+    // tune the VFO to a satellite downlink; if it lies outside the
+    // current capture window, move the receiver window first (needs the
+    // server to allow center frequency changes)
+    function tuneSat(s) {
+        if (!s.f || typeof UI === 'undefined') return;
+        if (typeof UI.toggleScanner === 'function') UI.toggleScanner(false);
+
+        function land() {
+            if (s.mode) UI.setModulation(s.mode);
+            UI.setFrequency(s.f, false);
+        }
+
+        var inWindow = typeof center_freq !== 'undefined' && typeof bandwidth !== 'undefined' &&
+            Math.abs(s.f - center_freq) < bandwidth / 2 - 10000;
+        if (inWindow) {
+            land();
+            return;
+        }
+        if (typeof ws === 'undefined') return;
+        var key;
+        try { key = UI.getDemodulatorPanel().getMagicKey(); } catch (e) {}
+        ws.send(JSON.stringify({ type: 'setfrequency', params: { frequency: s.f, key: key } }));
+        var tries = 0;
+        var iv = setInterval(function () {
+            if (Math.abs(s.f - center_freq) < bandwidth / 2) {
+                clearInterval(iv);
+                // give the demodulator a moment to restart on the new window
+                setTimeout(land, 500);
+            } else if (++tries > 20) {
+                clearInterval(iv);
+            }
+        }, 250);
+    }
 
     var minEl = (typeof LS !== 'undefined' && LS.has('rig_sat_minel')) ? LS.loadInt('rig_sat_minel') : 10;
 
@@ -234,13 +268,16 @@ Plugins.rig_skin.createSatScreen = function () {
                 when = fmtUtc(p.aos);
             }
             var elClass = p.maxEl >= 40 ? 'good' : p.maxEl >= 20 ? 'fair' : 'low';
+            var $freqCell = $('<span>').addClass('sfreq').text(p.sat.freq)
+                .attr('title', 'Tune the VFO here')
+                .on('click', function () { tuneSat(p.sat); });
             $list.append(
                 $('<div>').addClass('owrx-rig-sat-row' + (active ? ' active' : ''))
                     .append($('<span>').addClass('swhen').text(when))
                     .append($('<span>').addClass('sname').text(p.sat.name))
                     .append($('<span>').addClass('sel ' + elClass).text(Math.round(p.maxEl) + '°'))
                     .append($('<span>').addClass('sdur').text(mins + 'min'))
-                    .append($('<span>').addClass('sfreq').text(p.sat.freq))
+                    .append($freqCell)
             );
         });
     }

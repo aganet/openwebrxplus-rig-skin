@@ -759,6 +759,12 @@ body.theme-rig #owrx-rig-sats.visible {
     flex: 0 0 112px;
     text-align: right;
     color: #5db8ff;
+    cursor: pointer;
+}
+
+.owrx-rig-sat-row .sfreq:hover {
+    color: #9fd4ff;
+    text-decoration: underline;
 }
 
 .owrx-rig-sat-row.active,
