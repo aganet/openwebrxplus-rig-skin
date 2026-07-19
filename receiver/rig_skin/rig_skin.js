@@ -263,7 +263,7 @@ Plugins.rig_skin.createSatScreen = function () {
             } else if (!counted) {
                 counted = true;
                 var toGo = Math.round((p.aos.getTime() - now) / 60000);
-                when = fmtUtc(p.aos) + ' (in ' + (toGo >= 60 ? Math.floor(toGo / 60) + 'h' + (toGo % 60) : toGo + 'm') + ')';
+                when = fmtUtc(p.aos) + ' (' + (toGo >= 60 ? Math.floor(toGo / 60) + 'h' + (toGo % 60) : toGo + 'm') + ')';
             } else {
                 when = fmtUtc(p.aos);
             }

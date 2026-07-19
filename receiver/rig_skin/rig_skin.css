@@ -724,24 +724,30 @@ body.theme-rig #owrx-rig-sats.visible {
 .owrx-rig-sat-row {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: 6px;
     font-family: 'roboto-mono', monospace;
-    font-size: 9pt;
+    font-size: 8pt;
     color: #cfd4d9;
     margin: 3px 0;
 }
 
 .owrx-rig-sat-row .swhen {
-    flex: 0 0 108px;
+    flex: 0 0 88px;
     color: var(--rig-lcd-dim);
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .owrx-rig-sat-row .sname {
-    flex: 1;
+    flex: 1 1 40px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .owrx-rig-sat-row .sel {
-    flex: 0 0 34px;
+    flex: 0 0 30px;
     text-align: right;
 }
 
@@ -750,16 +756,25 @@ body.theme-rig #owrx-rig-sats.visible {
 .owrx-rig-sat-row .sel.low { color: #5c6670; }
 
 .owrx-rig-sat-row .sdur {
-    flex: 0 0 44px;
+    flex: 0 0 38px;
     text-align: right;
     color: var(--rig-lcd-dim);
 }
 
 .owrx-rig-sat-row .sfreq {
-    flex: 0 0 112px;
+    flex: 0 0 90px;
     text-align: right;
     color: #5db8ff;
     cursor: pointer;
+    white-space: nowrap;
+}
+
+/* the source caption must never crowd the MIN and HIDE controls */
+#owrx-rig-sats .owrx-rig-prop-cap span:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 55%;
 }
 
 .owrx-rig-sat-row .sfreq:hover {
@@ -802,32 +817,6 @@ body.theme-rig #owrx-rig-sats.visible {
 
     .owrx-rig-zoom-key {
         width: 25px;
-    }
-
-    .owrx-rig-sat-row {
-        font-size: 8pt;
-        gap: 5px;
-    }
-
-    .owrx-rig-sat-row .swhen {
-        flex-basis: 84px;
-    }
-
-    .owrx-rig-sat-row .sname {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .owrx-rig-sat-row .sfreq {
-        flex-basis: 94px;
-    }
-
-    #owrx-rig-sats .owrx-rig-prop-cap span:first-child {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 55%;
     }
 }
 
