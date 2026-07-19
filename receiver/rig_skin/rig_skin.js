@@ -1313,17 +1313,18 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         $mute.toggleClass('highlighted', UI.volumeMuted >= 0);
     }
 
-    // MUTE sits top left; LOCK takes its place in the third column
+    // MUTE sits top left; LOCK leads the first right column and SCAN
+    // moves to the third column
     $('#owrx-rig-keys-left').prepend($mute);
 
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-right')
-            .append($scan).append($sql).append($mw)
+            .append(Plugins.rig_skin._lockKey).append($sql).append($mw)
             .append(Plugins.rig_skin.makePageRow())
     ).append(
         $('<div>').attr('id', 'owrx-rig-keys-right2')
+            .append($scan)
             .append($propKey)
-            .append(Plugins.rig_skin._lockKey)
             .append($satKey)
     );
 };
