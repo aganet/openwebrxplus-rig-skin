@@ -3,8 +3,10 @@
 Makes the OpenWebRX+ receiver panel look and work like a real rig: a VFO
 dial you can turn (drag, flick or scroll), an LCD with mode / FIL / TS
 readouts, a segmented S-meter with peak hold, a click-to-tune band scope,
-an audio scope, and keys with status LEDs for NR, LOCK, tuning step (with
-an Auto mode), scanner, squelch, bookmarks, waterfall zoom and paging.
+an audio scope, keys with status LEDs for NR, LOCK, tuning step (with
+an Auto mode), scanner, squelch, bookmarks, waterfall zoom and paging,
+propagation and satellite pass screens, and a DX cluster window with
+live spots on a world map, click-to-tune.
 
 ![screenshot](../../docs/screenshot.png)
 

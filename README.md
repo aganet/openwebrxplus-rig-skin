@@ -92,6 +92,28 @@ math runs in your browser.
 
 ![satellite passes](docs/screenshot-sats.png)
 
+## DX cluster
+
+The DX button in the top banner opens a window with live spots from the
+DX cluster network, on a world map and in a list. The map shows every
+spot as a pin, the great circle path from your QTH to the station, and
+the day/night line, so you see at a glance which paths are open right
+now. The list gives the age of the spot, callsign, frequency, mode, and
+the bearing and distance from your receiver, handy with a directional
+antenna. Click a spot or a pin and the receiver jumps there with the
+right mode set.
+
+Filter chips at the top switch between the band you are tuned to, all
+of HF, or everything. The window can be dragged anywhere and resized by
+its corner grip, and it remembers its size, position and filter.
+
+Spots stream in live from the HolyCluster network, with DXSummit as the
+backlog source where the page can reach it. The map itself is drawn in
+your browser from public domain Natural Earth coastline data, no map
+service involved.
+
+![DX cluster](docs/screenshot-dx.png)
+
 ## Waterfall
 
 There is a "Rig" palette in the waterfall theme selector, a jet style ramp
@@ -204,3 +226,5 @@ single-file bind mount until a restart.
 - Solar data: NOAA SWPC (public domain)
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
 - TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/)
+- DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](http://www.dxsummit.fi/)
+- Coastlines: [Natural Earth](https://www.naturalearthdata.com/) (public domain), bundled

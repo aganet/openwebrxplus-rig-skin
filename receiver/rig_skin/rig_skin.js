@@ -7,7 +7,14 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.7;
+Plugins.rig_skin._version = 0.8;
+
+// where this script was loaded from, for fetching companion files
+// (works for both local and remote plugin installs)
+Plugins.rig_skin._base = (function () {
+    var src = (document.currentScript && document.currentScript.src) || '';
+    return src.replace(/[^\/]*$/, '');
+})();
 
 Plugins.rig_skin.init = function () {
     // Register the theme in the selector
@@ -23,7 +30,599 @@ Plugins.rig_skin.init = function () {
 
     Plugins.rig_skin.registerWfTheme();
     Plugins.rig_skin.createVfoLine();
+    Plugins.rig_skin.createDxWindow();
     return true;
+};
+
+// DX cluster window: a DX button in the top banner (after Status) opens
+// a floating window with live spots on a world map plus a click-to-tune
+// list. Live spots stream from the HolyCluster network over a websocket;
+// the backlog comes from its history API when reachable, from DXSummit
+// on plain-http pages, and from a local cache of previous sessions.
+Plugins.rig_skin.createDxWindow = function () {
+    var HC = 'holycluster.iarc.org';
+    var MAX_AGE = 60 * 60 * 1000;
+
+    var spots = {};        // key -> normalized spot
+    var open = false, sock = null, reconnect = null, tickTimer = null;
+    var landLoading = false;
+
+    function filterSetting(v) {
+        if (v !== undefined && typeof LS !== 'undefined') LS.save('rig_dx_filter', v);
+        return (typeof LS !== 'undefined' && LS.has('rig_dx_filter'))
+            ? LS.loadStr('rig_dx_filter') : 'band';
+    }
+
+    // --- window DOM ---
+
+    var $title = $('<span>').addClass('owrx-rig-dx-title').text('DX CLUSTER');
+    var $chips = {};
+    ['band', 'hf', 'all'].forEach(function (k) {
+        $chips[k] = $('<span>').addClass('owrx-rig-dx-chip').text(k.toUpperCase())
+            .on('click', function () {
+                filterSetting(k);
+                syncChips();
+                render();
+            });
+    });
+    var $count = $('<span>').addClass('owrx-rig-dx-count');
+    var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
+        .on('click', function () { setOpen(false); });
+    var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
+        .append($title).append($chips.band).append($chips.hf).append($chips.all)
+        .append($count).append($close);
+
+    var canvas = document.createElement('canvas');
+    var dpr = window.devicePixelRatio || 1;
+    var mctx = canvas.getContext('2d');
+    var MW, MH;
+
+    function sizeCanvas(w) {
+        MW = w;
+        MH = Math.round(w / 2);       // 2:1 equirectangular
+        canvas.width = MW * dpr;
+        canvas.height = MH * dpr;
+        mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    var $list = $('<table>').addClass('owrx-rig-dx-list');
+    var $lcd = $('<div>').addClass('owrx-rig-dx-lcd').append(canvas).append($list);
+    var $foot = $('<div>').addClass('owrx-rig-dx-foot')
+        .append($('<span>').text('click spot or pin to tune'))
+        .append($('<span>').addClass('owrx-rig-dx-src').text('HolyCluster'));
+    var $grip = $('<div>').addClass('owrx-rig-dx-grip');
+    var $win = $('<div>').attr('id', 'owrx-rig-dx')
+        .append($hdr).append($lcd).append($foot).append($grip).appendTo('body');
+
+    // window size: persisted, resizable by the corner grip; the map
+    // canvas is re-rendered at the new resolution
+    var winW = 400, listH = 300;
+    if (window.innerWidth >= 1200) { winW = 480; listH = 340; }
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_dx_size')) {
+            var sz = JSON.parse(LS.loadStr('rig_dx_size'));
+            winW = sz.w || winW;
+            listH = sz.h || listH;
+        }
+    } catch (e) {}
+
+    function applySize() {
+        winW = Math.min(Math.max(winW, 340), 1100);
+        listH = Math.min(Math.max(listH, 120), 800);
+        $win.css('width', winW + 'px');
+        $list.css('max-height', listH + 'px');
+        sizeCanvas(winW - 32);        // panel + lcd padding
+    }
+    applySize();
+
+    (function () {
+        var sx, sy, w0, h0, sizing = false;
+        function point(e) {
+            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+            return [t.clientX, t.clientY];
+        }
+        $grip.on('mousedown touchstart', function (e) {
+            var pt = point(e);
+            sx = pt[0]; sy = pt[1]; w0 = winW; h0 = listH;
+            sizing = true;
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        $(document).on('mousemove touchmove', function (e) {
+            if (!sizing) return;
+            var pt = point(e);
+            winW = w0 + pt[0] - sx;
+            listH = h0 + pt[1] - sy;
+            applySize();
+            render();
+        });
+        $(document).on('mouseup touchend', function () {
+            if (!sizing) return;
+            sizing = false;
+            if (typeof LS !== 'undefined') {
+                LS.save('rig_dx_size', JSON.stringify({ w: winW, h: listH }));
+            }
+        });
+    })();
+
+    // restore position, kept inside the viewport
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_dx_pos')) {
+            var p = JSON.parse(LS.loadStr('rig_dx_pos'));
+            $win.css({
+                left: Math.min(Math.max(p.left, 0), window.innerWidth - 60) + 'px',
+                top: Math.min(Math.max(p.top, 0), window.innerHeight - 60) + 'px'
+            });
+        }
+    } catch (e) {}
+
+    // drag by the header
+    (function () {
+        var sx, sy, ox, oy, moving = false;
+        function point(e) {
+            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+            return [t.clientX, t.clientY];
+        }
+        $hdr.on('mousedown touchstart', function (e) {
+            if ($(e.target).is('.owrx-rig-dx-chip, .owrx-rig-dx-close')) return;
+            var pt = point(e), off = $win.offset();
+            sx = pt[0]; sy = pt[1];
+            ox = off.left - $(window).scrollLeft();
+            oy = off.top - $(window).scrollTop();
+            moving = true;
+            e.preventDefault();
+        });
+        $(document).on('mousemove touchmove', function (e) {
+            if (!moving) return;
+            var pt = point(e);
+            $win.css({ left: (ox + pt[0] - sx) + 'px', top: (oy + pt[1] - sy) + 'px' });
+        });
+        $(document).on('mouseup touchend', function () {
+            if (!moving) return;
+            moving = false;
+            if (typeof LS !== 'undefined') {
+                var o = $win.position();
+                LS.save('rig_dx_pos', JSON.stringify({ left: o.left, top: o.top }));
+            }
+        });
+    })();
+
+    // --- header button, after Status ---
+
+    var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-dx-button')
+        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+            '<circle cx="12" cy="12" r="9"/>' +
+            '<path d="M3 12h18M12 3c-2.5 2.5-3.8 5.6-3.8 9s1.3 6.5 3.8 9m0-18c2.5 2.5 3.8 5.6 3.8 9s-1.3 6.5-3.8 9"/>' +
+            '</svg><br/>DX')
+        .attr('title', 'DX cluster spots')
+        .on('click', function () { setOpen(!open); });
+    var $status = $('.openwebrx-main-buttons [data-toggle-panel="openwebrx-panel-status"]');
+    if ($status.length) $status.after($btn);
+    else $('.openwebrx-main-buttons').append($btn);
+
+    // --- spot handling ---
+
+    function normKey(s) {
+        return s.call + '|' + Math.round(s.freq / 100);
+    }
+
+    function addSpots(raw) {
+        var now = Date.now();
+        var added = false;
+        raw.forEach(function (r) {
+            if (!r || !r.dx_callsign || !r.freq) return;
+            var s = {
+                call: r.dx_callsign,
+                freq: Math.round(r.freq * 1000),      // kHz -> Hz
+                mode: (r.mode || '').toUpperCase(),
+                time: Math.round(r.time * 1000),      // s -> ms
+                loc: (r.dx_loc && r.dx_loc.length === 2) ? r.dx_loc : null,
+                cont: r.dx_continent || '',
+                spotter: r.spotter_callsign || '',
+                comment: (r.comment || '').trim()
+            };
+            if (!s.time || now - s.time > MAX_AGE) return;
+            var k = normKey(s);
+            if (!spots[k] || spots[k].time < s.time) {
+                spots[k] = s;
+                added = true;
+            }
+        });
+        if (added && open) render();
+    }
+
+    function prune() {
+        var now = Date.now();
+        Object.keys(spots).forEach(function (k) {
+            if (now - spots[k].time > MAX_AGE) delete spots[k];
+        });
+    }
+
+    function saveCache() {
+        if (typeof LS === 'undefined') return;
+        prune();
+        var list = sorted().slice(0, 150);
+        try { LS.save('rig_dx_cache', JSON.stringify(list)); } catch (e) {}
+    }
+
+    function loadCache() {
+        try {
+            var list = JSON.parse(LS.loadStr('rig_dx_cache'));
+            var now = Date.now();
+            list.forEach(function (s) {
+                if (s && s.call && now - s.time < MAX_AGE) spots[normKey(s)] = s;
+            });
+        } catch (e) {}
+    }
+
+    function sorted() {
+        return Object.keys(spots).map(function (k) { return spots[k]; })
+            .sort(function (a, b) { return b.time - a.time; });
+    }
+
+    function currentBand() {
+        if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands ||
+            typeof UI === 'undefined') return null;
+        var f = UI.getFrequency();
+        for (var i = 0; i < bandplan.bands.length; i++) {
+            var b = bandplan.bands[i];
+            if (f >= b.low_bound && f <= b.high_bound) return b;
+        }
+        return null;
+    }
+
+    function filtered() {
+        var mode = filterSetting(), band = currentBand();
+        prune();
+        return sorted().filter(function (s) {
+            if (mode === 'hf') return s.freq <= 30000000;
+            if (mode === 'band') {
+                if (!band) return s.freq <= 30000000;
+                return s.freq >= band.low_bound && s.freq <= band.high_bound;
+            }
+            return true;
+        });
+    }
+
+    function syncChips() {
+        var mode = filterSetting(), band = currentBand();
+        $chips.band.text(band && band.name ? band.name : 'BAND');
+        Object.keys($chips).forEach(function (k) {
+            $chips[k].toggleClass('on', k === mode);
+        });
+    }
+
+    // demodulator to use for a spot
+    function spotMode(s) {
+        switch (s.mode) {
+            case 'CW': return 'cw';
+            case 'FM': return 'nfm';
+            case 'SSB': case '':
+                // LSB below 10 MHz except 60 m, USB above
+                return (s.freq < 10000000 && !(s.freq > 5200000 && s.freq < 5500000))
+                    ? 'lsb' : 'usb';
+            default: return 'usb';   // FT8/FT4/RTTY/DIGI
+        }
+    }
+
+    function tuneSpot(s) {
+        Plugins.rig_skin.tuneTo(s.freq, spotMode(s));
+        // refresh highlights once the retune has settled
+        setTimeout(render, 800);
+        setTimeout(render, 3000);
+    }
+
+    function listening(s) {
+        return typeof UI !== 'undefined' && Math.abs(UI.getFrequency() - s.freq) < 2000;
+    }
+
+    function inWindow(s) {
+        return typeof center_freq !== 'undefined' &&
+            Math.abs(s.freq - center_freq) < bandwidth / 2;
+    }
+
+    // bearing and distance from the receiver
+    function qth() {
+        var p = (typeof Utils !== 'undefined' && Utils.getReceiverPos) ? Utils.getReceiverPos() : null;
+        return (p && typeof p.lat === 'number') ? p : null;
+    }
+
+    function bearingDist(loc) {
+        var p = qth();
+        if (!p || !loc) return null;
+        var toR = Math.PI / 180;
+        var f1 = p.lat * toR, f2 = loc[1] * toR, dl = (loc[0] - p.lon) * toR;
+        var y = Math.sin(dl) * Math.cos(f2);
+        var x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+        var brg = (Math.atan2(y, x) / toR + 360) % 360;
+        var d = 6371 * Math.acos(Math.min(1,
+            Math.sin(f1) * Math.sin(f2) + Math.cos(f1) * Math.cos(f2) * Math.cos(dl)));
+        return [Math.round(brg), d < 1500 ? Math.round(d) + 'km' : (d / 1000).toFixed(1) + 'Mm'];
+    }
+
+    function ageText(t) {
+        var m = Math.max(0, Math.round((Date.now() - t) / 60000));
+        return m < 60 ? m + 'm' : Math.round(m / 60) + 'h';
+    }
+
+    // --- rendering ---
+
+    function renderList(list) {
+        $list.empty();
+        list.slice(0, 30).forEach(function (s) {
+            var bd = bearingDist(s.loc);
+            var $tr = $('<tr>').addClass('owrx-rig-dx-spot')
+                .toggleClass('listening', listening(s))
+                .attr('title', (s.spotter ? 'de ' + s.spotter : '') +
+                    (s.comment ? ': ' + s.comment : ''))
+                .on('click', function () { tuneSpot(s); });
+            $tr.append($('<td>').addClass('age').text(ageText(s.time)));
+            $tr.append($('<td>').addClass('call').text(s.call));
+            $tr.append($('<td>').addClass('freq').toggleClass('inwin', inWindow(s))
+                .text((s.freq / 1000000).toFixed(4)));
+            $tr.append($('<td>').addClass('mode').text(s.mode));
+            $tr.append($('<td>').addClass('brg').text(bd ? bd[0] + '° ' + bd[1] : ''));
+            $tr.append($('<td>').addClass('cty').text(s.cont));
+            $list.append($tr);
+        });
+    }
+
+    var pinBoxes = [];   // [x, y, spot] for click hit-testing
+
+    function px(lat, lon) {
+        return [(lon + 180) / 360 * MW, (90 - lat) / 180 * MH];
+    }
+
+    function greatCircle(a, b) {
+        var toR = Math.PI / 180;
+        var f1 = a[0] * toR, l1 = a[1] * toR, f2 = b[0] * toR, l2 = b[1] * toR;
+        var d = 2 * Math.asin(Math.sqrt(
+            Math.pow(Math.sin((f2 - f1) / 2), 2) +
+            Math.cos(f1) * Math.cos(f2) * Math.pow(Math.sin((l2 - l1) / 2), 2)));
+        if (!d) return [];
+        var pts = [];
+        for (var t = 0; t <= 1.0001; t += 0.03) {
+            var A = Math.sin((1 - t) * d) / Math.sin(d), B = Math.sin(t * d) / Math.sin(d);
+            var x = A * Math.cos(f1) * Math.cos(l1) + B * Math.cos(f2) * Math.cos(l2);
+            var y = A * Math.cos(f1) * Math.sin(l1) + B * Math.cos(f2) * Math.sin(l2);
+            var z = A * Math.sin(f1) + B * Math.sin(f2);
+            pts.push([Math.atan2(z, Math.sqrt(x * x + y * y)) / toR, Math.atan2(y, x) / toR]);
+        }
+        return pts;
+    }
+
+    function renderMap(list) {
+        pinBoxes = [];
+        mctx.fillStyle = '#06121c';
+        mctx.fillRect(0, 0, MW, MH);
+
+        mctx.strokeStyle = 'rgba(90,168,255,0.10)';
+        mctx.lineWidth = 0.5;
+        var lon, lat;
+        for (lon = -150; lon < 180; lon += 30) {
+            mctx.beginPath();
+            mctx.moveTo(px(90, lon)[0], 0);
+            mctx.lineTo(px(-90, lon)[0], MH);
+            mctx.stroke();
+        }
+        for (lat = -60; lat < 90; lat += 30) {
+            mctx.beginPath();
+            mctx.moveTo(0, px(lat, 0)[1]);
+            mctx.lineTo(MW, px(lat, 0)[1]);
+            mctx.stroke();
+        }
+
+        if (Plugins.rig_skin._land) {
+            mctx.fillStyle = '#1b2b33';
+            mctx.strokeStyle = '#2e4a57';
+            mctx.lineWidth = 0.6;
+            Plugins.rig_skin._land.forEach(function (poly) {
+                mctx.beginPath();
+                poly.forEach(function (pt, i) {
+                    var p = px(pt[1], pt[0]);
+                    i ? mctx.lineTo(p[0], p[1]) : mctx.moveTo(p[0], p[1]);
+                });
+                mctx.closePath();
+                mctx.fill();
+                mctx.stroke();
+            });
+        }
+
+        // day/night terminator from the current sun position
+        var now = new Date();
+        var doy = (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+            Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000;
+        var decl = -23.44 * Math.cos(2 * Math.PI / 365 * (doy + 10)) * Math.PI / 180;
+        var utcH = now.getUTCHours() + now.getUTCMinutes() / 60;
+        var sunLon = (12 - utcH) * 15;
+        mctx.fillStyle = 'rgba(0,0,10,0.42)';
+        mctx.beginPath();
+        var north = decl > 0;
+        for (var x = 0; x <= MW; x += 4) {
+            lon = x / MW * 360 - 180;
+            var H0 = (lon - sunLon) * Math.PI / 180;
+            lat = Math.atan(-Math.cos(H0) / Math.tan(decl)) * 180 / Math.PI;
+            var p = px(lat, lon);
+            x ? mctx.lineTo(p[0], p[1]) : mctx.moveTo(p[0], p[1]);
+        }
+        // the dark cap is on the winter side
+        mctx.lineTo(MW, north ? MH : 0);
+        mctx.lineTo(0, north ? MH : 0);
+        mctx.closePath();
+        mctx.fill();
+
+        var p0 = qth();
+        var mapped = list.filter(function (s) { return s.loc; }).slice(0, 60);
+
+        if (p0) {
+            mctx.lineWidth = 0.8;
+            mapped.forEach(function (s) {
+                var on = listening(s);
+                mctx.strokeStyle = on ? 'rgba(58,219,74,0.8)' : 'rgba(90,168,255,0.28)';
+                mctx.beginPath();
+                var pv = null;
+                greatCircle([p0.lat, p0.lon], [s.loc[1], s.loc[0]]).forEach(function (pt) {
+                    var p = px(pt[0], pt[1]);
+                    if (pv !== null && Math.abs(p[0] - pv) > MW / 2) mctx.moveTo(p[0], p[1]);
+                    else pv === null ? mctx.moveTo(p[0], p[1]) : mctx.lineTo(p[0], p[1]);
+                    pv = p[0];
+                });
+                mctx.stroke();
+            });
+        }
+
+        var labeled = false;
+        mapped.forEach(function (s) {
+            var p = px(s.loc[1], s.loc[0]);
+            var on = listening(s);
+            mctx.fillStyle = on ? '#3adb4a' : '#ffb238';
+            mctx.beginPath();
+            mctx.arc(p[0], p[1], 2.4, 0, 7);
+            mctx.fill();
+            mctx.strokeStyle = 'rgba(0,0,0,0.7)';
+            mctx.lineWidth = 0.7;
+            mctx.stroke();
+            pinBoxes.push([p[0], p[1], s]);
+            if (on && !labeled) {
+                labeled = true;
+                mctx.font = 'bold 8px monospace';
+                mctx.fillStyle = '#3adb4a';
+                mctx.shadowColor = '#000';
+                mctx.shadowBlur = 3;
+                mctx.fillText(s.call, p[0] + 5, p[1] - 4);
+                mctx.shadowBlur = 0;
+            }
+        });
+
+        if (p0) {
+            var q = px(p0.lat, p0.lon);
+            mctx.fillStyle = '#ff5148';
+            mctx.beginPath();
+            mctx.arc(q[0], q[1], 2.8, 0, 7);
+            mctx.fill();
+            mctx.strokeStyle = '#ffffff';
+            mctx.lineWidth = 0.8;
+            mctx.stroke();
+        }
+    }
+
+    $(canvas).on('click', function (e) {
+        var r = canvas.getBoundingClientRect();
+        var cx = (e.clientX - r.left) * MW / r.width;
+        var cy = (e.clientY - r.top) * MH / r.height;
+        var best = null, bd = 8 * 8;
+        pinBoxes.forEach(function (b) {
+            var d = (b[0] - cx) * (b[0] - cx) + (b[1] - cy) * (b[1] - cy);
+            if (d < bd) { bd = d; best = b[2]; }
+        });
+        if (best) tuneSpot(best);
+    });
+
+    function utc() {
+        var d = new Date();
+        function z(n) { return (n < 10 ? '0' : '') + n; }
+        return z(d.getUTCHours()) + ':' + z(d.getUTCMinutes()) + 'z';
+    }
+
+    function render() {
+        if (!open) return;
+        var list = filtered();
+        $count.text(list.length + ' spots  ' + utc());
+        renderList(list);
+        renderMap(list);
+    }
+
+    // --- data sources ---
+
+    function ensureLand() {
+        if (Plugins.rig_skin._land || landLoading) return;
+        landLoading = true;
+        $.getScript(Plugins.rig_skin._base + 'rig_skin_map.js')
+            .done(render)
+            .fail(function () { landLoading = false; });
+    }
+
+    function backlog() {
+        var now = Math.floor(Date.now() / 1000);
+        $.getJSON('https://' + HC + '/history?start_time=' + (now - 3600) +
+                  '&end_time=' + now)
+            .done(function (d) { addSpots(d.spots || []); })
+            .fail(function () {
+                // https pages cannot reach the http-only DXSummit API
+                if (location.protocol !== 'http:') return;
+                $.getJSON('http://www.dxsummit.fi/api/v1/spots?limit=150')
+                    .done(function (d) {
+                        $win.find('.owrx-rig-dx-src').text('HolyCluster + DXSummit');
+                        addSpots((d || []).map(function (r) {
+                            return {
+                                dx_callsign: r.dx_call,
+                                freq: r.frequency,
+                                mode: '',
+                                time: Date.parse(r.time + 'Z') / 1000,
+                                // DXSummit longitudes are west-positive
+                                dx_loc: (typeof r.dx_longitude === 'number')
+                                    ? [-r.dx_longitude, r.dx_latitude] : null,
+                                dx_continent: r.dx_country || '',
+                                spotter_callsign: r.de_call,
+                                comment: r.info || ''
+                            };
+                        }));
+                    });
+            });
+    }
+
+    function connect() {
+        if (sock) return;
+        try {
+            sock = new WebSocket('wss://' + HC + '/spots_ws');
+        } catch (e) {
+            sock = null;
+            return;
+        }
+        sock.onmessage = function (m) {
+            try {
+                var d = JSON.parse(m.data);
+                if (d.spots) addSpots(d.spots);
+            } catch (e) {}
+        };
+        sock.onclose = function () {
+            sock = null;
+            if (open) reconnect = setTimeout(connect, 15000);
+        };
+    }
+
+    function disconnect() {
+        if (reconnect) { clearTimeout(reconnect); reconnect = null; }
+        if (sock) {
+            sock.onclose = null;
+            sock.close();
+            sock = null;
+        }
+    }
+
+    function setOpen(on) {
+        open = on;
+        $win.toggleClass('visible', on);
+        $btn.toggleClass('highlighted', on);
+        if (on) {
+            ensureLand();
+            loadCache();
+            backlog();
+            connect();
+            syncChips();
+            render();
+            if (!tickTimer) tickTimer = setInterval(function () {
+                syncChips();
+                render();
+                saveCache();
+            }, 15000);
+        } else {
+            disconnect();
+            saveCache();
+            if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+        }
+    }
+
 };
 
 // Rig-style waterfall palette: most of the gradient lives in the low

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8 (2026-07-20)
+
+- DX cluster window: a DX button in the top banner opens a floating,
+  draggable, resizable window with live spots from the cluster network.
+  A world map (public domain Natural Earth coastlines, drawn locally)
+  shows every spot as a pin with a great circle path from your QTH and
+  the live day/night terminator; the list shows age, callsign,
+  frequency, mode, bearing and distance from the receiver and country.
+  Click a spot or a pin and the receiver tunes there with the right
+  mode. Filter chips switch between the current band, all HF and
+  everything. Live spots stream from HolyCluster over a websocket;
+  DXSummit fills the backlog where reachable, and a local cache keeps
+  the window warm between sessions. Size, position and filter are
+  remembered. Grab the corner grip to make the map and the list as
+  big as you like.
+- The top banner follows the rig look while the theme is active: dark
+  metal bar instead of the photo, silver icons without the glow.
+
 ## 0.7 (2026-07-19)
 
 - NCDXF/IARU beacon tracker as a propagation screen view: shows which

@@ -906,3 +906,250 @@ body.theme-rig #owrx-rig-sats.visible {
         margin-left: -12px;
     }
 }
+
+/* DX cluster window; independent of the selected theme so the DX
+   button works from any skin */
+#owrx-rig-dx {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 90px;
+    z-index: 1001;
+    width: 400px;
+    max-width: calc(100vw - 20px);
+    padding: 8px;
+    background: linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
+    border-radius: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+                0 0 0 1px #060708,
+                0 6px 18px rgba(0, 0, 0, 0.65);
+    color: #cfd4d9;
+    font-family: 'roboto-mono', monospace;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+#owrx-rig-dx.visible {
+    display: block;
+}
+
+.owrx-rig-dx-hdr {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 0 2px 6px 2px;
+    cursor: move;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.owrx-rig-dx-title {
+    color: #93a0ab;
+    font-size: 9pt;
+    letter-spacing: 2px;
+}
+
+.owrx-rig-dx-chip {
+    font-size: 8pt;
+    padding: 1px 7px;
+    border-radius: 3px;
+    color: #93a0ab;
+    background: #10161b;
+    box-shadow: 0 0 0 1px #1d242b;
+    cursor: pointer;
+}
+
+.owrx-rig-dx-chip.on {
+    background: #1d5fae;
+    color: #ffffff;
+}
+
+.owrx-rig-dx-count {
+    margin-left: auto;
+    color: #93a0ab;
+    font-size: 8pt;
+    white-space: pre;
+}
+
+.owrx-rig-dx-close {
+    color: #93a0ab;
+    font-size: 9pt;
+    cursor: pointer;
+    padding: 0 2px;
+}
+
+.owrx-rig-dx-close:hover {
+    color: #ffffff;
+}
+
+.owrx-rig-dx-lcd {
+    background: linear-gradient(180deg, #04070a 0%, #0a0f13 70%, #0d1216 100%);
+    border-radius: 5px;
+    padding: 8px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9), inset 0 0 2px #000000;
+}
+
+#owrx-rig-dx canvas {
+    display: block;
+    width: 100%;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.owrx-rig-dx-list {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 7px;
+    font-size: 8.5pt;
+    display: block;
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.owrx-rig-dx-list tr {
+    display: flex;
+    cursor: pointer;
+}
+
+.owrx-rig-dx-list td {
+    padding: 2.5px 4px;
+    white-space: nowrap;
+    color: #93a0ab;
+}
+
+.owrx-rig-dx-list tr:hover td {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.owrx-rig-dx-list td.age { flex: 0 0 26px; text-align: right; }
+.owrx-rig-dx-list td.call {
+    flex: 1 1 72px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #f2f5f7;
+    font-weight: bold;
+    text-shadow: 0 0 6px rgba(215, 232, 255, 0.35);
+}
+.owrx-rig-dx-list td.freq { flex: 0 0 56px; text-align: right; }
+.owrx-rig-dx-list td.freq.inwin { color: #f2f5f7; }
+.owrx-rig-dx-list td.mode { flex: 0 0 30px; color: #5aa8ff; }
+.owrx-rig-dx-list td.brg { flex: 0 0 76px; text-align: right; }
+.owrx-rig-dx-list td.cty {
+    flex: 0 0 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.owrx-rig-dx-list tr.listening td,
+.owrx-rig-dx-list tr.listening td.call,
+.owrx-rig-dx-list tr.listening td.mode {
+    color: #3adb4a;
+    text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
+}
+
+.owrx-rig-dx-foot {
+    display: flex;
+    color: #5b656e;
+    font-size: 7.5pt;
+    padding: 5px 2px 0 2px;
+}
+
+.owrx-rig-dx-foot span:last-child {
+    margin-left: auto;
+}
+
+#owrx-rig-dx-button.highlighted {
+    color: #ffffff;
+}
+
+/* corner grip for resizing the DX window */
+.owrx-rig-dx-grip {
+    position: absolute;
+    right: 1px;
+    bottom: 1px;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    background:
+        linear-gradient(135deg, transparent 50%, #4a545e 50%, #4a545e 56%,
+            transparent 56%, transparent 66%, #4a545e 66%, #4a545e 72%,
+            transparent 72%, transparent 82%, #4a545e 82%, #4a545e 88%,
+            transparent 88%);
+    border-bottom-right-radius: 8px;
+}
+
+.owrx-rig-dx-grip:hover {
+    filter: brightness(1.5);
+}
+
+/* Top banner follows the rig look: the photo backdrop and the glowing
+   white icons make way for a dark metal bar with silver icons */
+body.theme-rig .webrx-top-container {
+    background-image: none;
+    background-color: #17191d;
+    background: linear-gradient(180deg, #262b31 0%, #17191d 70%, #101215 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                inset 0 -1px 0 #000000;
+}
+
+body.theme-rig .webrx-top-bar {
+    background: none;
+}
+
+body.theme-rig .webrx-top-logo {
+    filter: brightness(0.85);
+}
+
+body.theme-rig .webrx-rx-avatar {
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px #060708, 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+body.theme-rig .webrx-rx-title {
+    color: #e8ecef;
+}
+
+body.theme-rig .webrx-rx-desc {
+    color: #93a0ab;
+}
+
+body.theme-rig .openwebrx-main-buttons {
+    color: #b6bec6;
+    text-shadow: none;
+    font-size: 8pt;
+    letter-spacing: 0.5px;
+}
+
+body.theme-rig .openwebrx-main-buttons .button {
+    border-radius: 6px;
+    padding: 3px 0 4px 0;
+}
+
+body.theme-rig .openwebrx-main-buttons .button img,
+body.theme-rig .openwebrx-main-buttons .button svg {
+    height: 28px;
+    margin-top: 2px;
+    filter: brightness(0.78);
+}
+
+body.theme-rig .openwebrx-main-buttons .button:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+}
+
+body.theme-rig .openwebrx-main-buttons .button:hover img,
+body.theme-rig .openwebrx-main-buttons .button:hover svg {
+    filter: brightness(1.05);
+}
+
+body.theme-rig .openwebrx-main-buttons .button:active {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+body.theme-rig #owrx-rig-dx-button.highlighted {
+    background: rgba(29, 95, 174, 0.35);
+    color: #ffffff;
+}
