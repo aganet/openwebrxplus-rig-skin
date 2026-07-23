@@ -15,10 +15,11 @@ body.theme-rig {
     --rig-lcd-dim: #93a0ab;
 }
 
-/* Front panel */
+/* Front panel and dialogs share the rig look. Dialogs keep their own
+   fixed centered positioning from the stock CSS; only the panel is
+   relative (it anchors the dial and screens). */
 body.theme-rig .openwebrx-panel,
 body.theme-rig .openwebrx-dialog {
-    position: relative;
     /* prevent mobile browsers from inflating text out of the layout */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -29,6 +30,10 @@ body.theme-rig .openwebrx-dialog {
                 0 0 0 1px #060708,
                 0 6px 18px rgba(0, 0, 0, 0.65);
     color: var(--rig-legend);
+}
+
+body.theme-rig .openwebrx-panel {
+    position: relative;
 }
 
 /* Wider front panel, the stock 259px is too narrow for a rig face */

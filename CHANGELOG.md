@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.1 (2026-07-23)
+
+- MW now mirrors the stock bookmark button both ways: left-click adds a
+  bookmark here, right-click opens the bookmark search (on OWRX+
+  versions that have it).
+- Fix the bookmark dialog: it was rendering inline and pushing the
+  panel up the page instead of floating centered. It is a centered
+  overlay again, in both the add and search forms.
+
 ## 0.8 (2026-07-20)
 
 - DX cluster window: a DX button in the top banner opens a floating,

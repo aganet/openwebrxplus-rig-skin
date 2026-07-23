@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.8;
+Plugins.rig_skin._version = 0.81;
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -1897,7 +1897,7 @@ Plugins.rig_skin.createScanKeys = function ($line) {
     var $scan = makeKey('SCAN', 'Scan bookmarks, stop where the squelch opens')
         .addClass('owrx-rig-key-scan');
     var $sql = makeKey('SQL', 'Squelch on/off (level is set automatically)');
-    var $mw = makeKey('MW', 'Write a bookmark at the current frequency');
+    var $mw = makeKey('MW', 'Write a bookmark here (right-click: search bookmarks)');
 
     $scan.on('click', function () {
         if (typeof UI !== 'undefined' && typeof UI.toggleScanner === 'function') UI.toggleScanner();
@@ -1943,8 +1943,16 @@ Plugins.rig_skin.createScanKeys = function ($line) {
     $(document).on('change input', '.openwebrx-squelch-slider', syncSql);
     syncSql();
 
+    // MW mirrors the stock bookmark button: left-click adds a bookmark
+    // here, right-click opens the bookmark search (newer OWRX+ binds it
+    // to the button's contextmenu; a no-op on versions without it)
     $mw.on('click', function () {
         $('#openwebrx-panel-receiver .openwebrx-bookmark-button').trigger('click');
+        pulse($mw);
+    });
+    $mw.on('contextmenu', function (e) {
+        e.preventDefault();
+        $('#openwebrx-panel-receiver .openwebrx-bookmark-button').trigger('contextmenu');
         pulse($mw);
     });
 
