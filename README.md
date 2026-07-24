@@ -271,6 +271,17 @@ or, on the server itself, `grep _version plugins/receiver/rig_skin/rig_skin.js`.
 
 ## Credits
 
+This is a plugin, it stands entirely on the shoulders of the receiver it
+skins:
+
+- [OpenWebRX+](https://github.com/luarvique/openwebrx), the fork this
+  plugin is built for and tested against, maintained by luarvique and
+  0xAF.
+- [OpenWebRX](https://github.com/jketterl/openwebrx) by Jakob Ketterl,
+  the original project OpenWebRX+ is based on.
+
+Data and libraries the plugin uses:
+
 - Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
 - Solar data: NOAA SWPC (public domain)
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
