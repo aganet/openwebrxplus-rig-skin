@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.4';
+Plugins.rig_skin._version = '0.9.5';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -959,115 +959,141 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createSatScreen();
 };
 
-// VFO A/B and dual watch. A/B swaps between two frequency+mode slots
-// (right-click copies the current VFO into the other). DW watches the
-// other VFO in the waterfall FFT and switches the audio there while it
-// is active, then returns; the squelch level is the activity threshold.
-// The other VFO must lie inside the current capture window for watching.
 Plugins.rig_skin.createVfoKeys = function () {
     var makeKey = Plugins.rig_skin.makeKey;
     var pulse = Plugins.rig_skin.pulseKey;
+    var $panel = $('#openwebrx-panel-receiver');
+    var $squelch = $panel.find('.openwebrx-squelch-slider');
 
-    var vfoB = null, activeLabel = 'A';
+    var vfoA = { freq: null, mod: null };
+    var vfoB = { freq: null, mod: null };
+    var active = 'A';
     try {
-        if (typeof LS !== 'undefined' && LS.has('rig_vfo_b')) vfoB = JSON.parse(LS.loadStr('rig_vfo_b'));
-        if (typeof LS !== 'undefined' && LS.has('rig_vfo_label')) activeLabel = LS.loadStr('rig_vfo_label');
-    } catch (e) {}
-
-    var $vfoLine = $('<div>').addClass('owrx-rig-info-vfob');
-    // the B frequency line, with a small activity dot: lit when the B
-    // frequency has signal above the squelch, dim when quiet
-    var $bDot = $('<span>').addClass('owrx-rig-vfob-dot');
-    var $bFreq = $('<span>').addClass('owrx-rig-vfob-freq');
-    $vfoLine.append($bDot).append($bFreq);
-    $('#owrx-rig-info').append($vfoLine);
-    // exposed so the wide-layout toggle can move it below the S-meter
-    // (in narrow it lives by the mode badge; in wide it would otherwise
-    // overlap the right-hand scope column)
-    Plugins.rig_skin._vfoLine = $vfoLine;
-    // place it correctly for the current layout now that it exists
-    if (Plugins.rig_skin._applyWide) {
-        Plugins.rig_skin._applyWide($('#openwebrx-panel-receiver').hasClass('rig-wide'));
-    }
-
-    function saveB() {
         if (typeof LS !== 'undefined') {
-            LS.save('rig_vfo_b', JSON.stringify(vfoB));
-            LS.save('rig_vfo_label', activeLabel);
+            if (LS.has('rig_vfo_a')) vfoA = JSON.parse(LS.loadStr('rig_vfo_a'));
+            if (LS.has('rig_vfo_b')) vfoB = JSON.parse(LS.loadStr('rig_vfo_b'));
+            if (LS.has('rig_vfo_active')) active = LS.loadStr('rig_vfo_active');
+        }
+    } catch (e) {}
+    if (active !== 'A' && active !== 'B') active = 'A';
+
+    function slot(id) { return id === 'A' ? vfoA : vfoB; }
+    function other(id) { return id === 'A' ? 'B' : 'A'; }
+
+    function save() {
+        if (typeof LS === 'undefined') return;
+        LS.save('rig_vfo_a', JSON.stringify(vfoA));
+        LS.save('rig_vfo_b', JSON.stringify(vfoB));
+        LS.save('rig_vfo_active', active);
+    }
+
+    function makeBox(id) {
+        var $freq = $('<span>').addClass('owrx-rig-vfo-freq');
+        var $box = $('<div>').addClass('owrx-rig-vfo-box').attr('data-vfo', id)
+            .append($('<span>').addClass('owrx-rig-vfo-tag').text(id))
+            .append($freq)
+            .append($('<span>').addClass('owrx-rig-vfo-rx').text('RX'));
+        $box.on('click', function (e) {
+            // clicking the active box opens the stock frequency entry;
+            // clicking the other box just selects it. Stop propagation so
+            // the stock body-level click handler does not immediately submit
+            // and close the input we are opening.
+            e.stopPropagation();
+            if (id === active) $stockFreq.trigger('click');
+            else setActive(id);
+        });
+        return { $box: $box, $freq: $freq };
+    }
+
+    var boxA = makeBox('A');
+    var boxB = makeBox('B');
+    var $vfoLine = $('<div>').addClass('owrx-rig-vfo-strip')
+        .append(boxA.$box).append(boxB.$box);
+
+    // A/B boxes lead the LCD; below them the mode/FIL/TS line and the
+    // hover-frequency readout, then the S-meter and scopes
+    var $freqs = $panel.find('.frequencies');
+    $freqs.prepend($vfoLine);
+    var $info = $('#owrx-rig-info');
+    if ($info.length) {
+        $info.append($panel.find('.webrx-mouse-freq'));
+        $vfoLine.after($info);
+    }
+
+    // the stock frequency display stays alive (its digits hidden by CSS)
+    // and rides inside the active box to provide click-to-type entry
+    var $stockFreq = $panel.find('.webrx-actual-freq');
+
+    // which VFO the receiver is tuned to right now: the active slot
+    // normally, the other while dual watch has moved the audio to it
+    function rxVfo() {
+        return (dwOn && onOther) ? other(active) : active;
+    }
+
+    function redraw() {
+        if (typeof UI !== 'undefined') {
+            var s = slot(rxVfo());
+            s.freq = UI.getFrequency();
+            s.mod = UI.getModulation();
+        }
+        var rx = rxVfo();
+        [['A', boxA], ['B', boxB]].forEach(function (e) {
+            var id = e[0], box = e[1], v = slot(id);
+            box.$freq.text(v.freq ? (v.freq / 1000000).toFixed(4) : '-.----');
+            box.$box.toggleClass('active', id === rx);
+        });
+        var activeBox = rx === 'A' ? boxA : boxB;
+        if ($stockFreq.length && !$stockFreq.parent().is(activeBox.$box)) {
+            activeBox.$box.append($stockFreq);
         }
     }
 
-    function otherLabel() {
-        return activeLabel === 'A' ? 'B' : 'A';
-    }
-
-    // is the B frequency active? signal above the squelch, measured from
-    // the waterfall FFT. null when B has no data (out of the window).
-    function bActive() {
-        var thr = threshold();
-        var lv = watchLevel(vfoB.freq);
-        if (lv === null || !bInWindow() || thr === null) return null;
-        return lv >= thr;
-    }
-
-    function updateVfoLine(active) {
-        if (!vfoB || !vfoB.freq) {
-            $bFreq.text('');
-            $bDot.removeClass('lit');
-            return;
-        }
-        $bFreq.text(otherLabel() + ' ' + (vfoB.freq / 1000000).toFixed(4) +
-            (vfoB.mod ? ' ' + vfoB.mod.toUpperCase() : ''));
-        // dot lit when B has signal; dim otherwise (blank when no squelch)
-        var a = bActive();
-        $bDot.toggleClass('lit', a === true).toggleClass('shown', a !== null);
-        // when DW is parked on B, the whole line goes green (overrides)
-        $vfoLine.toggleClass('active', !!active);
-    }
-
-    var $ab = makeKey('A/B', 'Swap VFO A and B (right-click: copy to the other VFO)');
-    var $dw = makeKey('DW', 'Dual watch: jump to the other VFO while it has activity')
+    var $ab = makeKey('A/B', 'Switch the active VFO (right-click: copy active VFO to the other)');
+    var $dw = makeKey('DW', 'Dual watch: listen to the other VFO while it has activity')
         .addClass('owrx-rig-key-dw');
 
-    function currentVfo() {
-        return { freq: UI.getFrequency(), mod: UI.getModulation() };
+    function setActive(id) {
+        if (typeof UI === 'undefined' || id === active) return;
+        setDw(false);
+        var cur = slot(active);
+        cur.freq = UI.getFrequency();
+        cur.mod = UI.getModulation();
+        active = id;
+        save();
+        var tgt = slot(active);
+        if (tgt.freq) Plugins.rig_skin.tuneTo(tgt.freq, tgt.mod);
+        redraw();
     }
 
     $ab.on('click', function () {
-        if (typeof UI === 'undefined') return;
-        setDw(false);
-        var cur = currentVfo();
-        if (vfoB && vfoB.freq) {
-            var tgt = vfoB;
-            vfoB = cur;
-            activeLabel = otherLabel();
-            Plugins.rig_skin.tuneTo(tgt.freq, tgt.mod);
-        } else {
-            // nothing stored yet: initialize the other VFO with the
-            // current settings
-            vfoB = cur;
-        }
-        saveB();
-        updateVfoLine();
+        setActive(other(active));
         pulse($ab);
     });
 
     $ab.on('contextmenu', function (e) {
         e.preventDefault();
         if (typeof UI === 'undefined') return;
-        vfoB = currentVfo();
-        saveB();
-        updateVfoLine();
+        var cur = slot(active);
+        cur.freq = UI.getFrequency();
+        cur.mod = UI.getModulation();
+        var o = slot(other(active));
+        o.freq = cur.freq;
+        o.mod = cur.mod;
+        save();
+        redraw();
         pulse($ab);
     });
 
-    // dual watch machinery
-    var dwOn = false, onB = false, returnTo = null, expected = null;
+    var dwOn = false, onOther = false, returnTo = null, expected = null;
     var hot = 0, quiet = 0, timer = null;
+    var lastCenter = null;
 
-    function bInWindow() {
-        return vfoB && vfoB.freq && typeof center_freq !== 'undefined' &&
-            Math.abs(vfoB.freq - center_freq) < bandwidth / 2 - 5000;
+    function watchVfo() { return slot(other(active)); }
+
+    function otherInWindow() {
+        var v = watchVfo();
+        return v.freq && typeof center_freq !== 'undefined' &&
+            Math.abs(v.freq - center_freq) < bandwidth / 2 - 5000;
     }
 
     function watchLevel(freq) {
@@ -1086,12 +1112,10 @@ Plugins.rig_skin.createVfoKeys = function () {
     }
 
     function threshold() {
-        var $s = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
-        if (!$s.length) return null;
-        var val = Number($s.val());
-        if (val <= Number($s.attr('min'))) return null;
-        // same FFT-to-smeter correction the stock squelch scan uses
-        return val - 13;
+        if (!$squelch.length) return null;
+        var val = Number($squelch.val());
+        if (val <= Number($squelch.attr('min'))) return null;
+        return val - 13;    // FFT-to-smeter correction, as the stock squelch scan
     }
 
     function goTo(vfo) {
@@ -1103,87 +1127,105 @@ Plugins.rig_skin.createVfoKeys = function () {
     function tick() {
         if (!dwOn || typeof UI === 'undefined') return;
 
+        // band changed: disarm if the watched VFO left the window, else re-baseline
+        if (typeof center_freq !== 'undefined' && lastCenter !== null &&
+            center_freq !== lastCenter) {
+            lastCenter = center_freq;
+            if (!otherInWindow()) { setDw(false); return; }
+            if (onOther) { onOther = false; $dw.removeClass('dw-active'); redraw(); }
+            expected = UI.getFrequency();
+            hot = 0; quiet = 0;
+            return;
+        }
+        if (typeof center_freq !== 'undefined') lastCenter = center_freq;
+
+        // user turned the dial: if parked on the other VFO, stay there and drop DW
         if (expected !== null && Math.abs(UI.getFrequency() - expected) > 1) {
-            if (onB) {
-                // manual retune while parked on B: the user took over,
-                // stay there and drop dual watch
-                onB = false;
+            if (onOther) {
+                onOther = false;
                 setDw(false);
                 return;
             }
-            // retuning VFO A just moves the return point
             expected = UI.getFrequency();
         }
 
         var thr = threshold();
-        if (thr === null || !bInWindow()) return;
+        if (thr === null || !otherInWindow()) return;
 
-        var lv = watchLevel(vfoB.freq);
-        if (!onB) {
+        // priority watch: sit on active, sample the other, move audio there
+        // when it goes active for ~1.5s and return once it is quiet ~1.5s
+        var lv = watchLevel(watchVfo().freq);
+        if (!onOther) {
             if (lv !== null && lv >= thr) hot++; else hot = 0;
-            if (hot >= 2) {
-                // B came alive: jump there
-                returnTo = currentVfo();
-                onB = true;
+            if (hot >= 3) {
+                returnTo = { freq: UI.getFrequency(), mod: UI.getModulation() };
+                onOther = true;
                 quiet = 0;
-                goTo(vfoB);
+                goTo(watchVfo());
                 $dw.addClass('dw-active');
-                updateVfoLine(true);
+                redraw();
             }
         } else {
             if (lv === null || lv < thr) quiet++; else quiet = 0;
-            if (quiet >= 6) {
-                // B went quiet: back to where we were
-                onB = false;
+            if (quiet >= 3) {
+                onOther = false;
                 hot = 0;
                 goTo(returnTo);
                 $dw.removeClass('dw-active');
-                updateVfoLine(false);
+                redraw();
             }
         }
     }
 
     function setDw(on) {
         if (on) {
-            if (!bInWindow()) {
+            if (!otherInWindow()) {
                 pulse($dw);
                 return;
             }
-            // dual watch needs an engaged squelch as its threshold
+            // DW uses the squelch level as its threshold but never sets it;
+            // without a squelch there is no threshold, so decline to arm
             if (threshold() === null) {
-                $('#openwebrx-panel-receiver .openwebrx-squelch-auto').trigger('click');
+                pulse($dw);
+                return;
             }
             dwOn = true;
-            onB = false;
+            onOther = false;
             hot = 0;
+            quiet = 0;
             expected = UI.getFrequency();
+            lastCenter = (typeof center_freq !== 'undefined') ? center_freq : null;
             $dw.addClass('highlighted');
             if (!timer) timer = setInterval(tick, 500);
         } else {
+            var wasOnOther = dwOn && onOther && returnTo;
             dwOn = false;
-            if (onB && returnTo) goTo(returnTo);
-            onB = false;
+            if (wasOnOther) goTo(returnTo);
+            onOther = false;
             $dw.removeClass('highlighted dw-active');
             if (timer) {
                 clearInterval(timer);
                 timer = null;
             }
         }
-        updateVfoLine(onB);
+        redraw();
     }
 
     $dw.on('click', function () {
         setDw(!dwOn);
     });
 
-    // A/B and DW lead the middle column, as a VFO pair
     $('#owrx-rig-keys-right').prepend($dw).prepend($ab);
-    updateVfoLine();
 
-    // keep the B signal reading live while B is set (the DW tick already
-    // refreshes when armed; this covers the idle case)
+    if (typeof UI !== 'undefined' && !slot(active).freq) {
+        slot(active).freq = UI.getFrequency();
+        slot(active).mod = UI.getModulation();
+        save();
+    }
+    redraw();
     setInterval(function () {
-        if (!dwOn && vfoB && vfoB.freq) updateVfoLine(false);
+        redraw();
+        save();
     }, 1000);
 };
 
@@ -1649,15 +1691,6 @@ Plugins.rig_skin.createExpandToggle = function () {
         $panel.toggleClass('rig-wide', wide);
         // the panel grows to the left, so left chevrons mean expand
         $btn.text(wide ? '❯❯' : '❮❮');
-        // the B (other VFO) readout hangs to the left of the mode badge
-        // in narrow mode, which would land on the right-hand scopes when
-        // wide; move it under the meter (into .frequencies) for wide,
-        // back beside the mode badge for narrow
-        var $vfo = Plugins.rig_skin._vfoLine;
-        if ($vfo && $vfo.length) {
-            if (wide) $vfo.appendTo($panel.find('.frequencies'));
-            else $vfo.appendTo($panel.find('#owrx-rig-info'));
-        }
         if (typeof LS !== 'undefined') LS.save('rig_wide', wide);
     }
 
@@ -1666,7 +1699,6 @@ Plugins.rig_skin.createExpandToggle = function () {
     });
     $panel.append($btn);
 
-    // exposed so createVfoKeys can re-apply once the B readout exists
     Plugins.rig_skin._applyWide = apply;
 
     apply((typeof LS !== 'undefined' && LS.has('rig_wide'))
@@ -1743,8 +1775,7 @@ Plugins.rig_skin.makePageRow = function () {
     return $('<div>').addClass('owrx-rig-zoom-row').append($left).append($right);
 };
 
-// Mode and filter width readout in the LCD's top right corner,
-// updated by polling the demodulator state.
+// Mode, filter width and tuning step readout, polled from the demodulator.
 Plugins.rig_skin.createSignalInfo = function ($container) {
     var $mode = $('<div>').addClass('owrx-rig-info-mode');
     var $filter = $('<div>').addClass('owrx-rig-info-filter');

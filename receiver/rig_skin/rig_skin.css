@@ -161,16 +161,15 @@ body.theme-rig #openwebrx-panel-receiver .openwebrx-bookmark-button {
 }
 
 body.theme-rig #owrx-rig-info {
-    display: block;
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 4px;
     font-family: 'roboto-mono', monospace;
-    pointer-events: none;
 }
 
-/* mode on a blue badge, like the rig screen */
 .owrx-rig-info-mode {
     display: inline-block;
     background: #1d5fae;
@@ -181,47 +180,85 @@ body.theme-rig #owrx-rig-info {
     font-weight: bold;
 }
 
-/* the inactive VFO readout, left of the mode block; green while dual
-   watch is parked on it */
-.owrx-rig-info-vfob {
-    position: absolute;
-    right: 100%;
-    top: 4px;
-    margin-right: 10px;
-    white-space: nowrap;
-    color: var(--rig-lcd-dim);
-    font-size: 9pt;
-    line-height: 1;
+/* Two equal VFO boxes as the main readout: A/B tag, frequency in MHz,
+   and a corner RX badge; the active box glows and lights its RX green. */
+.owrx-rig-vfo-strip {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin: 2px 0 6px 0;
+    font-family: 'roboto-mono', monospace;
+}
+
+.owrx-rig-vfo-box {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    padding: 6px 10px;
+    border-radius: 5px;
+    border: 1px solid #23303c;
+    background: rgba(6, 12, 18, 0.55);
+    cursor: pointer;
 }
 
-/* B activity dot: hidden until B is in the capture window, then dim
-   (quiet) or green (signal above squelch) */
-.owrx-rig-vfob-dot {
-    display: none;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    margin-right: 5px;
-    background: #2b343c;
-    box-shadow: inset 0 0 0 1px #10151a;
+.owrx-rig-vfo-box.active {
+    border-color: #2f7fd6;
+    box-shadow: 0 0 10px rgba(47, 127, 214, 0.7),
+                inset 0 0 8px rgba(47, 127, 214, 0.22);
 }
 
-.owrx-rig-vfob-dot.shown {
-    display: inline-block;
+/* A/B label tucked into the top-left corner, sitting on the border */
+.owrx-rig-vfo-tag {
+    position: absolute;
+    top: -6px;
+    left: 8px;
+    z-index: 3;
+    padding: 0 4px;
+    background: #0a0f13;
+    color: #6a7d90;
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
-.owrx-rig-vfob-dot.lit {
-    background: #3adb4a;
-    box-shadow: 0 0 5px rgba(60, 220, 80, 0.8);
+.owrx-rig-vfo-box.active .owrx-rig-vfo-tag {
+    color: #7fbcff;
 }
 
-/* dual watch parked on B turns the whole line green */
-.owrx-rig-info-vfob.active {
-    color: #3adb4a;
-    text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
+.owrx-rig-vfo-freq {
+    flex: 1 1 auto;
+    text-align: right;
+    color: var(--rig-lcd-dim);
+    font-size: 19pt;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.owrx-rig-vfo-box.active .owrx-rig-vfo-freq {
+    color: var(--rig-lcd);
+    text-shadow: 0 0 8px var(--rig-lcd-glow);
+}
+
+.owrx-rig-vfo-rx {
+    position: absolute;
+    top: -6px;
+    right: 8px;
+    z-index: 3;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: #16201a;
+    color: #46524a;
+    font-size: 7pt;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.owrx-rig-vfo-box.active .owrx-rig-vfo-rx {
+    background: #2a7d33;
+    color: #d6ffd9;
+    box-shadow: 0 0 6px rgba(60, 180, 80, 0.7);
 }
 
 .owrx-rig-info-filter,
@@ -257,15 +294,6 @@ body.theme-rig .rig-wide #owrx-rig-extra {
     white-space: pre;
 }
 
-/* in wide mode the B readout moves under the S-meter (into .frequencies)
-   so it no longer hangs left over the scope column; flow it normally,
-   left aligned, instead of the narrow-mode absolute right:100% anchor */
-body.theme-rig .rig-wide .frequencies > .owrx-rig-info-vfob {
-    position: static;
-    margin: 6px 0 0 0;
-    justify-content: flex-start;
-}
-
 /* expand chevron, top left of the panel; large screens only */
 #owrx-rig-expand {
     display: none;
@@ -295,27 +323,58 @@ body.theme-rig .rig-wide .frequencies > .owrx-rig-info-vfob {
     }
 }
 
-body.theme-rig .webrx-actual-freq,
-body.theme-rig .webrx-actual-freq input {
-    color: var(--rig-lcd);
-    text-shadow: 0 0 8px var(--rig-lcd-glow);
+/* the VFO boxes are the readout; the stock display rides inside the active
+   box only to provide click-to-type entry, so hide its digits but keep the
+   input group usable */
+body.theme-rig .owrx-rig-vfo-box .webrx-actual-freq {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
 }
 
-body.theme-rig .webrx-actual-freq .digit:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 3px;
+body.theme-rig .owrx-rig-vfo-box .webrx-actual-freq .input-group {
+    pointer-events: auto;
 }
 
-body.theme-rig .webrx-actual-freq .input-group input,
-body.theme-rig .webrx-actual-freq .input-group select {
+body.theme-rig .owrx-rig-vfo-box .webrx-actual-freq > div:first-child {
+    display: none !important;
+}
+
+body.theme-rig .owrx-rig-vfo-box .webrx-actual-freq .input-group {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 6px;
+    background: #0a0f13;
+    border-radius: 5px;
+}
+
+body.theme-rig .owrx-rig-vfo-box .webrx-actual-freq .input-group input {
+    flex: 1 1 auto;
+    min-width: 0;
     background: transparent;
     color: var(--rig-lcd);
-    border-color: #23282d;
+    border: none;
+    font-family: 'roboto-mono', monospace;
+    font-size: 15pt;
+    text-align: right;
 }
 
-body.theme-rig .webrx-mouse-freq {
+body.theme-rig .owrx-rig-vfo-box .webrx-actual-freq .input-group select {
+    flex: 0 0 auto;
+    background: #121820;
+    color: var(--rig-legend);
+    border: 1px solid #060708;
+    border-radius: 3px;
+    margin-left: 6px;
+}
+
+body.theme-rig #owrx-rig-info .webrx-mouse-freq {
     color: var(--rig-lcd-dim);
+    font-family: 'roboto-mono', monospace;
+    font-size: 8pt;
+    margin-right: auto;
 }
 
 /* Segmented S-meter inside the frequency LCD, replacing the bar meter */
