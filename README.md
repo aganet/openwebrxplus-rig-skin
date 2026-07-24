@@ -309,6 +309,8 @@ or, on the server itself, `grep _version plugins/receiver/rig_skin/rig_skin.js`.
 
 ## Credits
 
+Written by SV1DOD / HB9ISH.
+
 A skin for OpenWebRX:
 
 - [OpenWebRX+](https://github.com/luarvique/openwebrx), the fork it is

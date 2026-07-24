@@ -1,6 +1,8 @@
 /*
  * rig_skin: dark receiver front-panel theme with a rotating VFO knob.
  *
+ * Author: SV1DOD / HB9ISH
+ *
  * Adds a "Rig" entry to the theme selector. When active, the receiver
  * panel is skinned as a rig front panel and a tuning knob appears below
  * the frequency display. Drag, flick or scroll the knob to tune; each
@@ -8,6 +10,7 @@
  */
 
 Plugins.rig_skin._version = '0.9.6';
+Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
