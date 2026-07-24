@@ -28,15 +28,24 @@ every key with a status LED:
 - VFO and memory in the middle: A/B, DW, LOCK and MW. LOCK freezes the
   dial, which has saved me more than once on a wall mounted tablet. MW
   writes a bookmark where you are (right-click MW searches bookmarks).
-- SCAN, PROP, SAT and AUTO on the right. SCAN runs the bookmark scanner
-  that the stock UI hides behind a right click. AUTO snaps the VFO onto
-  the strongest signal nearby, handy when you are roughly on a station
-  and want to land exactly on it.
+- SCAN, PROP, SAT, AUTO and RIT on the right. SCAN runs the bookmark
+  scanner that the stock UI hides behind a right click. AUTO snaps the VFO
+  onto the strongest signal nearby, handy when you are roughly on a station
+  and want to land exactly on it. RIT is the clarifier, see below.
 
 Below the keys sit small - / + and left / right pairs: waterfall zoom and
 paging, so you never have to pinch the waterfall on a phone. Paging walks
 the zoomed view through the capture window, and at the edge it moves the
 receiver window itself if the server allows center frequency changes.
+
+## RIT (clarifier)
+
+RIT nudges the receive frequency a little without moving the VFO, for
+working someone who is slightly off your frequency. Press RIT to arm it:
+the left and right arrow keys then step the offset (they turn green to
+show they belong to RIT), and the offset shows as "RIT +30" on the info
+line. Press RIT again to switch it off and snap back to the VFO exactly.
+Right-click RIT to choose the step, 10, 20, 50 or 100 Hz.
 
 ## Two VFOs and dual watch
 
@@ -50,17 +59,22 @@ active VFO into the other.
 DW is dual watch: with it armed the rig watches the other VFO in the
 waterfall and, when it becomes active, switches the audio there until it
 goes quiet again, then returns. The underline and RX follow the audio.
-Dual watch uses your squelch level as the activity threshold and never
-changes it, so set the squelch first. It works within the current capture
-window, so the two VFOs need to be on the same band; the receiver has one
-antenna feed, it cannot listen across two bands at once.
+It decides "active" by how far the signal sits above the live noise floor,
+not a fixed level, so it tracks band conditions and behaves the same on
+any setup. The default is 8 dB above the floor; right-click DW to change
+the sensitivity (6/8/10/12 dB) if a busy band keeps it switched over. Dual
+watch does not touch your squelch, so set the squelch as you like for
+listening. It works within the current capture window, so the two VFOs
+need to be on the same band; the receiver has one antenna feed, it cannot
+listen across two bands at once.
 
 ## The LCD
 
-White frequency digits, the mode on a blue badge, and FIL / TS readouts so
-you always know the filter width and what one dial click does. The S-meter
-is segmented with peak hold, blue up to S9 and red beyond, with the scale
-running 1 3 5 7 9 +20 +40 +60. Under it, two scopes:
+The two VFO readouts lead the LCD, with the mode on a blue badge and
+FIL / TS and the hover frequency on a line under them, so you always know
+the filter width and what one dial click does. The S-meter is segmented
+with peak hold, blue up to S9 and red beyond, with the scale running
+1 3 5 7 9 +20 +40 +60. Under it, two scopes:
 
 - A band scope centered on the tuned frequency, like the center mode scope
   on a rig. Click it to tune, scroll it to step, SPAN switches the width
@@ -68,9 +82,12 @@ running 1 3 5 7 9 +20 +40 +60. Under it, two scopes:
   the main waterfall and averages its trace, so weak signals are easy to
   spot and click.
 - An audio scope: spectrum of what you are hearing with a small waterfall,
-  and a scrolling waveform. Good for tuning SSB by eye. Click the S-meter
-  to show or hide it. It keeps running while the audio is muted, so you
-  can watch a signal without listening to it.
+  and a waveform. Good for tuning SSB by eye. Click the S-meter to show or
+  hide it. It keeps running while the audio is muted, so you can watch a
+  signal without listening to it. The waveform timebase is selectable like
+  a rig's scope: click the ms/Div label to cycle 1/3/10/30/100/300 ms per
+  division. Fast settings draw a steady triggered sweep so you see the
+  actual waveform shape; the slow settings roll as an amplitude envelope.
 
 On large screens a chevron in the top left corner widens the rig into a
 two column face, readouts left, scopes right, and the LCD gains a line

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.6 (2026-07-24)
+
+- RIT (clarifier): a new RIT key under AUTO. With it on, the left/right
+  arrow keys nudge the receive frequency in fine steps while the VFO stays
+  put, and the offset shows as "RIT +30" on the info line; the arrows turn
+  green to show they belong to RIT. Turn it off to snap back to the VFO.
+  Right-click RIT to pick the step (10/20/50/100 Hz).
+- Dual watch now decides activity by signal-to-noise, not an absolute
+  squelch level. It measures how far a signal sits above the live noise
+  floor, so it tracks band and time-of-day conditions and works the same
+  on any setup. Default is 8 dB above the floor; right-click DW to change
+  the sensitivity (6/8/10/12 dB). Dual watch no longer touches the squelch,
+  so you set the squelch independently, as normal.
+- The audio scope timebase is selectable, like a rig's scope. Click the
+  ms/Div label to cycle 1/3/10/30/100/300 ms per division. At the faster
+  settings the waveform is drawn as a steady zero-crossing triggered sweep
+  so you see the actual shape; at 100 and 300 ms it rolls as an amplitude
+  envelope. The scroll speed is calibrated to real time, so the number
+  means what it says. Default is 300 ms.
+- The VFO A and B labels and their RX badges are now compact chips stacked
+  at the left edge of each readout, freeing width for high frequencies.
+
 ## 0.9.5 (2026-07-24)
 
 - Reworked the VFO A/B readout. Instead of one big frequency that swapped

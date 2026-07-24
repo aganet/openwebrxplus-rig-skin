@@ -195,7 +195,7 @@ body.theme-rig #owrx-rig-info {
     min-width: 0;
     position: relative;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     padding: 4px 4px 6px 2px;
     border-bottom: 2px solid #23303c;
     cursor: pointer;
@@ -207,16 +207,33 @@ body.theme-rig #owrx-rig-info {
     border-bottom-color: #2f7fd6;
 }
 
-.owrx-rig-vfo-tag {
+/* A/B and RX chips stacked in a narrow left column, freeing the rest of
+   the box width for the frequency digits */
+.owrx-rig-vfo-labels {
     flex: 0 0 auto;
-    margin-right: 4px;
-    color: #6a7d90;
-    font-size: 8pt;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-right: 6px;
+}
+
+.owrx-rig-vfo-tag,
+.owrx-rig-vfo-rx {
+    padding: 1px 4px;
+    border-radius: 2px;
+    text-align: center;
+    font-size: 7pt;
     font-weight: bold;
 }
 
+.owrx-rig-vfo-tag {
+    background: #17222e;
+    color: #6a7d90;
+}
+
 .owrx-rig-vfo-box.active .owrx-rig-vfo-tag {
-    color: #7fbcff;
+    background: #2f7fd6;
+    color: #ffffff;
 }
 
 .owrx-rig-vfo-freq {
@@ -233,21 +250,25 @@ body.theme-rig #owrx-rig-info {
 }
 
 .owrx-rig-vfo-rx {
-    flex: 0 0 auto;
-    margin-left: 4px;
+    background: #16201a;
     color: #46524a;
-    font-size: 7pt;
-    font-weight: bold;
 }
 
 .owrx-rig-vfo-box.active .owrx-rig-vfo-rx {
-    color: #3adb4a;
+    background: #3adb4a;
+    color: #000000;
 }
 
 .owrx-rig-info-filter,
 .owrx-rig-info-step {
     color: var(--rig-lcd-dim);
     font-size: 8pt;
+}
+
+.owrx-rig-info-rit {
+    color: #3adb4a;
+    font-size: 8pt;
+    font-weight: bold;
 }
 
 /* Frequency display as a backlit LCD window */
@@ -677,6 +698,54 @@ body.theme-rig #owrx-rig-knob-line {
     font-size: 10pt;
     font-weight: bold;
     padding: 4px 0 6px 0;
+}
+
+/* arrows turn green while RIT owns them, matching the RIT key LED */
+body.theme-rig .owrx-rig-zoom-key.owrx-rig-rit-arrow {
+    color: #3adb4a;
+}
+
+/* RIT step menu: small popup anchored to the RIT key, right-click to open */
+.owrx-rig-rit-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    margin-bottom: 4px;
+    z-index: 20;
+    background: linear-gradient(180deg, #101316 0%, #1a1e22 100%);
+    border: 1px solid #060708;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+}
+
+.owrx-rig-rit-menu.open {
+    display: block;
+}
+
+/* variant that drops downward, for keys near the top of a column */
+.owrx-rig-rit-menu.owrx-rig-menu-down {
+    bottom: auto;
+    top: 100%;
+    margin-bottom: 0;
+    margin-top: 4px;
+}
+
+.owrx-rig-rit-menu-item {
+    padding: 4px 12px;
+    font-size: 8pt;
+    color: var(--rig-legend);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.owrx-rig-rit-menu-item:hover {
+    background: #23303c;
+}
+
+.owrx-rig-rit-menu-item.sel {
+    color: #3adb4a;
 }
 
 /* propagation screen: band conditions and MUF map in an LCD window */

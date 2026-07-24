@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.5';
+Plugins.rig_skin._version = '0.9.6';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -989,10 +989,12 @@ Plugins.rig_skin.createVfoKeys = function () {
 
     function makeBox(id) {
         var $freq = $('<span>').addClass('owrx-rig-vfo-freq');
-        var $box = $('<div>').addClass('owrx-rig-vfo-box').attr('data-vfo', id)
+        var $labels = $('<div>').addClass('owrx-rig-vfo-labels')
             .append($('<span>').addClass('owrx-rig-vfo-tag').text(id))
-            .append($freq)
             .append($('<span>').addClass('owrx-rig-vfo-rx').text('RX'));
+        var $box = $('<div>').addClass('owrx-rig-vfo-box').attr('data-vfo', id)
+            .append($labels)
+            .append($freq);
         $box.on('click', function (e) {
             // clicking the active box opens the stock frequency entry;
             // clicking the other box just selects it. Stop propagation so
@@ -1067,7 +1069,7 @@ Plugins.rig_skin.createVfoKeys = function () {
     }
 
     var $ab = makeKey('A/B', 'Switch the active VFO (right-click: copy active VFO to the other)');
-    var $dw = makeKey('DW', 'Dual watch: listen to the other VFO while it has activity')
+    var $dw = makeKey('DW', 'Dual watch: listen to the other VFO while it has activity (right-click: sensitivity)')
         .addClass('owrx-rig-key-dw');
 
     function setActive(id) {
@@ -1105,6 +1107,7 @@ Plugins.rig_skin.createVfoKeys = function () {
     var dwOn = false, onOther = false, returnTo = null, expected = null;
     var hot = 0, quiet = 0, timer = null;
     var lastCenter = null;
+    var dwMargin = 8;   // dB above the noise floor that counts as activity
 
     function watchVfo() { return slot(other(active)); }
 
@@ -1114,6 +1117,7 @@ Plugins.rig_skin.createVfoKeys = function () {
             Math.abs(v.freq - center_freq) < bandwidth / 2 - 5000;
     }
 
+    // peak FFT level in a +/-1.5 kHz window around freq
     function watchLevel(freq) {
         var data = Plugins.rig_skin._lastFft;
         if (!data || typeof center_freq === 'undefined') return null;
@@ -1129,11 +1133,30 @@ Plugins.rig_skin.createVfoKeys = function () {
         return v;
     }
 
-    function threshold() {
-        if (!$squelch.length) return null;
-        var val = Number($squelch.val());
-        if (val <= Number($squelch.attr('min'))) return null;
-        return val - 13;    // FFT-to-smeter correction, as the stock squelch scan
+    // local noise floor near freq: the median of a +/-8 kHz guard band,
+    // excluding the +/-2 kHz signal window, so it tracks live conditions
+    function noiseFloor(freq) {
+        var data = Plugins.rig_skin._lastFft;
+        if (!data || typeof center_freq === 'undefined') return null;
+        var hzPerBin = bandwidth / data.length;
+        var c = (freq - center_freq) / hzPerBin + data.length / 2;
+        var g0 = Math.max(0, Math.floor(c - 8000 / hzPerBin));
+        var g1 = Math.min(data.length - 1, Math.ceil(c + 8000 / hzPerBin));
+        var sig = 2000 / hzPerBin;
+        var vals = [];
+        for (var b = g0; b <= g1; b++) {
+            if (Math.abs(b - c) > sig) vals.push(data[b]);
+        }
+        if (vals.length < 4) return null;
+        vals.sort(function (a, b) { return a - b; });
+        return vals[Math.floor(vals.length / 2)];
+    }
+
+    // signal-to-noise margin at freq, in dB, or null if no data
+    function watchSnr(freq) {
+        var pk = watchLevel(freq), nf = noiseFloor(freq);
+        if (pk === null || nf === null) return null;
+        return pk - nf;
     }
 
     function goTo(vfo) {
@@ -1167,14 +1190,17 @@ Plugins.rig_skin.createVfoKeys = function () {
             expected = UI.getFrequency();
         }
 
-        var thr = threshold();
-        if (thr === null || !otherInWindow()) return;
+        if (!otherInWindow()) return;
 
-        // priority watch: sit on active, sample the other, move audio there
-        // when it goes active for ~1.5s and return once it is quiet ~1.5s
-        var lv = watchLevel(watchVfo().freq);
+        // Priority watch judged on signal-to-noise, not an absolute level:
+        // the other VFO is "active" when its peak sits dwMargin dB above the
+        // live noise floor. Measuring against the floor makes it track band
+        // and time-of-day conditions instead of a fixed squelch line. Jump
+        // when active for ~1.5s; return once it drops 3 dB below for ~1.5s
+        // (hysteresis stops chatter at the threshold).
+        var snr = watchSnr(watchVfo().freq);
         if (!onOther) {
-            if (lv !== null && lv >= thr) hot++; else hot = 0;
+            if (snr !== null && snr >= dwMargin) hot++; else hot = 0;
             if (hot >= 3) {
                 returnTo = { freq: UI.getFrequency(), mod: UI.getModulation() };
                 onOther = true;
@@ -1184,7 +1210,7 @@ Plugins.rig_skin.createVfoKeys = function () {
                 redraw();
             }
         } else {
-            if (lv === null || lv < thr) quiet++; else quiet = 0;
+            if (snr === null || snr < dwMargin - 3) quiet++; else quiet = 0;
             if (quiet >= 3) {
                 onOther = false;
                 hot = 0;
@@ -1198,12 +1224,6 @@ Plugins.rig_skin.createVfoKeys = function () {
     function setDw(on) {
         if (on) {
             if (!otherInWindow()) {
-                pulse($dw);
-                return;
-            }
-            // DW uses the squelch level as its threshold but never sets it;
-            // without a squelch there is no threshold, so decline to arm
-            if (threshold() === null) {
                 pulse($dw);
                 return;
             }
@@ -1231,6 +1251,29 @@ Plugins.rig_skin.createVfoKeys = function () {
 
     $dw.on('click', function () {
         setDw(!dwOn);
+    });
+
+    // right-click DW: pick the activity margin (dB above the noise floor)
+    var $dwMenu = $('<div>').addClass('owrx-rig-rit-menu owrx-rig-menu-down');
+    [6, 8, 10, 12].forEach(function (db) {
+        $('<div>').addClass('owrx-rig-rit-menu-item').text(db + ' dB')
+            .on('click', function (e) {
+                e.stopPropagation();
+                dwMargin = db;
+                $dwMenu.removeClass('open');
+            })
+            .appendTo($dwMenu);
+    });
+    $dw.css('position', 'relative').append($dwMenu);
+    $dw.on('contextmenu', function (e) {
+        e.preventDefault();
+        $dwMenu.children().each(function () {
+            $(this).toggleClass('sel', $(this).text() === dwMargin + ' dB');
+        });
+        $dwMenu.toggleClass('open');
+    });
+    $(document).on('click', function (e) {
+        if (!$dw.is(e.target) && !$.contains($dw[0], e.target)) $dwMenu.removeClass('open');
     });
 
     $('#owrx-rig-keys-right').prepend($dw).prepend($ab);
@@ -1741,9 +1784,55 @@ Plugins.rig_skin.makeZoomRow = function () {
     return $('<div>').addClass('owrx-rig-zoom-row').append($out).append($in);
 };
 
+// RIT (clarifier): a small receive offset on top of the VFO frequency.
+// While engaged the left/right arrow keys nudge it by RIT_STEP instead of
+// paging the waterfall; turning it off restores the exact VFO frequency.
+Plugins.rig_skin._rit = (function () {
+    var step = 10;          // Hz per nudge, chosen from the RIT menu
+    var on = false;
+    var base = null;        // VFO frequency RIT is measured from
+    var offset = 0;         // current RIT offset in Hz
+
+    function apply() {
+        if (typeof UI === 'undefined' || base === null) return;
+        UI.setFrequency(base + offset, false);
+    }
+
+    return {
+        isOn: function () { return on; },
+        offset: function () { return offset; },
+        step: function () { return step; },
+        setStep: function (v) {
+            step = v;
+            Plugins.rig_skin._ritChanged && Plugins.rig_skin._ritChanged();
+        },
+        set: function (v) {
+            if (typeof UI === 'undefined') return;
+            if (v) {
+                base = UI.getFrequency();
+                offset = 0;
+                on = true;
+            } else {
+                on = false;
+                offset = 0;
+                if (base !== null) UI.setFrequency(base, false);
+                base = null;
+            }
+            Plugins.rig_skin._ritChanged && Plugins.rig_skin._ritChanged();
+        },
+        nudge: function (dir) {
+            if (!on) return;
+            offset += dir * step;
+            apply();
+            Plugins.rig_skin._ritChanged && Plugins.rig_skin._ritChanged();
+        }
+    };
+})();
+
 // Waterfall paging pair: shift the zoomed view left/right by one visible
 // span; at the window edge (or unzoomed) retune the SDR to the next chunk
-// of spectrum, so paging can walk the whole band.
+// of spectrum, so paging can walk the whole band. While RIT is engaged the
+// arrows nudge the clarifier instead, and light green to show it.
 Plugins.rig_skin.makePageRow = function () {
     function pageBy(dir) {
         if (typeof waterfallWidth !== 'function' || typeof resize_canvases !== 'function') return;
@@ -1772,13 +1861,14 @@ Plugins.rig_skin.makePageRow = function () {
         if (typeof jumpBySteps === 'function') jumpBySteps(dir);
     }
 
+    var rit = Plugins.rig_skin._rit;
     var $left = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
         .attr('title', 'Page waterfall down (right-click: move the receiver window)').text('◀');
     var $right = $('<div>').addClass('openwebrx-button owrx-rig-zoom-key')
         .attr('title', 'Page waterfall up (right-click: move the receiver window)').text('▶');
 
-    $left.on('click', function () { pageBy(-1); });
-    $right.on('click', function () { pageBy(1); });
+    $left.on('click', function () { if (rit.isOn()) rit.nudge(-1); else pageBy(-1); });
+    $right.on('click', function () { if (rit.isOn()) rit.nudge(1); else pageBy(1); });
 
     // right-click always moves the receiver window, like the stock arrows
     $left.on('contextmenu', function (e) {
@@ -1790,6 +1880,9 @@ Plugins.rig_skin.makePageRow = function () {
         if (typeof jumpBySteps === 'function') jumpBySteps(1);
     });
 
+    // expose the arrows so the RIT key can tint them green while engaged
+    Plugins.rig_skin._pageArrows = $left.add($right);
+
     return $('<div>').addClass('owrx-rig-zoom-row').append($left).append($right);
 };
 
@@ -1798,8 +1891,10 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
     var $mode = $('<div>').addClass('owrx-rig-info-mode');
     var $filter = $('<div>').addClass('owrx-rig-info-filter');
     var $step = $('<div>').addClass('owrx-rig-info-step');
+    var $rit = $('<div>').addClass('owrx-rig-info-rit');
     $container.append(
-        $('<div>').attr('id', 'owrx-rig-info').append($mode).append($filter).append($step)
+        $('<div>').attr('id', 'owrx-rig-info')
+            .append($mode).append($filter).append($step).append($rit)
     );
 
     // extra readouts for the wide layout: S units, squelch, UTC clock
@@ -1841,6 +1936,14 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
         $filter.text(filter);
         $step.text(stepText ? 'TS ' + stepText : '');
 
+        var rit = Plugins.rig_skin._rit;
+        if (rit && rit.isOn()) {
+            var o = rit.offset();
+            $rit.text('RIT ' + (o >= 0 ? '+' : '') + o).show();
+        } else {
+            $rit.hide();
+        }
+
         var $sql = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
         var sqlOn = $sql.length && Number($sql.val()) > Number($sql.attr('min'));
         var parts = [];
@@ -1855,6 +1958,7 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
         $extra.text(parts.join('   '));
     }
 
+    Plugins.rig_skin._updateInfo = update;
     update();
     setInterval(update, 500);
 };
@@ -2105,18 +2209,28 @@ Plugins.rig_skin.createScope = function ($freq) {
     // waterfall scrolled with getImageData; flag for readback
     var wfCtx = wf.getContext('2d', { willReadFrequently: true });
 
-    // roll-mode waveform: instead of scrolling an offscreen canvas with
-    // getImageData (a per-frame pixel readback), keep a ring of recent
-    // min/max envelope columns and redraw them each frame. No readback,
-    // so no console warning and no canvas-backend fragility.
-    var WAVE_STEP = 4;               // columns appended per frame
-    var waveCols = WAVE_W - 2;       // visible width in columns
-    var waveMin = new Float32Array(waveCols);
-    var waveMax = new Float32Array(waveCols);
-    var waveHead = 0;                // ring write position
-    (function () {
-        for (var i = 0; i < waveCols; i++) { waveMin[i] = 0; waveMax[i] = 0; }
-    })();
+    // Audio waveform, like a rig's AF scope. The timebase is click-selectable
+    // on the ms/Div label. Fast sweeps (<= 30 ms/div) draw a zero-crossing
+    // triggered waveform so the cycles hold steady; slow sweeps (100/300
+    // ms/div) draw a rolling min/max envelope, since cycles cannot resolve
+    // that slow. 300 ms/div is the default (most zoomed out).
+    var WAVE_STEPS = [1, 3, 10, 30, 100, 300];  // ms/div choices
+    var waveMsPerDiv = 300;
+    if (typeof LS !== 'undefined' && LS.has('rig_scope_ms')) {
+        var saved = LS.loadInt('rig_scope_ms');
+        if (WAVE_STEPS.indexOf(saved) >= 0) waveMsPerDiv = saved;
+    }
+    var TRIGGERED_MAX = 30;          // ms/div at or below this uses triggered mode
+    var sampleRing = null;           // Float32 ring of -1..1 samples
+    var ringHead = 0, ringLen = 0;
+    // envelope ring for the slow modes; columns advance by real elapsed
+    // time so the timebase is accurate (not frame-rate dependent)
+    var envCols = WAVE_W - 2;
+    var envMin = new Float32Array(envCols);
+    var envMax = new Float32Array(envCols);
+    var envHead = 0;
+    var envCarry = 0;                // fractional column not yet advanced
+    var envLastT = null;             // timestamp of the previous env frame
 
     // dark blue to white colormap for waterfall intensity
     var wfPalette = [];
@@ -2164,7 +2278,9 @@ Plugins.rig_skin.createScope = function ($freq) {
         }
         ctx.textAlign = 'right';
         ctx.fillText((4 * q) + 'kHz', FFT_W, PLOT_H + 2);
-        ctx.fillText('300ms/Div', W, PLOT_H + 2);
+        // small triangle marks the label as clickable (cycles the timebase)
+        ctx.fillStyle = '#8fd0ff';
+        ctx.fillText('▾ ' + waveMsPerDiv + 'ms/Div', W, PLOT_H + 2);
     }
 
     // the audio graph only exists once audio has started, attach lazily.
@@ -2232,46 +2348,91 @@ Plugins.rig_skin.createScope = function ($freq) {
             }
             ctx.drawImage(wf, 1, SPEC_H + 1);
 
-            // slowly decaying peak tracker, capped so silence stays thin
+            // track the recent peak deviation for auto-scaling either mode
             var dev = 0;
             for (var d = 0; d < timeData.length; d++) {
-                var dv = Math.abs(timeData[d] - 128);
-                if (dv > dev) dev = dv;
+                var av = Math.abs((timeData[d] - 128) / 128);
+                if (av > dev) dev = av;
             }
-            wavePeak = Math.max(dev / 128, wavePeak * 0.995, 0.05);
+            wavePeak = Math.max(dev, wavePeak * 0.995, 0.05);
             var wScale = 0.9 / wavePeak;
-
-            // append WAVE_STEP new min/max columns to the ring buffer,
-            // stored as -1..1 relative to center
-            for (var c = 0; c < WAVE_STEP; c++) {
-                var i0 = Math.floor(c * timeData.length / WAVE_STEP);
-                var i1 = Math.floor((c + 1) * timeData.length / WAVE_STEP);
-                var mn = 255, mx = 0;
-                for (var i = i0; i < i1; i++) {
-                    var s = timeData[i];
-                    if (s < mn) mn = s;
-                    if (s > mx) mx = s;
-                }
-                waveMax[waveHead] = Math.min((mx - 128) / 128 * wScale, 1);
-                waveMin[waveHead] = Math.max((mn - 128) / 128 * wScale, -1);
-                waveHead = (waveHead + 1) % waveCols;
-            }
-
-            // redraw the whole waveform from the ring, oldest at the left
             var wcenter = (PLOT_H - 2) / 2;
+            var cols = WAVE_W - 2;
+            var spanMs = waveMsPerDiv * 4;   // 4 divisions across the plot
+
             ctx.strokeStyle = '#3adb4a';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            for (var col = 0; col < waveCols; col++) {
-                var idx = (waveHead + col) % waveCols;
-                var px = WAVE_X + 1 + col + 0.5;
-                var yTop = 1 + wcenter - waveMax[idx] * wcenter;
-                var yBot = 1 + wcenter - waveMin[idx] * wcenter;
-                if (yBot < yTop + 1) yBot = yTop + 1;
-                ctx.moveTo(px, yTop);
-                ctx.lineTo(px, yBot);
+
+            if (waveMsPerDiv <= TRIGGERED_MAX) {
+                // triggered mode: ring a bit longer than one sweep so a
+                // trigger can be found with a full window of samples after it
+                var spanSamples = Math.round(spanMs / 1000 * sr);
+                var ringCap = spanSamples * 2;
+                if (!sampleRing || sampleRing.length !== ringCap) {
+                    sampleRing = new Float32Array(ringCap);
+                    ringHead = 0; ringLen = 0;
+                }
+                for (var i = 0; i < timeData.length; i++) {
+                    sampleRing[ringHead] = (timeData[i] - 128) / 128;
+                    ringHead = (ringHead + 1) % ringCap;
+                    if (ringLen < ringCap) ringLen++;
+                }
+                var at = function (k) { return sampleRing[(ringHead - ringLen + k + ringCap) % ringCap]; };
+
+                // first rising zero-crossing in the oldest part of the window
+                var trig = 0, searchEnd = Math.max(1, ringLen - spanSamples);
+                for (var s = 1; s < searchEnd; s++) {
+                    if (at(s - 1) <= 0 && at(s) > 0) { trig = s; break; }
+                }
+                for (var col = 0; col < cols; col++) {
+                    var si = trig + Math.floor(col * spanSamples / cols);
+                    if (si >= ringLen) break;
+                    var y = 1 + wcenter - Math.max(-1, Math.min(1, at(si) * wScale)) * wcenter;
+                    var px = WAVE_X + 1 + col + 0.5;
+                    if (col === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+                }
+                ctx.stroke();
+            } else {
+                // envelope (roll) mode: one min/max column per frame, scaled
+                // so the visible width spans spanMs of audio. Columns advance
+                // at the frame rate (~33 ms), so wider spans scroll slower.
+                var mn = 1, mx = -1;
+                for (var j = 0; j < timeData.length; j++) {
+                    var vv = (timeData[j] - 128) / 128;
+                    if (vv < mn) mn = vv;
+                    if (vv > mx) mx = vv;
+                }
+                mx = Math.min(mx * wScale, 1);
+                mn = Math.max(mn * wScale, -1);
+
+                // advance the ring by the columns representing the real time
+                // since the last frame at this timebase; carry the remainder
+                // so the average scroll rate is exact. envCols columns == spanMs.
+                var now = performance.now();
+                var dt = envLastT === null ? 33 : Math.min(500, now - envLastT);
+                envLastT = now;
+                var adv = envCarry + dt * envCols / spanMs;
+                var nCols = Math.floor(adv);
+                envCarry = adv - nCols;
+                if (nCols < 1) nCols = 1;               // always progress a little
+                if (nCols > envCols) nCols = envCols;
+                for (var a = 0; a < nCols; a++) {
+                    envMax[envHead] = mx;
+                    envMin[envHead] = mn;
+                    envHead = (envHead + 1) % envCols;
+                }
+                for (var e = 0; e < envCols; e++) {
+                    var ei = (envHead + e) % envCols;
+                    var px2 = WAVE_X + 1 + e + 0.5;
+                    var yTop = 1 + wcenter - envMax[ei] * wcenter;
+                    var yBot = 1 + wcenter - envMin[ei] * wcenter;
+                    if (yBot < yTop + 1) yBot = yTop + 1;
+                    ctx.moveTo(px2, yTop);
+                    ctx.lineTo(px2, yBot);
+                }
+                ctx.stroke();
             }
-            ctx.stroke();
         } else {
             // no audio yet: flat baseline
             ctx.strokeStyle = '#1f4a26';
@@ -2292,6 +2453,27 @@ Plugins.rig_skin.createScope = function ($freq) {
             timer = null;
         }
     }
+
+    // click the ms/Div label (bottom-right of the plot) to cycle the
+    // timebase, like a rig's scope; the choice is remembered
+    canvas.title = 'Click the ms/Div label to change the scope timebase';
+    canvas.style.cursor = 'default';
+    $(canvas).on('mousemove', function (e) {
+        var r = canvas.getBoundingClientRect();
+        var x = e.clientX - r.left, y = e.clientY - r.top;
+        canvas.style.cursor = (x > W - 76 && y > PLOT_H - 1) ? 'pointer' : 'default';
+    });
+    $(canvas).on('click', function (e) {
+        var r = canvas.getBoundingClientRect();
+        var x = e.clientX - r.left, y = e.clientY - r.top;
+        if (x > W - 76 && y > PLOT_H - 1) {
+            e.stopPropagation();
+            var idx = WAVE_STEPS.indexOf(waveMsPerDiv);
+            waveMsPerDiv = WAVE_STEPS[(idx + WAVE_STEPS.length - 1) % WAVE_STEPS.length];
+            envLastT = null;   // re-baseline the envelope clock on a change
+            if (typeof LS !== 'undefined') LS.save('rig_scope_ms', waveMsPerDiv);
+        }
+    });
 
     $('#owrx-rig-meter')
         .css('cursor', 'pointer')
@@ -2620,6 +2802,46 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         UI.setFrequency(Math.round(f / 10) * 10, false);
     });
 
+    // RIT (clarifier): while on, the arrow keys nudge the receive offset
+    // in 10 Hz steps; the arrows light green and the offset shows on the
+    // info line. Off restores the exact VFO frequency.
+    var $rit = makeKey('RIT', 'Clarifier: arrows nudge RX while on (right-click: step)');
+    $rit.on('click', function () {
+        Plugins.rig_skin._rit.set(!Plugins.rig_skin._rit.isOn());
+    });
+
+    // right-click opens a small menu to pick the nudge step
+    var $ritMenu = $('<div>').addClass('owrx-rig-rit-menu');
+    [10, 20, 50, 100].forEach(function (hz) {
+        $('<div>').addClass('owrx-rig-rit-menu-item').text(hz + ' Hz')
+            .on('click', function (e) {
+                e.stopPropagation();
+                Plugins.rig_skin._rit.setStep(hz);
+                $ritMenu.removeClass('open');
+            })
+            .appendTo($ritMenu);
+    });
+    $rit.css('position', 'relative').append($ritMenu);
+    $rit.on('contextmenu', function (e) {
+        e.preventDefault();
+        var cur = Plugins.rig_skin._rit.step();
+        $ritMenu.children().each(function () {
+            $(this).toggleClass('sel', $(this).text() === cur + ' Hz');
+        });
+        $ritMenu.toggleClass('open');
+    });
+    $(document).on('click', function (e) {
+        if (!$rit.is(e.target) && !$.contains($rit[0], e.target)) $ritMenu.removeClass('open');
+    });
+    Plugins.rig_skin._ritChanged = function () {
+        var on = Plugins.rig_skin._rit.isOn();
+        $rit.toggleClass('highlighted', on);
+        if (Plugins.rig_skin._pageArrows) {
+            Plugins.rig_skin._pageArrows.toggleClass('owrx-rig-rit-arrow', on);
+        }
+        if (Plugins.rig_skin._updateInfo) Plugins.rig_skin._updateInfo();
+    };
+
     // quick mute, LED lit while muted
     var $mute = makeKey('MUTE', 'Mute audio');
     $mute.on('click', function () {
@@ -2653,6 +2875,7 @@ Plugins.rig_skin.createScanKeys = function ($line) {
             .append($propKey)
             .append($satKey)
             .append($auto)
+            .append($rit)
     );
 };
 
