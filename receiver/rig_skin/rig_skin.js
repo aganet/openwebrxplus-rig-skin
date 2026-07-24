@@ -2394,32 +2394,31 @@ Plugins.rig_skin.createScope = function ($freq) {
                 }
                 ctx.stroke();
             } else {
-                // envelope (roll) mode: one min/max column per frame, scaled
-                // so the visible width spans spanMs of audio. Columns advance
-                // at the frame rate (~33 ms), so wider spans scroll slower.
-                var mn = 1, mx = -1;
-                for (var j = 0; j < timeData.length; j++) {
-                    var vv = (timeData[j] - 128) / 128;
-                    if (vv < mn) mn = vv;
-                    if (vv > mx) mx = vv;
-                }
-                mx = Math.min(mx * wScale, 1);
-                mn = Math.max(mn * wScale, -1);
-
-                // advance the ring by the columns representing the real time
-                // since the last frame at this timebase; carry the remainder
-                // so the average scroll rate is exact. envCols columns == spanMs.
+                // envelope (roll) mode: advance the ring by the columns that
+                // represent the real time since the last frame at this
+                // timebase (carry the remainder so the scroll rate is exact),
+                // and fill each advanced column from its own slice of this
+                // frame's samples so the trace keeps fine detail instead of
+                // stretching one flat min/max across several columns.
                 var now = performance.now();
                 var dt = envLastT === null ? 33 : Math.min(500, now - envLastT);
                 envLastT = now;
                 var adv = envCarry + dt * envCols / spanMs;
                 var nCols = Math.floor(adv);
                 envCarry = adv - nCols;
-                if (nCols < 1) nCols = 1;               // always progress a little
+                if (nCols < 1) nCols = 1;
                 if (nCols > envCols) nCols = envCols;
                 for (var a = 0; a < nCols; a++) {
-                    envMax[envHead] = mx;
-                    envMin[envHead] = mn;
+                    var s0 = Math.floor(a * timeData.length / nCols);
+                    var s1 = Math.floor((a + 1) * timeData.length / nCols);
+                    var mn = 1, mx = -1;
+                    for (var j = s0; j < s1; j++) {
+                        var vv = (timeData[j] - 128) / 128;
+                        if (vv < mn) mn = vv;
+                        if (vv > mx) mx = vv;
+                    }
+                    envMax[envHead] = Math.min(mx * wScale, 1);
+                    envMin[envHead] = Math.max(mn * wScale, -1);
                     envHead = (envHead + 1) % envCols;
                 }
                 for (var e = 0; e < envCols; e++) {
