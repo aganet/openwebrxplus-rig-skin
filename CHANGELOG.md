@@ -3,14 +3,15 @@
 ## 0.9.5 (2026-07-24)
 
 - Reworked the VFO A/B readout. Instead of one big frequency that swapped
-  around, the LCD now shows two equal boxes, A and B, each holding its own
-  frequency. They never swap, so it is always clear which is which. The
-  box the radio is actually listening to glows and shows a green RX in the
-  corner. A/B picks which VFO is active and tunes there; click the active
-  box to type a frequency, same as the old digits. Mode, filter width, the
-  tuning step and the hover frequency now sit on a line under the boxes.
-- Dual watch marks activity the same way: the RX badge and glow move to
-  whichever VFO has a signal, and back to the other when it goes quiet.
+  around, the LCD now shows two frequencies side by side, A and B, each
+  holding its own. They never swap, so it is always clear which is which.
+  The one the radio is listening to is marked by a bright underline and a
+  green RX; the number tracks the dial live. A/B picks which VFO is active
+  and tunes there; click the active frequency to type one in, same as the
+  old digits. Mode, filter width, the tuning step and the hover frequency
+  now sit on a line under the readouts.
+- Dual watch marks activity the same way: the underline and green RX move
+  to whichever VFO has a signal, and back to the other when it goes quiet.
 
 ## 0.9.4 (2026-07-24)
 

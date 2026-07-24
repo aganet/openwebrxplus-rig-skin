@@ -42,14 +42,14 @@ receiver window itself if the server allows center frequency changes.
 
 The LCD shows two VFOs side by side, A and B, each with its own
 frequency. They do not swap, so it stays clear which is which. The one
-the radio is actually listening to glows and shows a green RX in the
-corner. Press A/B to pick which VFO is active; the receiver tunes there.
-Click the active box to type a frequency, and right-click A/B to copy the
+the radio is actually listening to is marked by a bright underline and a
+green RX. Press A/B to pick which VFO is active; the receiver tunes there.
+Click the active frequency to type one in, and right-click A/B to copy the
 active VFO into the other.
 
 DW is dual watch: with it armed the rig watches the other VFO in the
 waterfall and, when it becomes active, switches the audio there until it
-goes quiet again, then returns. The RX badge and glow follow the audio.
+goes quiet again, then returns. The underline and RX follow the audio.
 Dual watch uses your squelch level as the activity threshold and never
 changes it, so set the squelch first. It works within the current capture
 window, so the two VFOs need to be on the same band; the receiver has one

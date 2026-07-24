@@ -1024,6 +1024,24 @@ Plugins.rig_skin.createVfoKeys = function () {
     // and rides inside the active box to provide click-to-type entry
     var $stockFreq = $panel.find('.webrx-actual-freq');
 
+    function showFreq(box, hz) {
+        box.$freq.text(hz ? (hz / 1000000).toFixed(4) : '-.----');
+    }
+
+    // update the tuned box live on every dial move by hooking the stock
+    // frequency display, so the number tracks the dial instead of lagging
+    // behind the once-a-second poll
+    try {
+        var disp = UI.getDemodulatorPanel().tuneableFrequencyDisplay;
+        var origSet = disp.setFrequency.bind(disp);
+        disp.setFrequency = function (freq) {
+            origSet(freq);
+            var box = rxVfo() === 'A' ? boxA : boxB;
+            slot(rxVfo()).freq = freq;
+            showFreq(box, freq);
+        };
+    } catch (e) {}
+
     // which VFO the receiver is tuned to right now: the active slot
     // normally, the other while dual watch has moved the audio to it
     function rxVfo() {
@@ -1038,8 +1056,8 @@ Plugins.rig_skin.createVfoKeys = function () {
         }
         var rx = rxVfo();
         [['A', boxA], ['B', boxB]].forEach(function (e) {
-            var id = e[0], box = e[1], v = slot(id);
-            box.$freq.text(v.freq ? (v.freq / 1000000).toFixed(4) : '-.----');
+            var id = e[0], box = e[1];
+            showFreq(box, slot(id).freq);
             box.$box.toggleClass('active', id === rx);
         });
         var activeBox = rx === 'A' ? boxA : boxB;

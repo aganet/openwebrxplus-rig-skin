@@ -195,32 +195,24 @@ body.theme-rig #owrx-rig-info {
     min-width: 0;
     position: relative;
     display: flex;
-    align-items: center;
-    padding: 6px 10px;
-    border-radius: 5px;
-    border: 1px solid #23303c;
-    background: rgba(6, 12, 18, 0.55);
+    align-items: baseline;
+    padding: 4px 4px 6px 2px;
+    border-bottom: 2px solid #23303c;
     cursor: pointer;
 }
 
+/* active VFO: a bright underline, no box or shadow, so redraws stay cheap
+   and the number stays responsive while tuning */
 .owrx-rig-vfo-box.active {
-    border-color: #2f7fd6;
-    box-shadow: 0 0 10px rgba(47, 127, 214, 0.7),
-                inset 0 0 8px rgba(47, 127, 214, 0.22);
+    border-bottom-color: #2f7fd6;
 }
 
-/* A/B label tucked into the top-left corner, sitting on the border */
 .owrx-rig-vfo-tag {
-    position: absolute;
-    top: -6px;
-    left: 8px;
-    z-index: 3;
-    padding: 0 4px;
-    background: #0a0f13;
+    flex: 0 0 auto;
+    margin-right: 4px;
     color: #6a7d90;
     font-size: 8pt;
     font-weight: bold;
-    letter-spacing: 1px;
 }
 
 .owrx-rig-vfo-box.active .owrx-rig-vfo-tag {
@@ -238,27 +230,18 @@ body.theme-rig #owrx-rig-info {
 
 .owrx-rig-vfo-box.active .owrx-rig-vfo-freq {
     color: var(--rig-lcd);
-    text-shadow: 0 0 8px var(--rig-lcd-glow);
 }
 
 .owrx-rig-vfo-rx {
-    position: absolute;
-    top: -6px;
-    right: 8px;
-    z-index: 3;
-    padding: 0 4px;
-    border-radius: 3px;
-    background: #16201a;
+    flex: 0 0 auto;
+    margin-left: 4px;
     color: #46524a;
     font-size: 7pt;
     font-weight: bold;
-    letter-spacing: 1px;
 }
 
 .owrx-rig-vfo-box.active .owrx-rig-vfo-rx {
-    background: #2a7d33;
-    color: #d6ffd9;
-    box-shadow: 0 0 6px rgba(60, 180, 80, 0.7);
+    color: #3adb4a;
 }
 
 .owrx-rig-info-filter,
