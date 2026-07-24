@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.2 (2026-07-24)
+
+- The audio scope now keeps running while the audio is muted. It taps
+  the signal before the volume stage, so muting silences the speakers
+  but the spectrum, waterfall and waveform carry on, like a rig's scope.
+- The waveform is redrawn from a rolling buffer instead of scrolling the
+  canvas pixels, which removes the Canvas2D readback console warnings.
+- Version string is proper semver.
+
 ## 0.9 (2026-07-24)
 
 - DX map is now interactive: scroll to zoom toward the cursor, drag to

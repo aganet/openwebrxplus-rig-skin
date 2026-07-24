@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9';
+Plugins.rig_skin._version = '0.9.2';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -1593,7 +1593,11 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     var wf = document.createElement('canvas');
     wf.width = W - 2;
     wf.height = WF_H;
-    var wfCtx = wf.getContext('2d');
+    // waterfall is scrolled with getImageData each frame; flag it for
+    // readback to quiet the console. (Only the waterfalls are flagged;
+    // the audio waveform canvas is deliberately left on the default
+    // context, flagging it corrupted its scroll on some browsers.)
+    var wfCtx = wf.getContext('2d', { willReadFrequently: true });
 
     function visible() {
         return $bs.hasClass('visible');
@@ -1807,14 +1811,21 @@ Plugins.rig_skin.createScope = function ($freq) {
     var wf = document.createElement('canvas');
     wf.width = FFT_W - 2;
     wf.height = PLOT_H - SPEC_H - 2;
-    var wfCtx = wf.getContext('2d');
+    // waterfall scrolled with getImageData; flag for readback
+    var wfCtx = wf.getContext('2d', { willReadFrequently: true });
 
-    // offscreen canvas holding the scrolling waveform (roll mode)
-    var wave = document.createElement('canvas');
-    wave.width = WAVE_W - 2;
-    wave.height = PLOT_H - 2;
-    var waveCtx = wave.getContext('2d');
-    var WAVE_STEP = 4;  // pixels scrolled per frame
+    // roll-mode waveform: instead of scrolling an offscreen canvas with
+    // getImageData (a per-frame pixel readback), keep a ring of recent
+    // min/max envelope columns and redraw them each frame. No readback,
+    // so no console warning and no canvas-backend fragility.
+    var WAVE_STEP = 4;               // columns appended per frame
+    var waveCols = WAVE_W - 2;       // visible width in columns
+    var waveMin = new Float32Array(waveCols);
+    var waveMax = new Float32Array(waveCols);
+    var waveHead = 0;                // ring write position
+    (function () {
+        for (var i = 0; i < waveCols; i++) { waveMin[i] = 0; waveMax[i] = 0; }
+    })();
 
     // dark blue to white colormap for waterfall intensity
     var wfPalette = [];
@@ -1865,16 +1876,20 @@ Plugins.rig_skin.createScope = function ($freq) {
         ctx.fillText('300ms/Div', W, PLOT_H + 2);
     }
 
-    // the audio graph only exists once audio has started, attach lazily;
-    // tap before the volume gain so the display is level-independent
+    // the audio graph only exists once audio has started, attach lazily.
+    // Tap audioNode, the stage BEFORE the volume/mute gain, so the scope
+    // shows the signal at full scale regardless of the volume slider and
+    // keeps working while the audio is muted (like a rig's scope). Wait
+    // specifically for audioNode; do not fall back to gainNode, or the
+    // scope would go flat whenever muted.
     function attach() {
         if (analyser) return true;
         if (typeof audioEngine === 'undefined' || !audioEngine ||
-            !audioEngine.audioContext || !audioEngine.gainNode) return false;
+            !audioEngine.audioContext || !audioEngine.audioNode) return false;
         analyser = audioEngine.audioContext.createAnalyser();
         analyser.fftSize = 2048;
         analyser.smoothingTimeConstant = 0.5;
-        (audioEngine.audioNode || audioEngine.gainNode).connect(analyser);
+        audioEngine.audioNode.connect(analyser);
         freqData = new Uint8Array(analyser.frequencyBinCount);
         timeData = new Uint8Array(analyser.fftSize);
         return true;
@@ -1926,12 +1941,6 @@ Plugins.rig_skin.createScope = function ($freq) {
             }
             ctx.drawImage(wf, 1, SPEC_H + 1);
 
-            // waveform in roll mode: scroll left, append the newest audio
-            // envelope at the right edge
-            var shiftedWave = waveCtx.getImageData(WAVE_STEP, 0, wave.width - WAVE_STEP, wave.height);
-            waveCtx.putImageData(shiftedWave, 0, 0);
-            waveCtx.clearRect(wave.width - WAVE_STEP, 0, WAVE_STEP, wave.height);
-
             // slowly decaying peak tracker, capped so silence stays thin
             var dev = 0;
             for (var d = 0; d < timeData.length; d++) {
@@ -1941,9 +1950,8 @@ Plugins.rig_skin.createScope = function ($freq) {
             wavePeak = Math.max(dev / 128, wavePeak * 0.995, 0.05);
             var wScale = 0.9 / wavePeak;
 
-            var center = (wave.height - 1) / 2;
-            waveCtx.strokeStyle = '#3adb4a';
-            waveCtx.lineWidth = 1;
+            // append WAVE_STEP new min/max columns to the ring buffer,
+            // stored as -1..1 relative to center
             for (var c = 0; c < WAVE_STEP; c++) {
                 var i0 = Math.floor(c * timeData.length / WAVE_STEP);
                 var i1 = Math.floor((c + 1) * timeData.length / WAVE_STEP);
@@ -1953,16 +1961,26 @@ Plugins.rig_skin.createScope = function ($freq) {
                     if (s < mn) mn = s;
                     if (s > mx) mx = s;
                 }
-                var cx2 = wave.width - WAVE_STEP + c + 0.5;
-                var y1 = center - Math.min((mx - 128) / 128 * wScale, 1) * center;
-                var y2 = center - Math.max((mn - 128) / 128 * wScale, -1) * center;
-                if (y2 < y1 + 1) y2 = y1 + 1;
-                waveCtx.beginPath();
-                waveCtx.moveTo(cx2, y1);
-                waveCtx.lineTo(cx2, y2);
-                waveCtx.stroke();
+                waveMax[waveHead] = Math.min((mx - 128) / 128 * wScale, 1);
+                waveMin[waveHead] = Math.max((mn - 128) / 128 * wScale, -1);
+                waveHead = (waveHead + 1) % waveCols;
             }
-            ctx.drawImage(wave, WAVE_X + 1, 1);
+
+            // redraw the whole waveform from the ring, oldest at the left
+            var wcenter = (PLOT_H - 2) / 2;
+            ctx.strokeStyle = '#3adb4a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (var col = 0; col < waveCols; col++) {
+                var idx = (waveHead + col) % waveCols;
+                var px = WAVE_X + 1 + col + 0.5;
+                var yTop = 1 + wcenter - waveMax[idx] * wcenter;
+                var yBot = 1 + wcenter - waveMin[idx] * wcenter;
+                if (yBot < yTop + 1) yBot = yTop + 1;
+                ctx.moveTo(px, yTop);
+                ctx.lineTo(px, yBot);
+            }
+            ctx.stroke();
         } else {
             // no audio yet: flat baseline
             ctx.strokeStyle = '#1f4a26';

@@ -49,7 +49,8 @@ is segmented with peak hold. Under it, two scopes:
   spot and click.
 - An audio scope: spectrum of what you are hearing with a small waterfall,
   and a scrolling waveform. Good for tuning SSB by eye. Click the S-meter
-  to show or hide it.
+  to show or hide it. It keeps running while the audio is muted, so you
+  can watch a signal without listening to it.
 
 On large screens a chevron in the top left corner widens the rig into a
 two column face, readouts left, scopes right, and the LCD gains a line
@@ -142,7 +143,7 @@ From the folder that holds your `docker-compose.yml` (swap in the current
 version number):
 
 ```sh
-V=0.9
+V=0.9.2
 curl -fL -o rig-skin.zip \
   "https://github.com/aganet/openwebrxplus-rig-skin/releases/download/v${V}/openwebrxplus-rig-skin-${V}.zip"
 unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
@@ -257,7 +258,7 @@ console and type:
 Plugins.rig_skin._version
 ```
 
-It prints the version string, e.g. `"0.9"`. If it shows an older
+It prints the version string, e.g. `"0.9.2"`. If it shows an older
 version than you installed, the browser is serving a cached copy;
 hard-refresh with Ctrl+Shift+R.
 
