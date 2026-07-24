@@ -271,14 +271,12 @@ or, on the server itself, `grep _version plugins/receiver/rig_skin/rig_skin.js`.
 
 ## Credits
 
-This is a plugin, it stands entirely on the shoulders of the receiver it
-skins:
+The receiver this plugin skins:
 
-- [OpenWebRX+](https://github.com/luarvique/openwebrx), the fork this
-  plugin is built for and tested against, maintained by luarvique and
-  0xAF.
+- [OpenWebRX+](https://github.com/luarvique/openwebrx), the fork it is
+  built for, maintained by luarvique and 0xAF.
 - [OpenWebRX](https://github.com/jketterl/openwebrx) by Jakob Ketterl,
-  the original project OpenWebRX+ is based on.
+  the original it is based on.
 
 Data and libraries the plugin uses:
 
