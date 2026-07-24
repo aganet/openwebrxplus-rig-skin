@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9 (2026-07-24)
+
+- DX map is now interactive: scroll to zoom toward the cursor, drag to
+  pan, double-click to reset to the whole world, pinch to zoom on touch.
+  Hover a spot to see its callsign, bearing and distance from your QTH,
+  and continent. Zooming in separates spots that pile up near home.
+- Brighter map: lighter ocean and land and a softer day/night line, so
+  the coastlines and spots read clearly.
+- Fixed coastlines that streaked horizontal lines across the map where a
+  landmass crossed the date line.
+- DX band-activity view: an ACT chip in the window header switches to a
+  bar chart of spots per band (160m through VHF/UHF), the band you are
+  tuned to highlighted, with a per-band trend sparkline. Click a band to
+  jump there. Choosing a band filter returns to the map.
+- Propagation screen has clear prev/next arrows and a page counter, so
+  it is obvious the screen holds several views (band conditions,
+  beacons, MUF map) and how to move between them.
+
 ## 0.8.2 (2026-07-24)
 
 - AUTO tune now lands SSB on the carrier frequency, the on-air number

@@ -59,8 +59,9 @@ with the current band, S units, squelch state, mute flag and UTC clock.
 
 ## Propagation
 
-The PROP key opens a second LCD with three views (click the caption to
-switch, the wide layout shows them side by side):
+The PROP key opens a second LCD with three views. Use the prev/next
+arrows in the caption bar to move between them (the page counter shows
+where you are); the wide layout shows them side by side:
 
 - Band conditions estimated from NOAA SWPC data (solar flux and K index),
   drawn as day/night pills per band group.
@@ -103,9 +104,18 @@ the bearing and distance from your receiver, handy with a directional
 antenna. Click a spot or a pin and the receiver jumps there with the
 right mode set.
 
+The map is interactive: scroll to zoom toward the cursor, drag to pan,
+double-click to reset, pinch to zoom on a phone. Hover a spot to read
+its callsign, bearing and distance. Zooming in is the easy way to pick
+apart spots that pile up near home.
+
 Filter chips at the top switch between the band you are tuned to, all
-of HF, or everything. The window can be dragged anywhere and resized by
-its corner grip, and it remembers its size, position and filter.
+of HF, or everything. The ACT chip switches to a band-activity chart:
+spots per band from 160 m up through VHF, the band you are on
+highlighted, with a trend line so you can see which bands are waking up.
+Click a band in the chart to jump there. The window can be dragged
+anywhere and resized by its corner grip, and it remembers its size,
+position and filter.
 
 Spots stream in live from the HolyCluster network, with DXSummit as the
 backlog source where the page can reach it. The map itself is drawn in

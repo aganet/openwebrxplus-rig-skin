@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.82;
+Plugins.rig_skin._version = 0.9;
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -56,21 +56,38 @@ Plugins.rig_skin.createDxWindow = function () {
     // --- window DOM ---
 
     var $title = $('<span>').addClass('owrx-rig-dx-title').text('DX CLUSTER');
+    // ACT toggles the band-activity chart (spots per band) over the
+    // map+list view
+    var showActivity = false;
+    function setActivity(on) {
+        showActivity = on;
+        $act.toggleClass('on', on);
+        $lcd.toggleClass('activity', on);
+    }
+
     var $chips = {};
     ['band', 'hf', 'all'].forEach(function (k) {
         $chips[k] = $('<span>').addClass('owrx-rig-dx-chip').text(k.toUpperCase())
             .on('click', function () {
+                // choosing a filter returns to the map+list from the chart
+                setActivity(false);
                 filterSetting(k);
                 syncChips();
                 render();
             });
     });
+    var $act = $('<span>').addClass('owrx-rig-dx-chip owrx-rig-dx-act').text('ACT')
+        .attr('title', 'Band activity: spots per band')
+        .on('click', function () {
+            setActivity(!showActivity);
+            render();
+        });
     var $count = $('<span>').addClass('owrx-rig-dx-count');
     var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
         .on('click', function () { setOpen(false); });
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
         .append($title).append($chips.band).append($chips.hf).append($chips.all)
-        .append($count).append($close);
+        .append($act).append($count).append($close);
 
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
@@ -85,10 +102,22 @@ Plugins.rig_skin.createDxWindow = function () {
         mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    // activity chart canvas: bars of spots-per-band with a trend sparkline
+    var actCanvas = document.createElement('canvas');
+    var actCtx = actCanvas.getContext('2d');
+    var AW, AH;
+    function sizeActCanvas(w, h) {
+        AW = w; AH = h;
+        actCanvas.width = AW * dpr;
+        actCanvas.height = AH * dpr;
+        actCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
     var $list = $('<table>').addClass('owrx-rig-dx-list');
-    var $lcd = $('<div>').addClass('owrx-rig-dx-lcd').append(canvas).append($list);
+    var $lcd = $('<div>').addClass('owrx-rig-dx-lcd')
+        .append(canvas).append(actCanvas).append($list);
     var $foot = $('<div>').addClass('owrx-rig-dx-foot')
-        .append($('<span>').text('click spot or pin to tune'))
+        .append($('<span>').text('scroll to zoom, drag to pan, click to tune'))
         .append($('<span>').addClass('owrx-rig-dx-src').text('HolyCluster'));
     var $grip = $('<div>').addClass('owrx-rig-dx-grip');
     var $win = $('<div>').attr('id', 'owrx-rig-dx')
@@ -112,6 +141,9 @@ Plugins.rig_skin.createDxWindow = function () {
         $win.css('width', winW + 'px');
         $list.css('max-height', listH + 'px');
         sizeCanvas(winW - 32);        // panel + lcd padding
+        // the activity chart fills the same box as the map + a slice of
+        // the list area, so the whole window becomes the chart
+        sizeActCanvas(winW - 32, MH + Math.min(listH, 220));
     }
     applySize();
 
@@ -369,8 +401,21 @@ Plugins.rig_skin.createDxWindow = function () {
 
     var pinBoxes = [];   // [x, y, spot] for click hit-testing
 
+    // map view transform: zoom (1 = whole world) and pan offset in
+    // canvas pixels. lonlat -> base equirectangular -> zoomed/panned.
+    var mapZoom = 1, mapPanX = 0, mapPanY = 0;
+
+    function clampPan() {
+        // keep the world filling the canvas, no empty margins
+        var minX = MW - MW * mapZoom, minY = MH - MH * mapZoom;
+        mapPanX = Math.min(0, Math.max(minX, mapPanX));
+        mapPanY = Math.min(0, Math.max(minY, mapPanY));
+    }
+
     function px(lat, lon) {
-        return [(lon + 180) / 360 * MW, (90 - lat) / 180 * MH];
+        var bx = (lon + 180) / 360 * MW;
+        var by = (90 - lat) / 180 * MH;
+        return [bx * mapZoom + mapPanX, by * mapZoom + mapPanY];
     }
 
     function greatCircle(a, b) {
@@ -393,10 +438,11 @@ Plugins.rig_skin.createDxWindow = function () {
 
     function renderMap(list) {
         pinBoxes = [];
-        mctx.fillStyle = '#06121c';
+        clampPan();
+        mctx.fillStyle = '#0a2436';
         mctx.fillRect(0, 0, MW, MH);
 
-        mctx.strokeStyle = 'rgba(90,168,255,0.10)';
+        mctx.strokeStyle = 'rgba(120,190,255,0.06)';
         mctx.lineWidth = 0.5;
         var lon, lat;
         for (lon = -150; lon < 180; lon += 30) {
@@ -413,18 +459,24 @@ Plugins.rig_skin.createDxWindow = function () {
         }
 
         if (Plugins.rig_skin._land) {
-            mctx.fillStyle = '#1b2b33';
-            mctx.strokeStyle = '#2e4a57';
-            mctx.lineWidth = 0.6;
+            mctx.fillStyle = '#2c4658';
             Plugins.rig_skin._land.forEach(function (poly) {
+                // a polygon segment that jumps more than half the map
+                // width is an antimeridian wrap: lift the pen so it does
+                // not draw a streak straight across the map. Fill only,
+                // no stroke (the stroke was what streaked).
                 mctx.beginPath();
-                poly.forEach(function (pt, i) {
+                var prevX = null;
+                poly.forEach(function (pt) {
                     var p = px(pt[1], pt[0]);
-                    i ? mctx.lineTo(p[0], p[1]) : mctx.moveTo(p[0], p[1]);
+                    if (prevX !== null && Math.abs(p[0] - prevX) > MW * mapZoom / 2) {
+                        mctx.moveTo(p[0], p[1]);
+                    } else {
+                        prevX === null ? mctx.moveTo(p[0], p[1]) : mctx.lineTo(p[0], p[1]);
+                    }
+                    prevX = p[0];
                 });
-                mctx.closePath();
                 mctx.fill();
-                mctx.stroke();
             });
         }
 
@@ -435,7 +487,7 @@ Plugins.rig_skin.createDxWindow = function () {
         var decl = -23.44 * Math.cos(2 * Math.PI / 365 * (doy + 10)) * Math.PI / 180;
         var utcH = now.getUTCHours() + now.getUTCMinutes() / 60;
         var sunLon = (12 - utcH) * 15;
-        mctx.fillStyle = 'rgba(0,0,10,0.42)';
+        mctx.fillStyle = 'rgba(0,0,12,0.30)';
         mctx.beginPath();
         var north = decl > 0;
         for (var x = 0; x <= MW; x += 4) {
@@ -506,16 +558,131 @@ Plugins.rig_skin.createDxWindow = function () {
         }
     }
 
-    $(canvas).on('click', function (e) {
+    // canvas coordinates from a pointer event
+    function canvasXY(e) {
         var r = canvas.getBoundingClientRect();
-        var cx = (e.clientX - r.left) * MW / r.width;
-        var cy = (e.clientY - r.top) * MH / r.height;
-        var best = null, bd = 8 * 8;
+        return [(e.clientX - r.left) * MW / r.width, (e.clientY - r.top) * MH / r.height];
+    }
+
+    // nearest spot pin to a canvas point, within a pixel radius
+    function pinAt(cx, cy) {
+        var best = null, bd = 9 * 9;
         pinBoxes.forEach(function (b) {
             var d = (b[0] - cx) * (b[0] - cx) + (b[1] - cy) * (b[1] - cy);
             if (d < bd) { bd = d; best = b[2]; }
         });
-        if (best) tuneSpot(best);
+        return best;
+    }
+
+    // floating callsign tooltip over the map
+    var $tip = $('<div>').addClass('owrx-rig-dx-tip').appendTo($lcd);
+    function showTip(spot, clientX, clientY) {
+        if (!spot) { $tip.removeClass('show'); return; }
+        var bd = bearingDist(spot.loc);
+        $tip.html(spot.call + (bd ? '<br>' + bd[0] + '&deg; ' + bd[1] : '') +
+            (spot.cont ? '<br>' + spot.cont : ''));
+        var lr = $lcd[0].getBoundingClientRect();
+        $tip.css({ left: (clientX - lr.left + 10) + 'px', top: (clientY - lr.top + 10) + 'px' })
+            .addClass('show');
+    }
+
+    // wheel zoom toward the cursor
+    $(canvas).on('wheel', function (e) {
+        e.preventDefault();
+        var oe = e.originalEvent;
+        var xy = canvasXY(oe);
+        // world pixel under the cursor before zoom
+        var wx = (xy[0] - mapPanX) / mapZoom, wy = (xy[1] - mapPanY) / mapZoom;
+        var factor = oe.deltaY < 0 ? 1.25 : 0.8;
+        mapZoom = Math.min(8, Math.max(1, mapZoom * factor));
+        // keep that world pixel under the cursor
+        mapPanX = xy[0] - wx * mapZoom;
+        mapPanY = xy[1] - wy * mapZoom;
+        clampPan();
+        render();
+    });
+
+    // drag to pan; suppress the click that follows a real drag
+    var dragging = false, dragStart = null, dragged = false;
+    $(canvas).on('mousedown', function (e) {
+        dragging = true; dragged = false;
+        dragStart = [e.clientX, e.clientY, mapPanX, mapPanY];
+    });
+    $(document).on('mousemove.dxmap', function (e) {
+        if (dragging) {
+            var scale = MW / canvas.getBoundingClientRect().width;
+            var nx = dragStart[2] + (e.clientX - dragStart[0]) * scale;
+            var ny = dragStart[3] + (e.clientY - dragStart[1]) * scale;
+            if (Math.abs(e.clientX - dragStart[0]) + Math.abs(e.clientY - dragStart[1]) > 3) dragged = true;
+            mapPanX = nx; mapPanY = ny;
+            clampPan();
+            render();
+            return;
+        }
+        // hover tooltip (only when the map view is showing)
+        if (!open || showActivity) return;
+        var xy = canvasXY(e);
+        var lr = canvas.getBoundingClientRect();
+        if (e.clientX < lr.left || e.clientX > lr.right || e.clientY < lr.top || e.clientY > lr.bottom) {
+            $tip.removeClass('show');
+            return;
+        }
+        var spot = pinAt(xy[0], xy[1]);
+        $(canvas).css('cursor', spot ? 'pointer' : (mapZoom > 1 ? 'grab' : 'crosshair'));
+        showTip(spot, e.clientX, e.clientY);
+    });
+    $(document).on('mouseup.dxmap', function () { dragging = false; });
+
+    $(canvas).on('click', function (e) {
+        if (dragged) return;    // a pan, not a click
+        var xy = canvasXY(e);
+        var spot = pinAt(xy[0], xy[1]);
+        if (spot) tuneSpot(spot);
+    });
+
+    // double-click resets the view to the whole world
+    $(canvas).on('dblclick', function (e) {
+        e.preventDefault();
+        mapZoom = 1; mapPanX = 0; mapPanY = 0;
+        render();
+    });
+
+    // touch: one finger pans, two fingers pinch-zoom
+    var touchStart = null;
+    function touchDist(t) {
+        var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    $(canvas).on('touchstart', function (e) {
+        var t = e.originalEvent.touches;
+        touchStart = { panX: mapPanX, panY: mapPanY, zoom: mapZoom,
+            x: t[0].clientX, y: t[0].clientY,
+            dist: t.length > 1 ? touchDist(t) : null,
+            cx: t.length > 1 ? (t[0].clientX + t[1].clientX) / 2 : t[0].clientX,
+            cy: t.length > 1 ? (t[0].clientY + t[1].clientY) / 2 : t[0].clientY };
+    });
+    $(canvas).on('touchmove', function (e) {
+        if (!touchStart) return;
+        e.preventDefault();
+        var t = e.originalEvent.touches;
+        var scale = MW / canvas.getBoundingClientRect().width;
+        if (t.length > 1 && touchStart.dist) {
+            var f = touchDist(t) / touchStart.dist;
+            var r = canvas.getBoundingClientRect();
+            var ax = (touchStart.cx - r.left) * scale, ay = (touchStart.cy - r.top) * scale;
+            var wx = (ax - touchStart.panX) / touchStart.zoom, wy = (ay - touchStart.panY) / touchStart.zoom;
+            mapZoom = Math.min(8, Math.max(1, touchStart.zoom * f));
+            mapPanX = ax - wx * mapZoom;
+            mapPanY = ay - wy * mapZoom;
+        } else {
+            mapPanX = touchStart.panX + (t[0].clientX - touchStart.x) * scale;
+            mapPanY = touchStart.panY + (t[0].clientY - touchStart.y) * scale;
+        }
+        clampPan();
+        render();
+    }, { passive: false });
+    $(canvas).on('touchend', function (e) {
+        if (e.originalEvent.touches.length === 0) touchStart = null;
     });
 
     function utc() {
@@ -524,12 +691,126 @@ Plugins.rig_skin.createDxWindow = function () {
         return z(d.getUTCHours()) + ':' + z(d.getUTCMinutes()) + 'z';
     }
 
+    // --- band activity chart ---
+
+    // ham band buckets by frequency (Hz). VHF/UHF folded into one each.
+    var ACT_BANDS = [
+        ['160', 1800000, 2000000], ['80', 3500000, 4000000],
+        ['60', 5250000, 5450000], ['40', 7000000, 7300000],
+        ['30', 10100000, 10150000], ['20', 14000000, 14350000],
+        ['17', 18068000, 18168000], ['15', 21000000, 21450000],
+        ['12', 24890000, 24990000], ['10', 28000000, 29700000],
+        ['6', 50000000, 54000000], ['V/U', 100000000, 470000000]
+    ];
+
+    function bandOf(freq) {
+        for (var i = 0; i < ACT_BANDS.length; i++) {
+            if (freq >= ACT_BANDS[i][1] && freq <= ACT_BANDS[i][2]) return i;
+        }
+        return -1;
+    }
+
+    function bandCounts() {
+        var counts = new Array(ACT_BANDS.length).fill(0);
+        Object.keys(spots).forEach(function (k) {
+            var i = bandOf(spots[k].freq);
+            if (i >= 0) counts[i]++;
+        });
+        return counts;
+    }
+
+    // trend history: total spots-per-band sampled every 30s, keep ~1h
+    var HIST_MAX = 120;
+    var hist = ACT_BANDS.map(function () { return []; });
+    function sampleActivity() {
+        var c = bandCounts();
+        for (var i = 0; i < ACT_BANDS.length; i++) {
+            hist[i].push(c[i]);
+            if (hist[i].length > HIST_MAX) hist[i].shift();
+        }
+    }
+    var actTimer = setInterval(sampleActivity, 30000);
+    sampleActivity();
+
+    function drawActivity() {
+        var ctx = actCtx, W = AW, H = AH;
+        ctx.clearRect(0, 0, W, H);
+        var counts = bandCounts();
+        var rows = ACT_BANDS.length;
+        var rowH = H / rows;
+        var labelW = 34, sparkW = 46;
+        var barX = labelW, barMax = W - labelW - sparkW - 6;
+        var maxCount = Math.max(4, Math.max.apply(null, counts));
+        var curBand = currentBand();
+        var curName = curBand && curBand.name ? curBand.name.replace('m', '') : null;
+
+        ctx.font = '9px roboto-mono, monospace';
+        ctx.textBaseline = 'middle';
+        for (var i = 0; i < rows; i++) {
+            var y = i * rowH, cy = y + rowH / 2;
+            var name = ACT_BANDS[i][0];
+            var isCur = curName !== null && name === curName;
+
+            // band label
+            ctx.textAlign = 'left';
+            ctx.fillStyle = isCur ? '#3adb4a' : '#cfd4d9';
+            ctx.fillText(name + (name.length < 3 ? 'm' : ''), 2, cy);
+
+            // bar
+            var w = counts[i] / maxCount * barMax;
+            ctx.fillStyle = isCur ? '#3adb4a' : '#1d5fae';
+            ctx.fillRect(barX, y + rowH * 0.18, w, rowH * 0.64);
+            // count
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#e8ecef';
+            if (counts[i] > 0) ctx.fillText(String(counts[i]), barX + w + 4, cy);
+
+            // sparkline of this band's recent trend
+            var h = hist[i];
+            if (h.length > 1) {
+                var sx = W - sparkW, sh = rowH * 0.6, sy = y + rowH * 0.2;
+                var smax = Math.max(1, Math.max.apply(null, h));
+                ctx.strokeStyle = 'rgba(90,168,255,0.7)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (var j = 0; j < h.length; j++) {
+                    var px = sx + j / (HIST_MAX - 1) * sparkW;
+                    var py = sy + sh - (h[j] / smax) * sh;
+                    j ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+                }
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        }
+    }
+
+    // click a band row: filter the list to that band and leave activity view
+    $(actCanvas).on('click', function (e) {
+        var r = actCanvas.getBoundingClientRect();
+        var i = Math.floor((e.clientY - r.top) / r.height * ACT_BANDS.length);
+        if (i < 0 || i >= ACT_BANDS.length) return;
+        // jump the receiver to the middle of that band so BAND filter follows
+        var mid = Math.round((ACT_BANDS[i][1] + ACT_BANDS[i][2]) / 2);
+        if (ACT_BANDS[i][0] !== 'V/U') Plugins.rig_skin.tuneTo(mid);
+        filterSetting('band');
+        setActivity(false);
+        syncChips();
+        setTimeout(render, 300);
+        render();
+    });
+
     function render() {
         if (!open) return;
         var list = filtered();
         $count.text(list.length + ' spots  ' + utc());
-        renderList(list);
-        renderMap(list);
+        if (showActivity) {
+            drawActivity();
+        } else {
+            renderList(list);
+            renderMap(list);
+        }
     }
 
     // --- data sources ---
@@ -1036,15 +1317,16 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
     }
 
     updateBeacons();
-    setInterval(function () {
-        if ($prop.hasClass('visible')) updateBeacons();
-    }, 1000);
 
     var views = [
         { key: 'bands', label: 'BAND CONDITIONS - est. from NOAA SWPC', content: $bands, refresh: refreshBands },
         { key: 'beacons', label: 'NCDXF/IARU BEACONS - click to listen', content: $beacons, refresh: updateBeacons },
         { key: 'muf', label: 'MUF MAP - prop.kc2g.com', url: 'https://prop.kc2g.com/renders/current/mufd-normal-now.svg' }
     ];
+
+    setInterval(function () {
+        if ($prop.hasClass('visible')) updateBeacons();
+    }, 1000);
 
     var $prop = $('<div>').attr('id', 'owrx-rig-prop');
 
@@ -1058,11 +1340,24 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
             $content = $('<img>').attr('alt', v.label);
             imgs.push($content);
         }
+        // caption bar: a clear prev/next pager on the left (so it is
+        // obvious the screen has multiple views), the label with a page
+        // counter, and HIDE on the right
+        var $prev = $('<span>').addClass('owrx-rig-prop-nav').text('‹')
+            .attr('title', 'Previous view');
+        var $next = $('<span>').addClass('owrx-rig-prop-nav').text('›')
+            .attr('title', 'Next view');
+        var $label = $('<span>').addClass('owrx-rig-prop-label')
+            .text((i + 1) + '/' + views.length + '  ' + v.label);
         var $cap = $('<div>').addClass('owrx-rig-prop-cap')
-            .append($('<span>').addClass('owrx-rig-prop-label').text(v.label))
+            .append($prev).append($label).append($next)
             .append($('<span>').addClass('owrx-rig-prop-hide').text('HIDE'));
-        $cap.find('.owrx-rig-prop-label').on('click', function () {
+        // clicking the label or the next arrow advances; prev goes back
+        $label.add($next).on('click', function () {
             setView((viewIdx + 1) % views.length);
+        });
+        $prev.on('click', function () {
+            setView((viewIdx - 1 + views.length) % views.length);
         });
         $cap.find('.owrx-rig-prop-hide').on('click', function () {
             setOpen(false);

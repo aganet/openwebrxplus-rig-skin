@@ -620,18 +620,45 @@ body.theme-rig .rig-wide #owrx-rig-prop.visible .owrx-rig-prop-view {
 
 .owrx-rig-prop-cap {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
     font-family: 'roboto-mono', monospace;
-    font-size: 7pt;
+    font-size: 8pt;
     color: #5db8ff;
-    padding: 2px 2px 0 2px;
+    padding: 3px 2px 1px 2px;
 }
 
 .owrx-rig-prop-label {
     cursor: pointer;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* prev/next arrows: clearly tappable little buttons so it is obvious the
+   screen has several views */
+.owrx-rig-prop-nav {
+    flex: 0 0 auto;
+    cursor: pointer;
+    color: #cfd4d9;
+    background: #10161b;
+    box-shadow: 0 0 0 1px #1d242b;
+    border-radius: 3px;
+    padding: 0 6px;
+    font-size: 11pt;
+    line-height: 15px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.owrx-rig-prop-nav:hover {
+    color: #ffffff;
+    background: #1d5fae;
 }
 
 .owrx-rig-prop-hide {
+    flex: 0 0 auto;
     color: #5c6670;
     cursor: pointer;
 }
@@ -989,10 +1016,32 @@ body.theme-rig #owrx-rig-sats.visible {
 }
 
 .owrx-rig-dx-lcd {
+    position: relative;
     background: linear-gradient(180deg, #04070a 0%, #0a0f13 70%, #0d1216 100%);
     border-radius: 5px;
     padding: 8px;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9), inset 0 0 2px #000000;
+}
+
+/* callsign tooltip floating over the map on hover */
+.owrx-rig-dx-tip {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    z-index: 5;
+    padding: 3px 6px;
+    background: rgba(4, 10, 16, 0.92);
+    box-shadow: 0 0 0 1px #2e4a57, 0 2px 6px rgba(0, 0, 0, 0.6);
+    border-radius: 3px;
+    color: #f2f5f7;
+    font-family: 'roboto-mono', monospace;
+    font-size: 8pt;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+.owrx-rig-dx-tip.show {
+    display: block;
 }
 
 #owrx-rig-dx canvas {
@@ -1000,6 +1049,25 @@ body.theme-rig #owrx-rig-sats.visible {
     width: 100%;
     border-radius: 3px;
     cursor: pointer;
+}
+
+/* the activity chart canvas is the second canvas; hidden by default,
+   swaps places with the map + list when ACT is on. Scoped under the id
+   to beat the base "#owrx-rig-dx canvas { display:block }" rule. */
+#owrx-rig-dx .owrx-rig-dx-lcd > canvas + canvas {
+    display: none;
+}
+
+#owrx-rig-dx .owrx-rig-dx-lcd.activity > canvas:first-child {
+    display: none;
+}
+
+#owrx-rig-dx .owrx-rig-dx-lcd.activity .owrx-rig-dx-list {
+    display: none;
+}
+
+#owrx-rig-dx .owrx-rig-dx-lcd.activity > canvas + canvas {
+    display: block;
 }
 
 .owrx-rig-dx-list {
