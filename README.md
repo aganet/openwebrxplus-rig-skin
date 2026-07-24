@@ -123,34 +123,47 @@ levels on the server.
 
 ## Install
 
+### Download the zip (simplest)
+
+Grab the latest `openwebrxplus-rig-skin-x.y.z.zip` from the
+[releases page](https://github.com/aganet/openwebrxplus-rig-skin/releases),
+unzip the `rig_skin/` folder into your plugins tree, and load it by name.
+From the folder that holds your `docker-compose.yml` (swap in the current
+version number):
+
+```sh
+V=0.8.2
+curl -L -o rig-skin.zip \
+  "https://github.com/aganet/openwebrxplus-rig-skin/releases/download/v${V}/openwebrxplus-rig-skin-${V}.zip"
+unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
+rm rig-skin.zip
+grep -q "Plugins.load('rig_skin')" plugins/receiver/init.js 2>/dev/null \
+  || echo "Plugins.load('rig_skin');" >> plugins/receiver/init.js
+```
+
+On a Debian package install the plugins folder is
+`/usr/lib/python3/dist-packages/htdocs/plugins/receiver/`; unzip there
+instead. The zip carries three files (`rig_skin.js`, `rig_skin.css`,
+`rig_skin_map.js`); keep them together.
+
+### Update to a newer version
+
+Same as above: download the newer zip and unzip it over the existing
+folder. `unzip -o` overwrites the old files. Then hard-refresh the browser
+(Ctrl+Shift+R). No container restart needed when the folder is
+bind-mounted.
+
 ### Remote (no files on the server)
 
-One line in your `plugins/receiver/init.js`:
+One line in your `plugins/receiver/init.js`, always serves the latest:
 
 ```js
 Plugins.load('https://aganet.github.io/openwebrxplus-rig-skin/receiver/rig_skin/rig_skin.js');
 ```
 
-### Local
+### From the repo
 
-Copy `receiver/rig_skin/` into the OpenWebRX+ plugins folder and load it by
-name:
-
-```sh
-cp -r receiver/rig_skin /path/to/htdocs/plugins/receiver/
-echo "Plugins.load('rig_skin');" >> /path/to/htdocs/plugins/receiver/init.js
-```
-
-On a Debian package install the plugins folder is
-`/usr/lib/python3/dist-packages/htdocs/plugins/receiver/`.
-
-### Docker
-
-Keep the plugins next to your `docker-compose.yml` and bind-mount them into
-the container.
-
-Step 1: go to the folder that holds your `docker-compose.yml` and create
-the plugins tree with the plugin in it:
+If you prefer git, from the folder that holds your `docker-compose.yml`:
 
 ```sh
 cd /path/to/your/compose/folder
@@ -161,7 +174,10 @@ echo "Plugins.load('rig_skin');" >> plugins/receiver/init.js
 rm -rf openwebrxplus-rig-skin
 ```
 
-You end up with this layout:
+### Docker mounting
+
+However you got the files there, you end up with this layout next to
+your `docker-compose.yml`:
 
 ```text
 docker-compose.yml
@@ -171,10 +187,11 @@ plugins/
     rig_skin/
       rig_skin.js
       rig_skin.css
+      rig_skin_map.js
 ```
 
-Step 2: mount it into the openwebrx service in `docker-compose.yml`.
-Relative paths work in compose. Two options:
+Mount it into the openwebrx service in `docker-compose.yml`. Relative
+paths work in compose. Two options:
 
 Option A, mount the whole plugins folder. Simple, and the layout the
 official docs use. It hides the plugins bundled inside the image (`utils`,
@@ -219,6 +236,28 @@ arguments.
 Tip: if an edit to `plugins/receiver/init.js` does not show up, restart the
 container. Some editors replace the file on save, which breaks a
 single-file bind mount until a restart.
+
+## Check the version
+
+Each release bumps a version number inside the plugin. To see which one
+is actually running, open the receiver, press F12 for the browser
+console and type:
+
+```js
+Plugins.rig_skin._version
+```
+
+It is a plain number, so 0.8.2 reads as `0.82`. If it shows an older
+number than you installed, the browser is serving a cached copy;
+hard-refresh with Ctrl+Shift+R.
+
+To check what the server hands out, independent of the browser cache:
+
+```sh
+curl -s https://YOUR-RECEIVER/plugins/receiver/rig_skin/rig_skin.js | grep _version
+```
+
+or, on the server itself, `grep _version plugins/receiver/rig_skin/rig_skin.js`.
 
 ## Credits
 
