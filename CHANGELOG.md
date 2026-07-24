@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.4 (2026-07-24)
+
+- Wide layout fix: the second VFO (B) readout sat over the audio scope.
+  It now sits under the S-meter, in the empty left-column space.
+
 ## 0.9.3 (2026-07-24)
 
 - VFO A/B and Dual Watch. A/B (middle key column) swaps between two

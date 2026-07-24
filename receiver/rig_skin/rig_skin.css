@@ -257,6 +257,15 @@ body.theme-rig .rig-wide #owrx-rig-extra {
     white-space: pre;
 }
 
+/* in wide mode the B readout moves under the S-meter (into .frequencies)
+   so it no longer hangs left over the scope column; flow it normally,
+   left aligned, instead of the narrow-mode absolute right:100% anchor */
+body.theme-rig .rig-wide .frequencies > .owrx-rig-info-vfob {
+    position: static;
+    margin: 6px 0 0 0;
+    justify-content: flex-start;
+}
+
 /* expand chevron, top left of the panel; large screens only */
 #owrx-rig-expand {
     display: none;

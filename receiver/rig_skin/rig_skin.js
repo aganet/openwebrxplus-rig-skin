@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.3';
+Plugins.rig_skin._version = '0.9.4';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -981,6 +981,14 @@ Plugins.rig_skin.createVfoKeys = function () {
     var $bFreq = $('<span>').addClass('owrx-rig-vfob-freq');
     $vfoLine.append($bDot).append($bFreq);
     $('#owrx-rig-info').append($vfoLine);
+    // exposed so the wide-layout toggle can move it below the S-meter
+    // (in narrow it lives by the mode badge; in wide it would otherwise
+    // overlap the right-hand scope column)
+    Plugins.rig_skin._vfoLine = $vfoLine;
+    // place it correctly for the current layout now that it exists
+    if (Plugins.rig_skin._applyWide) {
+        Plugins.rig_skin._applyWide($('#openwebrx-panel-receiver').hasClass('rig-wide'));
+    }
 
     function saveB() {
         if (typeof LS !== 'undefined') {
@@ -1641,6 +1649,15 @@ Plugins.rig_skin.createExpandToggle = function () {
         $panel.toggleClass('rig-wide', wide);
         // the panel grows to the left, so left chevrons mean expand
         $btn.text(wide ? '❯❯' : '❮❮');
+        // the B (other VFO) readout hangs to the left of the mode badge
+        // in narrow mode, which would land on the right-hand scopes when
+        // wide; move it under the meter (into .frequencies) for wide,
+        // back beside the mode badge for narrow
+        var $vfo = Plugins.rig_skin._vfoLine;
+        if ($vfo && $vfo.length) {
+            if (wide) $vfo.appendTo($panel.find('.frequencies'));
+            else $vfo.appendTo($panel.find('#owrx-rig-info'));
+        }
         if (typeof LS !== 'undefined') LS.save('rig_wide', wide);
     }
 
@@ -1648,6 +1665,9 @@ Plugins.rig_skin.createExpandToggle = function () {
         apply(!$panel.hasClass('rig-wide'));
     });
     $panel.append($btn);
+
+    // exposed so createVfoKeys can re-apply once the B readout exists
+    Plugins.rig_skin._applyWide = apply;
 
     apply((typeof LS !== 'undefined' && LS.has('rig_wide'))
         ? LS.loadBool('rig_wide') : false);
