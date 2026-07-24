@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.2 (2026-07-24)
+
+- AUTO tune now lands SSB on the carrier frequency, the on-air number
+  you tune, quote and see in the DX cluster, instead of parking the
+  dial on the signal peak and leaving the audio at the edge of the
+  filter. AM, FM and CW are unchanged.
+
 ## 0.8.1 (2026-07-23)
 
 - MW now mirrors the stock bookmark button both ways: left-click adds a

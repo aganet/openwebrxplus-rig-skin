@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = 0.81;
+Plugins.rig_skin._version = 0.82;
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -1996,6 +1996,23 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         }
         var bin = den > 0 ? num / den : best;
         var f = center_freq + (bin - data.length / 2) * hzPerBin;
+
+        // f is where the signal energy sits. Turn that into the dial
+        // frequency a real rig would show, so AUTO lands on the on-air
+        // number a ham would tune, quote and spot (e.g. 7.125).
+        //   AM/FM: carrier is at the dial, no change.
+        //   SSB: the audio fills the passband to one side of a suppressed
+        //     carrier, so the measured energy centroid sits about a
+        //     passband-midpoint away from the carrier. Subtract that
+        //     midpoint to land the dial on the carrier, with the voice
+        //     falling naturally into the filter.
+        //   CW: left alone; UI.setFrequency applies the pitch offset
+        //     internally, so the raw signal frequency is what it wants.
+        var mode = (UI.getModulation() || '').toLowerCase();
+        if (mode !== 'cw' && demod &&
+            typeof demod.low_cut === 'number' && typeof demod.high_cut === 'number') {
+            f -= (demod.low_cut + demod.high_cut) / 2;
+        }
         UI.setFrequency(Math.round(f / 10) * 10, false);
     });
 
