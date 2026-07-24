@@ -142,7 +142,7 @@ From the folder that holds your `docker-compose.yml` (swap in the current
 version number):
 
 ```sh
-V=0.9.1
+V=0.9
 curl -fL -o rig-skin.zip \
   "https://github.com/aganet/openwebrxplus-rig-skin/releases/download/v${V}/openwebrxplus-rig-skin-${V}.zip"
 unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
@@ -257,7 +257,7 @@ console and type:
 Plugins.rig_skin._version
 ```
 
-It prints the version string, e.g. `"0.9.1"`. If it shows an older
+It prints the version string, e.g. `"0.9"`. If it shows an older
 version than you installed, the browser is serving a cached copy;
 hard-refresh with Ctrl+Shift+R.
 

@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.2';
+Plugins.rig_skin._version = '0.9';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
