@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 (2026-07-24)
+
+- Quieted the browser console: the scopes no longer trigger the Canvas2D
+  getImageData readback warnings. The audio waveform now scrolls without
+  a pixel readback at all, which also removes a redraw glitch.
+- Version is now a proper semver string (0.9.1).
+
 ## 0.9 (2026-07-24)
 
 - DX map is now interactive: scroll to zoom toward the cursor, drag to
