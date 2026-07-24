@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.7 (2026-07-24)
+
+- Fix: the plugin no longer disturbs the other themes. The two-VFO
+  readout moved some of the stock frequency elements into its own layout
+  when it loaded and never put them back, so switching to the default (or
+  any non-Rig) theme left the frequency area broken. The rig layout is now
+  applied only while the Rig theme is active and fully restored when you
+  switch away, so the stock themes look exactly as they should.
+
 ## 0.9.6 (2026-07-24)
 
 - RIT (clarifier): a new RIT key under AUTO. With it on, the left/right

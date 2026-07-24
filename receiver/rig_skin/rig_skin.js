@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.6';
+Plugins.rig_skin._version = '0.9.7';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -1015,19 +1015,45 @@ Plugins.rig_skin.createVfoKeys = function () {
     var $vfoLine = $('<div>').addClass('owrx-rig-vfo-strip')
         .append(boxA.$box).append(boxB.$box);
 
-    // A/B boxes lead the LCD; below them the mode/FIL/TS line and the
-    // hover-frequency readout, then the S-meter and scopes
     var $freqs = $panel.find('.frequencies');
-    $freqs.prepend($vfoLine);
     var $info = $('#owrx-rig-info');
-    if ($info.length) {
-        $info.append($panel.find('.webrx-mouse-freq'));
-        $vfoLine.after($info);
-    }
-
     // the stock frequency display stays alive (its digits hidden by CSS)
     // and rides inside the active box to provide click-to-type entry
     var $stockFreq = $panel.find('.webrx-actual-freq');
+    var $mouseFreq = $panel.find('.webrx-mouse-freq');
+
+    // Remember where the stock elements live so the rig layout can be
+    // fully undone when another theme is selected: moving stock DOM without
+    // reverting it would leave the default theme's frequency area broken.
+    function anchor($el) {
+        var el = $el[0];
+        if (!el) return null;
+        return { el: el, parent: el.parentNode, next: el.nextSibling };
+    }
+    function restore(a) {
+        if (a && a.parent) a.parent.insertBefore(a.el, a.next);
+    }
+    var stockFreqHome = anchor($stockFreq);
+    var mouseFreqHome = anchor($mouseFreq);
+    var infoHome = anchor($info);
+
+    // A/B boxes lead the LCD; below them the mode/FIL/TS line and the
+    // hover-frequency readout, then the S-meter and scopes. Applied only
+    // while the rig theme is active, and reverted otherwise.
+    function applyLayout() {
+        $freqs.prepend($vfoLine);
+        if ($info.length) {
+            $info.append($mouseFreq);
+            $vfoLine.after($info);
+        }
+        redraw();
+    }
+    function revertLayout() {
+        $vfoLine.detach();
+        restore(mouseFreqHome);
+        restore(infoHome);
+        restore(stockFreqHome);
+    }
 
     function showFreq(box, hz) {
         box.$freq.text(hz ? (hz / 1000000).toFixed(4) : '-.----');
@@ -1053,12 +1079,19 @@ Plugins.rig_skin.createVfoKeys = function () {
         return (dwOn && onOther) ? other(active) : active;
     }
 
+    function rigActive() {
+        return $('body').hasClass('theme-rig');
+    }
+
     function redraw() {
         if (typeof UI !== 'undefined') {
             var s = slot(rxVfo());
             s.freq = UI.getFrequency();
             s.mod = UI.getModulation();
         }
+        // only touch the DOM while the rig theme is active; otherwise the
+        // stock frequency elements must stay in their own layout
+        if (!rigActive()) return;
         var rx = rxVfo();
         [['A', boxA], ['B', boxB]].forEach(function (e) {
             var id = e[0], box = e[1];
@@ -1286,8 +1319,24 @@ Plugins.rig_skin.createVfoKeys = function () {
         slot(active).mod = UI.getModulation();
         save();
     }
-    redraw();
+
+    // apply the rig layout only when the rig theme is (or becomes) active,
+    // and revert it when another theme is selected, so the stock themes are
+    // left exactly as they were
+    if (rigActive()) applyLayout();
+    if (typeof UI !== 'undefined' && typeof UI.setTheme === 'function') {
+        var origSetTheme = UI.setTheme.bind(UI);
+        UI.setTheme = function (theme) {
+            var wasRig = rigActive();
+            origSetTheme(theme);
+            var isRig = rigActive();
+            if (isRig && !wasRig) applyLayout();
+            else if (!isRig && wasRig) revertLayout();
+        };
+    }
+
     setInterval(function () {
+        if (!rigActive()) return;
         redraw();
         save();
     }, 1000);
