@@ -181,6 +181,49 @@ body.theme-rig #owrx-rig-info {
     font-weight: bold;
 }
 
+/* the inactive VFO readout, left of the mode block; green while dual
+   watch is parked on it */
+.owrx-rig-info-vfob {
+    position: absolute;
+    right: 100%;
+    top: 4px;
+    margin-right: 10px;
+    white-space: nowrap;
+    color: var(--rig-lcd-dim);
+    font-size: 9pt;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* B activity dot: hidden until B is in the capture window, then dim
+   (quiet) or green (signal above squelch) */
+.owrx-rig-vfob-dot {
+    display: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 5px;
+    background: #2b343c;
+    box-shadow: inset 0 0 0 1px #10151a;
+}
+
+.owrx-rig-vfob-dot.shown {
+    display: inline-block;
+}
+
+.owrx-rig-vfob-dot.lit {
+    background: #3adb4a;
+    box-shadow: 0 0 5px rgba(60, 220, 80, 0.8);
+}
+
+/* dual watch parked on B turns the whole line green */
+.owrx-rig-info-vfob.active {
+    color: #3adb4a;
+    text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
+}
+
 .owrx-rig-info-filter,
 .owrx-rig-info-step {
     color: var(--rig-lcd-dim);
@@ -494,6 +537,11 @@ body.theme-rig #owrx-rig-knob-line {
 
 /* running SCAN blinks fast */
 .owrx-rig-key-scan.highlighted .owrx-rig-key-led {
+    animation: owrx-rig-led-blink 0.5s step-end infinite;
+}
+
+/* dual watch parked on the other VFO blinks fast */
+.owrx-rig-key-dw.dw-active .owrx-rig-key-led {
     animation: owrx-rig-led-blink 0.5s step-end infinite;
 }
 

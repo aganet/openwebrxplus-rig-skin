@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.2';
+Plugins.rig_skin._version = '0.9.3';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -15,6 +15,7 @@ Plugins.rig_skin._base = (function () {
     var src = (document.currentScript && document.currentScript.src) || '';
     return src.replace(/[^\/]*$/, '');
 })();
+
 
 Plugins.rig_skin.init = function () {
     // Register the theme in the selector
@@ -953,8 +954,229 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createSideKeys($line);
     Plugins.rig_skin.createKnob($line);
     Plugins.rig_skin.createScanKeys($line);
+    Plugins.rig_skin.createVfoKeys();
     Plugins.rig_skin.createPropScreen($line);
     Plugins.rig_skin.createSatScreen();
+};
+
+// VFO A/B and dual watch. A/B swaps between two frequency+mode slots
+// (right-click copies the current VFO into the other). DW watches the
+// other VFO in the waterfall FFT and switches the audio there while it
+// is active, then returns; the squelch level is the activity threshold.
+// The other VFO must lie inside the current capture window for watching.
+Plugins.rig_skin.createVfoKeys = function () {
+    var makeKey = Plugins.rig_skin.makeKey;
+    var pulse = Plugins.rig_skin.pulseKey;
+
+    var vfoB = null, activeLabel = 'A';
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_vfo_b')) vfoB = JSON.parse(LS.loadStr('rig_vfo_b'));
+        if (typeof LS !== 'undefined' && LS.has('rig_vfo_label')) activeLabel = LS.loadStr('rig_vfo_label');
+    } catch (e) {}
+
+    var $vfoLine = $('<div>').addClass('owrx-rig-info-vfob');
+    // the B frequency line, with a small activity dot: lit when the B
+    // frequency has signal above the squelch, dim when quiet
+    var $bDot = $('<span>').addClass('owrx-rig-vfob-dot');
+    var $bFreq = $('<span>').addClass('owrx-rig-vfob-freq');
+    $vfoLine.append($bDot).append($bFreq);
+    $('#owrx-rig-info').append($vfoLine);
+
+    function saveB() {
+        if (typeof LS !== 'undefined') {
+            LS.save('rig_vfo_b', JSON.stringify(vfoB));
+            LS.save('rig_vfo_label', activeLabel);
+        }
+    }
+
+    function otherLabel() {
+        return activeLabel === 'A' ? 'B' : 'A';
+    }
+
+    // is the B frequency active? signal above the squelch, measured from
+    // the waterfall FFT. null when B has no data (out of the window).
+    function bActive() {
+        var thr = threshold();
+        var lv = watchLevel(vfoB.freq);
+        if (lv === null || !bInWindow() || thr === null) return null;
+        return lv >= thr;
+    }
+
+    function updateVfoLine(active) {
+        if (!vfoB || !vfoB.freq) {
+            $bFreq.text('');
+            $bDot.removeClass('lit');
+            return;
+        }
+        $bFreq.text(otherLabel() + ' ' + (vfoB.freq / 1000000).toFixed(4) +
+            (vfoB.mod ? ' ' + vfoB.mod.toUpperCase() : ''));
+        // dot lit when B has signal; dim otherwise (blank when no squelch)
+        var a = bActive();
+        $bDot.toggleClass('lit', a === true).toggleClass('shown', a !== null);
+        // when DW is parked on B, the whole line goes green (overrides)
+        $vfoLine.toggleClass('active', !!active);
+    }
+
+    var $ab = makeKey('A/B', 'Swap VFO A and B (right-click: copy to the other VFO)');
+    var $dw = makeKey('DW', 'Dual watch: jump to the other VFO while it has activity')
+        .addClass('owrx-rig-key-dw');
+
+    function currentVfo() {
+        return { freq: UI.getFrequency(), mod: UI.getModulation() };
+    }
+
+    $ab.on('click', function () {
+        if (typeof UI === 'undefined') return;
+        setDw(false);
+        var cur = currentVfo();
+        if (vfoB && vfoB.freq) {
+            var tgt = vfoB;
+            vfoB = cur;
+            activeLabel = otherLabel();
+            Plugins.rig_skin.tuneTo(tgt.freq, tgt.mod);
+        } else {
+            // nothing stored yet: initialize the other VFO with the
+            // current settings
+            vfoB = cur;
+        }
+        saveB();
+        updateVfoLine();
+        pulse($ab);
+    });
+
+    $ab.on('contextmenu', function (e) {
+        e.preventDefault();
+        if (typeof UI === 'undefined') return;
+        vfoB = currentVfo();
+        saveB();
+        updateVfoLine();
+        pulse($ab);
+    });
+
+    // dual watch machinery
+    var dwOn = false, onB = false, returnTo = null, expected = null;
+    var hot = 0, quiet = 0, timer = null;
+
+    function bInWindow() {
+        return vfoB && vfoB.freq && typeof center_freq !== 'undefined' &&
+            Math.abs(vfoB.freq - center_freq) < bandwidth / 2 - 5000;
+    }
+
+    function watchLevel(freq) {
+        var data = Plugins.rig_skin._lastFft;
+        if (!data || typeof center_freq === 'undefined') return null;
+        var hzPerBin = bandwidth / data.length;
+        var c = (freq - center_freq) / hzPerBin + data.length / 2;
+        var b0 = Math.max(0, Math.floor(c - 1500 / hzPerBin));
+        var b1 = Math.min(data.length - 1, Math.ceil(c + 1500 / hzPerBin));
+        if (b1 < b0) return null;
+        var v = -1000;
+        for (var b = b0; b <= b1; b++) {
+            if (data[b] > v) v = data[b];
+        }
+        return v;
+    }
+
+    function threshold() {
+        var $s = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+        if (!$s.length) return null;
+        var val = Number($s.val());
+        if (val <= Number($s.attr('min'))) return null;
+        // same FFT-to-smeter correction the stock squelch scan uses
+        return val - 13;
+    }
+
+    function goTo(vfo) {
+        if (vfo.mod) UI.setModulation(vfo.mod);
+        UI.setFrequency(vfo.freq, false);
+        expected = UI.getFrequency();
+    }
+
+    function tick() {
+        if (!dwOn || typeof UI === 'undefined') return;
+
+        if (expected !== null && Math.abs(UI.getFrequency() - expected) > 1) {
+            if (onB) {
+                // manual retune while parked on B: the user took over,
+                // stay there and drop dual watch
+                onB = false;
+                setDw(false);
+                return;
+            }
+            // retuning VFO A just moves the return point
+            expected = UI.getFrequency();
+        }
+
+        var thr = threshold();
+        if (thr === null || !bInWindow()) return;
+
+        var lv = watchLevel(vfoB.freq);
+        if (!onB) {
+            if (lv !== null && lv >= thr) hot++; else hot = 0;
+            if (hot >= 2) {
+                // B came alive: jump there
+                returnTo = currentVfo();
+                onB = true;
+                quiet = 0;
+                goTo(vfoB);
+                $dw.addClass('dw-active');
+                updateVfoLine(true);
+            }
+        } else {
+            if (lv === null || lv < thr) quiet++; else quiet = 0;
+            if (quiet >= 6) {
+                // B went quiet: back to where we were
+                onB = false;
+                hot = 0;
+                goTo(returnTo);
+                $dw.removeClass('dw-active');
+                updateVfoLine(false);
+            }
+        }
+    }
+
+    function setDw(on) {
+        if (on) {
+            if (!bInWindow()) {
+                pulse($dw);
+                return;
+            }
+            // dual watch needs an engaged squelch as its threshold
+            if (threshold() === null) {
+                $('#openwebrx-panel-receiver .openwebrx-squelch-auto').trigger('click');
+            }
+            dwOn = true;
+            onB = false;
+            hot = 0;
+            expected = UI.getFrequency();
+            $dw.addClass('highlighted');
+            if (!timer) timer = setInterval(tick, 500);
+        } else {
+            dwOn = false;
+            if (onB && returnTo) goTo(returnTo);
+            onB = false;
+            $dw.removeClass('highlighted dw-active');
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+        updateVfoLine(onB);
+    }
+
+    $dw.on('click', function () {
+        setDw(!dwOn);
+    });
+
+    // A/B and DW lead the middle column, as a VFO pair
+    $('#owrx-rig-keys-right').prepend($dw).prepend($ab);
+    updateVfoLine();
+
+    // keep the B signal reading live while B is set (the DW tick already
+    // refreshes when armed; this covers the idle case)
+    setInterval(function () {
+        if (!dwOn && vfoB && vfoB.freq) updateVfoLine(false);
+    }, 1000);
 };
 
 // Tune the VFO to any frequency; if it lies outside the current capture
@@ -2344,13 +2566,17 @@ Plugins.rig_skin.createScanKeys = function ($line) {
         $mute.toggleClass('highlighted', UI.volumeMuted >= 0);
     }
 
-    // MUTE sits top left; LOCK leads the first right column and SCAN
-    // moves to the third column
+    // Keys grouped by function. Left column is audio/RX: MUTE, NR, TS,
+    // SQL, then the zoom pair (NR and TS were placed by createSideKeys;
+    // MUTE goes on top, SQL just above the zoom pair). Middle column is
+    // VFO + memory: A/B and DW (added by createVfoKeys), then LOCK and
+    // MW. Right column is scan/screens.
     $('#owrx-rig-keys-left').prepend($mute);
+    $('#owrx-rig-keys-left .owrx-rig-zoom-row').before($sql);
 
     $line.append(
         $('<div>').attr('id', 'owrx-rig-keys-right')
-            .append(Plugins.rig_skin._lockKey).append($sql).append($mw)
+            .append(Plugins.rig_skin._lockKey).append($mw)
             .append(Plugins.rig_skin.makePageRow())
     ).append(
         $('<div>').attr('id', 'owrx-rig-keys-right2')
@@ -2369,8 +2595,8 @@ Plugins.rig_skin.createMeter = function ($freq) {
     if (typeof setSmeterRelativeValue !== 'function' || !$freq.length) return;
 
     var W = 340, H = 34;
-    var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
+    var canvas = document.createElement('canvas');
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     $freq.append($('<div>').attr('id', 'owrx-rig-meter').append(canvas));
@@ -2382,8 +2608,9 @@ Plugins.rig_skin.createMeter = function ($freq) {
     var SEG = 34, SEGW = 8, GAP = 2;     // segment geometry, SEG*(SEGW+GAP) == W
     var BAR_Y = 18, BAR_H = 12;
 
+    // modern-rig meter colors: blue segments up to S9, red beyond
     function segColor(t) {
-        return t > S9 ? '#ff4a33' : '#e8ecef';
+        return t > S9 ? '#ff4130' : '#2ea3ff';
     }
 
     function drawScale() {
@@ -2397,33 +2624,44 @@ Plugins.rig_skin.createMeter = function ($freq) {
         var marks = [];
         for (var s = 1; s <= 9; s += 2) marks.push({ t: s / 9 * S9, label: '' + s });
         [20, 40, 60].forEach(function (db, i) {
-            marks.push({ t: S9 + (i + 1) / 3 * (1 - S9), label: '' + db });
+            marks.push({ t: S9 + (i + 1) / 3 * (1 - S9), label: '+' + db });
         });
 
         marks.forEach(function (m) {
             var x = Math.min(m.t * W, W - 1);
-            ctx.fillStyle = segColor(m.t);
+            ctx.fillStyle = m.t > S9 ? '#ff4130' : '#aab4bd';
             ctx.textAlign = x > W - 12 ? 'right' : 'center';
             ctx.fillText(m.label, x, 1);
             ctx.fillRect(x - 0.5, 14, 1, 3);
         });
     }
 
+    // one segmented bar with grey guide rails above and below, like a
+    // modern rig's meter. `lit`/`pk` are segment counts.
+    function drawBar(y, h, lit, pk) {
+        // bottom rail grey the whole way; top rail grey up to S9 then red
+        // over the S9+ zone, like a modern rig's meter
+        var s9x = Math.round(S9 * W);
+        ctx.fillStyle = '#5b656e';
+        ctx.fillRect(0, y + h + 1, W, 1);
+        ctx.fillRect(0, y - 2, s9x, 1);
+        ctx.fillStyle = '#ff4130';
+        ctx.fillRect(s9x, y - 2, W - s9x, 1);
+        for (var i = 0; i < SEG; i++) {
+            ctx.fillStyle = i < lit ? segColor((i + 0.5) / SEG) : '#12181e';
+            ctx.fillRect(i * (SEGW + GAP), y, SEGW, h);
+        }
+        if (pk > lit) {
+            ctx.fillStyle = segColor((pk - 0.5) / SEG);
+            ctx.fillRect((pk - 1) * (SEGW + GAP), y, SEGW, h);
+        }
+    }
+
     var target = 0, current = 0, peak = 0, peakT = 0, lastT = null, anim = null;
 
     function draw() {
         drawScale();
-        var lit = Math.round(current * SEG);
-        for (var i = 0; i < SEG; i++) {
-            ctx.fillStyle = i < lit ? segColor((i + 0.5) / SEG) : '#161c22';
-            ctx.fillRect(i * (SEGW + GAP), BAR_Y, SEGW, BAR_H);
-        }
-        // peak-hold segment
-        var pk = Math.round(peak * SEG);
-        if (pk > lit) {
-            ctx.fillStyle = segColor((pk - 0.5) / SEG);
-            ctx.fillRect((pk - 1) * (SEGW + GAP), BAR_Y, SEGW, BAR_H);
-        }
+        drawBar(BAR_Y, BAR_H, Math.round(current * SEG), Math.round(peak * SEG));
     }
 
     // 30fps timer instead of requestAnimationFrame: plenty for a damped

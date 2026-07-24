@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.3 (2026-07-24)
+
+- VFO A/B and Dual Watch. A/B (middle key column) swaps between two
+  frequency+mode slots; right-click copies the current VFO into the
+  other. DW watches the other VFO in the waterfall and switches the
+  audio there while it is active, then returns; a small dot by the B
+  readout lights green when that frequency has signal. Both work within
+  the current capture window (same band).
+- Front-panel keys grouped by function: audio/RX on the left (MUTE, NR,
+  TS, SQL), VFO and memory in the middle (A/B, DW, LOCK, MW), scan and
+  screens on the right (SCAN, PROP, SAT, AUTO).
+- S-meter restyled to a modern-rig look: blue segments up to S9, red
+  beyond, grey guide rails with the top rail turning red over the S9+
+  zone, and a "+20 +40 +60" scale.
+
 ## 0.9.2 (2026-07-24)
 
 - The audio scope now keeps running while the audio is muted. It taps

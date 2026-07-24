@@ -18,14 +18,16 @@ The dial tunes. Drag it, flick it and it keeps spinning, or use the mouse
 wheel: one notch is exactly one tuning step, whatever your mouse. Works
 with a finger on phones and tablets.
 
-Around the dial there are three key columns, every key with a status LED:
+Around the dial there are three key columns, grouped by what they do,
+every key with a status LED:
 
-- MUTE, NR and TS on the left. TS opens the tuning step picker and has an
-  Auto entry that follows the mode (100 Hz on SSB/CW, 5 or 9 kHz on AM,
-  12.5 kHz on FM and so on).
-- LOCK, SQL and MW in the middle. LOCK freezes the dial, which has saved
-  me more than once on a wall mounted tablet. SQL switches the squelch on
-  with an automatically chosen level. MW writes a bookmark where you are.
+- Audio and receive on the left: MUTE, NR, SQL, and TS. TS opens the
+  tuning step picker and has an Auto entry that follows the mode (100 Hz
+  on SSB/CW, 5 or 9 kHz on AM, 12.5 kHz on FM and so on). SQL switches
+  the squelch on with an automatically chosen level.
+- VFO and memory in the middle: A/B, DW, LOCK and MW. LOCK freezes the
+  dial, which has saved me more than once on a wall mounted tablet. MW
+  writes a bookmark where you are (right-click MW searches bookmarks).
 - SCAN, PROP, SAT and AUTO on the right. SCAN runs the bookmark scanner
   that the stock UI hides behind a right click. AUTO snaps the VFO onto
   the strongest signal nearby, handy when you are roughly on a station
@@ -36,11 +38,25 @@ paging, so you never have to pinch the waterfall on a phone. Paging walks
 the zoomed view through the capture window, and at the edge it moves the
 receiver window itself if the server allows center frequency changes.
 
+## Two VFOs and dual watch
+
+A/B keeps a second VFO. Press A/B to swap between them (frequency and
+mode both switch); right-click A/B to copy the current VFO into the
+other slot. The second VFO shows as a small readout in the LCD with a
+dot that lights green when that frequency has a signal.
+
+DW is dual watch: with it armed the rig watches the second VFO in the
+waterfall and, when it becomes active, switches the audio there until it
+goes quiet again, then returns. It works within the current capture
+window, so the two VFOs need to be on the same band; the receiver has
+one antenna feed, it cannot listen across two bands at once.
+
 ## The LCD
 
 White frequency digits, the mode on a blue badge, and FIL / TS readouts so
 you always know the filter width and what one dial click does. The S-meter
-is segmented with peak hold. Under it, two scopes:
+is segmented with peak hold, blue up to S9 and red beyond, with the scale
+running 1 3 5 7 9 +20 +40 +60. Under it, two scopes:
 
 - A band scope centered on the tuned frequency, like the center mode scope
   on a rig. Click it to tune, scroll it to step, SPAN switches the width
@@ -143,7 +159,7 @@ From the folder that holds your `docker-compose.yml` (swap in the current
 version number):
 
 ```sh
-V=0.9.2
+V=0.9.3
 curl -fL -o rig-skin.zip \
   "https://github.com/aganet/openwebrxplus-rig-skin/releases/download/v${V}/openwebrxplus-rig-skin-${V}.zip"
 unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
@@ -258,7 +274,7 @@ console and type:
 Plugins.rig_skin._version
 ```
 
-It prints the version string, e.g. `"0.9.2"`. If it shows an older
+It prints the version string, e.g. `"0.9.3"`. If it shows an older
 version than you installed, the browser is serving a cached copy;
 hard-refresh with Ctrl+Shift+R.
 
