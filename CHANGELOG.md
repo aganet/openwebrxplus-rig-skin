@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2 (2026-07-24)
+
+- Fix: the 0.9.1 change to how the audio scope scrolled blanked the
+  waveform (flat lines) on some browsers. Reverted to the proven 0.9
+  drawing code. The console readback hint is back, but the scope works
+  everywhere again.
+
 ## 0.9.1 (2026-07-24)
 
 - Quieted the browser console: the scopes no longer trigger the Canvas2D

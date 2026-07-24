@@ -7,7 +7,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.1';
+Plugins.rig_skin._version = '0.9.2';
 
 // where this script was loaded from, for fetching companion files
 // (works for both local and remote plugin installs)
@@ -1593,9 +1593,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     var wf = document.createElement('canvas');
     wf.width = W - 2;
     wf.height = WF_H;
-    // this waterfall is scrolled with getImageData each frame; the flag
-    // keeps it on a readback-friendly path and quiets the console warning
-    var wfCtx = wf.getContext('2d', { willReadFrequently: true });
+    var wfCtx = wf.getContext('2d');
 
     function visible() {
         return $bs.hasClass('visible');
@@ -1809,13 +1807,9 @@ Plugins.rig_skin.createScope = function ($freq) {
     var wf = document.createElement('canvas');
     wf.width = FFT_W - 2;
     wf.height = PLOT_H - SPEC_H - 2;
-    // waterfall scrolled with getImageData; safe to flag for readback
-    var wfCtx = wf.getContext('2d', { willReadFrequently: true });
+    var wfCtx = wf.getContext('2d');
 
-    // offscreen canvas holding the scrolling waveform (roll mode).
-    // Deliberately NOT willReadFrequently: that backend change corrupted
-    // the scrolled putImageData here (drew only the top half), so we keep
-    // the default context and accept one console readback hint.
+    // offscreen canvas holding the scrolling waveform (roll mode)
     var wave = document.createElement('canvas');
     wave.width = WAVE_W - 2;
     wave.height = PLOT_H - 2;
@@ -1933,13 +1927,9 @@ Plugins.rig_skin.createScope = function ($freq) {
             ctx.drawImage(wf, 1, SPEC_H + 1);
 
             // waveform in roll mode: scroll left, append the newest audio
-            // envelope at the right edge. Scroll by drawing the canvas
-            // onto itself shifted (no getImageData readback, so no
-            // console warning and no risk of the top-half corruption the
-            // readback path caused).
-            waveCtx.globalCompositeOperation = 'copy';
-            waveCtx.drawImage(wave, -WAVE_STEP, 0);
-            waveCtx.globalCompositeOperation = 'source-over';
+            // envelope at the right edge
+            var shiftedWave = waveCtx.getImageData(WAVE_STEP, 0, wave.width - WAVE_STEP, wave.height);
+            waveCtx.putImageData(shiftedWave, 0, 0);
             waveCtx.clearRect(wave.width - WAVE_STEP, 0, WAVE_STEP, wave.height);
 
             // slowly decaying peak tracker, capped so silence stays thin
