@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.7';
+Plugins.rig_skin._version = '0.9.8';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -20,7 +20,17 @@ Plugins.rig_skin._base = (function () {
 })();
 
 
+// the stock loader would fetch the stylesheet with a plain URL that
+// mobile browsers cache across releases; load it here with the version
+// appended instead, so every release refreshes the CSS everywhere
+Plugins.rig_skin.no_css = true;
+
 Plugins.rig_skin.init = function () {
+    $('<link>', {
+        rel: 'stylesheet',
+        href: Plugins.rig_skin._base + 'rig_skin.css?v=' + Plugins.rig_skin._version
+    }).appendTo('head');
+
     // Register the theme in the selector
     $('#openwebrx-themes-listbox').append(
         $('<option>').val('rig').text('Rig')
@@ -960,6 +970,8 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createVfoKeys();
     Plugins.rig_skin.createPropScreen($line);
     Plugins.rig_skin.createSatScreen();
+    Plugins.rig_skin.createPanelFit();
+    Plugins.rig_skin.createPanelDrag();
 };
 
 Plugins.rig_skin.createVfoKeys = function () {
@@ -1047,12 +1059,14 @@ Plugins.rig_skin.createVfoKeys = function () {
             $vfoLine.after($info);
         }
         redraw();
+        if (Plugins.rig_skin._fitPanel) Plugins.rig_skin._fitPanel();
     }
     function revertLayout() {
         $vfoLine.detach();
         restore(mouseFreqHome);
         restore(infoHome);
         restore(stockFreqHome);
+        if (Plugins.rig_skin._fitPanel) Plugins.rig_skin._fitPanel();
     }
 
     function showFreq(box, hz) {
@@ -1794,28 +1808,268 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
     }, 600000);
 };
 
-// Chevron in the panel's top left corner: expands the rig to a wide,
-// two-column layout on large screens.
+// Layout chip in the panel's top left corner, labeled with the action:
+// "|← WIDE" grows the rig leftward into two columns, "→| NARROW" folds
+// it back. The auto-fit picks the layout by itself; a click switches
+// and pins the choice, right-click returns to automatic.
 Plugins.rig_skin.createExpandToggle = function () {
     var $panel = $('#openwebrx-panel-receiver');
-    var $btn = $('<div>').attr('id', 'owrx-rig-expand').attr('title', 'Expand / shrink the rig');
+    var $btn = $('<div>').attr('id', 'owrx-rig-expand')
+        .attr('title', 'Switch the layout (click: switch and keep, right-click: automatic)');
 
-    function apply(wide) {
+    function setView(wide) {
         $panel.toggleClass('rig-wide', wide);
-        // the panel grows to the left, so left chevrons mean expand
-        $btn.text(wide ? '❯❯' : '❮❮');
-        if (typeof LS !== 'undefined') LS.save('rig_wide', wide);
+        // the panel is anchored right, so wide grows leftward
+        $btn.text(wide ? '→| NARROW' : '|← WIDE');
     }
 
     $btn.on('click', function () {
-        apply(!$panel.hasClass('rig-wide'));
+        var wide = !$panel.hasClass('rig-wide');
+        setView(wide);
+        if (typeof LS !== 'undefined') LS.save('rig_wide_user', wide);
+        if (Plugins.rig_skin._fitPanel) Plugins.rig_skin._fitPanel();
+    });
+    $btn.on('contextmenu', function (e) {
+        e.preventDefault();
+        if (typeof LS !== 'undefined') LS.delete('rig_wide_user');
+        if (Plugins.rig_skin._fitPanel) Plugins.rig_skin._fitPanel();
     });
     $panel.append($btn);
 
-    Plugins.rig_skin._applyWide = apply;
+    Plugins.rig_skin._setWideView = setView;
 
-    apply((typeof LS !== 'undefined' && LS.has('rig_wide'))
-        ? LS.loadBool('rig_wide') : false);
+    setView((typeof LS !== 'undefined' && LS.has('rig_wide_user'))
+        ? LS.loadBool('rig_wide_user') : false);
+};
+
+// Fluid auto-fit: the full rig face is ~880px tall, and the stock layout
+// anchors the panel to the bottom of the viewport, so on low resolution
+// screens and phones the LCD half was pushed off the top with no way to
+// reach it. The panel scales itself (CSS zoom) to fit below the top bar,
+// and as it zooms down it widens the layout by the same factor, so the
+// rig keeps its natural on-screen size (or the screen width on phones)
+// instead of shrinking into a strip. On short wide screens the sections
+// rearrange side by side (the two-column layout) before shrinking; the
+// chevron still pins one layout manually. Past MIN_ZOOM the panel stops
+// shrinking and scrolls instead.
+Plugins.rig_skin.createPanelFit = function () {
+    var panel = document.getElementById('openwebrx-panel-receiver');
+    // browsers without standard CSS zoom keep the old fixed layout
+    if (!panel || !CSS.supports('zoom', '0.5')) return;
+
+    var MIN_ZOOM = 0.5;
+    var MAX_ZOOM = 1.25;
+    var AUTO_WIDE_AT = 0.8;  // one-column zoom below this prefers two columns
+    var AUTO_WIDE_W = 1440;  // screens at least this wide start two-column
+
+    // the stock layout sets the panel width as an inline style (259px in
+    // index.html); it must be restored, not removed, or the default theme
+    // collapses to min-content once the fluid width is cleared
+    var stockWidth = panel.style.width;
+    var autoWide = false;
+
+    // assign only when the value differs: identical writes still invalidate
+    // style and can keep the ResizeObserver loop warm
+    function setStyle(prop, value, important) {
+        if (panel.style.getPropertyValue(prop) !== value) {
+            panel.style.setProperty(prop, value, important ? 'important' : '');
+        }
+    }
+
+    function fit() {
+        if (!$('body').hasClass('theme-rig')) {
+            setStyle('zoom', '');
+            setStyle('max-height', '');
+            setStyle('width', stockWidth);
+            panel.classList.remove('rig-overflow');
+            if (Plugins.rig_skin._applyPanelPos) Plugins.rig_skin._applyPanelPos();
+            return;
+        }
+
+        // reset before measuring, the zoom included: measuring under the
+        // previous zoom skews the layout by a few pixels and the error
+        // feeds back through the ResizeObserver as visible oscillation.
+        // All of this runs inside one animation frame, so the intermediate
+        // states are never painted.
+        panel.style.zoom = '';
+        panel.style.maxHeight = '';
+        panel.style.width = stockWidth;
+        panel.classList.remove('rig-overflow');
+
+        // the panel must clear the whole top stack: banner, bookmark row
+        // and frequency scale all paint above the panels
+        var topEdge = 0;
+        $('.webrx-top-container, #openwebrx-frequency-container').each(function () {
+            topEdge = Math.max(topEdge, this.getBoundingClientRect().bottom);
+        });
+        var availH = window.innerHeight - topEdge - 24;
+        var availW = window.innerWidth - 24;
+
+        // pick the layout: a pinned choice wins; otherwise go two-column
+        // automatically when the one-column rig would have to shrink a lot
+        // (with hysteresis, so the layout cannot flap at the threshold) or
+        // when the screen has plenty of width to spare
+        if (window.innerWidth >= 900 && Plugins.rig_skin._setWideView) {
+            var wide;
+            if (typeof LS !== 'undefined' && LS.has('rig_wide_user')) {
+                wide = LS.loadBool('rig_wide_user');
+            } else {
+                panel.classList.remove('rig-wide');
+                var zNarrow = availH / panel.offsetHeight;
+                wide = zNarrow < (autoWide ? AUTO_WIDE_AT + 0.05 : AUTO_WIDE_AT) ||
+                    window.innerWidth >= AUTO_WIDE_W;
+                autoWide = wide;
+            }
+            Plugins.rig_skin._setWideView(wide);
+        }
+
+        var natW = panel.offsetWidth, natH = panel.offsetHeight;
+        if (!natW || !natH) return;
+
+        // portrait phones: the rig would cover the whole height, so leave
+        // a strip of waterfall visible above it instead
+        if (window.innerHeight > window.innerWidth && window.innerWidth <= 600) {
+            availH -= Math.min(200, Math.round(window.innerHeight * 0.22));
+        }
+
+        // scale to fill the free height, upward too (a modest cap keeps
+        // the upscaled canvases from getting soft)
+        var z = Math.min(MAX_ZOOM, availH / natH, availW / natW);
+        z = Math.max(MIN_ZOOM, z);
+
+        if (z < 1) {
+            // fluid width: widen the layout as it zooms down, so the rig
+            // keeps its natural on-screen width (or the screen width when
+            // smaller)
+            var target = Math.min(natW, availW);
+            var w = Math.round(target / z) - 20;
+            if (Math.abs(w - (natW - 20)) > 2) {
+                panel.style.setProperty('width', w + 'px', 'important');
+                // a wider panel lays out shorter; refine once
+                z = Math.max(MIN_ZOOM, Math.min(1, availH / panel.offsetHeight));
+                setStyle('width', (Math.round(target / z) - 20) + 'px', true);
+            }
+        }
+
+        if (availH / panel.offsetHeight < MIN_ZOOM) {
+            setStyle('max-height', Math.max(120, Math.floor(availH / z)) + 'px');
+            panel.classList.add('rig-overflow');
+        }
+        setStyle('zoom', Math.abs(z - 1) < 0.005 ? '' : z.toFixed(3));
+
+        if (Plugins.rig_skin._applyPanelPos) Plugins.rig_skin._applyPanelPos();
+    }
+
+    var queued = false;
+    function schedule() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function () {
+            queued = false;
+            fit();
+        });
+    }
+
+    window.addEventListener('resize', schedule);
+    if (typeof ResizeObserver === 'function') {
+        // refit when the panel content changes size (screens toggled,
+        // wide mode, profile switch)
+        new ResizeObserver(schedule).observe(panel);
+    }
+    Plugins.rig_skin._fitPanel = schedule;
+    fit();
+    // once more after fonts and restored settings settle the layout
+    setTimeout(fit, 500);
+};
+
+// The rig can be picked up and arranged: drag the grip bar on the top
+// edge to move it anywhere (double-click the bar to snap back to the
+// stock corner). The position is remembered and only applies while the
+// rig theme is active, so the stock themes keep their own layout.
+Plugins.rig_skin.createPanelDrag = function () {
+    var panel = document.getElementById('openwebrx-panel-receiver');
+    if (!panel) return;
+
+    var grip = $('<div>').attr('id', 'owrx-rig-grip')
+        .attr('title', 'Drag to move the rig; double-click to snap back')
+        .appendTo(panel)[0];
+
+    function saved() {
+        try {
+            if (typeof LS !== 'undefined' && LS.has('rig_pos')) {
+                return JSON.parse(LS.loadStr('rig_pos'));
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    // keep the whole panel on screen, at its current displayed size
+    function clamp(pos) {
+        var r = panel.getBoundingClientRect();
+        return {
+            left: Math.min(Math.max(pos.left, 4), Math.max(4, window.innerWidth - r.width - 4)),
+            top: Math.min(Math.max(pos.top, 4), Math.max(4, window.innerHeight - r.height - 4))
+        };
+    }
+
+    // pos is in screen pixels; the panel's own zoom also scales its
+    // left/top offsets, so convert into the panel's coordinate space
+    function place(pos) {
+        var z = parseFloat(panel.style.zoom) || 1;
+        panel.style.position = 'fixed';
+        panel.style.left = Math.round(pos.left / z) + 'px';
+        panel.style.top = Math.round(pos.top / z) + 'px';
+        panel.style.margin = '0';
+    }
+
+    function reset() {
+        panel.style.position = '';
+        panel.style.left = '';
+        panel.style.top = '';
+        panel.style.margin = '';
+    }
+
+    Plugins.rig_skin._applyPanelPos = function () {
+        var pos = $('body').hasClass('theme-rig') ? saved() : null;
+        if (pos) place(clamp(pos));
+        else reset();
+    };
+
+    var start = null;
+    grip.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+        var r = panel.getBoundingClientRect();
+        start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
+    });
+    grip.addEventListener('pointermove', function (e) {
+        if (!start) return;
+        place(clamp({ left: start.left + e.clientX - start.x,
+                      top: start.top + e.clientY - start.y }));
+    });
+    // pointerdown's preventDefault suppresses synthesized dblclick, so
+    // the snap-back double-tap is detected from the pointerups directly
+    var lastTap = 0;
+    grip.addEventListener('pointerup', function (e) {
+        if (!start) return;
+        var moved = Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 5;
+        start = null;
+        if (moved) {
+            lastTap = 0;
+            var r = panel.getBoundingClientRect();
+            if (typeof LS !== 'undefined') {
+                LS.save('rig_pos', JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top) }));
+            }
+        } else if (e.timeStamp - lastTap < 400) {
+            lastTap = 0;
+            if (typeof LS !== 'undefined') LS.delete('rig_pos');
+            reset();
+        } else {
+            lastTap = e.timeStamp;
+        }
+    });
+
+    Plugins.rig_skin._applyPanelPos();
 };
 
 // Waterfall zoom pair, two half-width keys sharing one key slot,
@@ -2509,14 +2763,19 @@ Plugins.rig_skin.createScope = function ($freq) {
     // timebase, like a rig's scope; the choice is remembered
     canvas.title = 'Click the ms/Div label to change the scope timebase';
     canvas.style.cursor = 'default';
-    $(canvas).on('mousemove', function (e) {
+    // map pointer position to canvas units, so the hotspot stays right
+    // when the canvas is displayed scaled (phone width, panel auto-fit)
+    function canvasXY(e) {
         var r = canvas.getBoundingClientRect();
-        var x = e.clientX - r.left, y = e.clientY - r.top;
+        return [(e.clientX - r.left) * W / r.width,
+                (e.clientY - r.top) * H / r.height];
+    }
+    $(canvas).on('mousemove', function (e) {
+        var p = canvasXY(e), x = p[0], y = p[1];
         canvas.style.cursor = (x > W - 76 && y > PLOT_H - 1) ? 'pointer' : 'default';
     });
     $(canvas).on('click', function (e) {
-        var r = canvas.getBoundingClientRect();
-        var x = e.clientX - r.left, y = e.clientY - r.top;
+        var p = canvasXY(e), x = p[0], y = p[1];
         if (x > W - 76 && y > PLOT_H - 1) {
             e.stopPropagation();
             var idx = WAVE_STEPS.indexOf(waveMsPerDiv);

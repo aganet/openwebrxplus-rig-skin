@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.9.8 (2026-08-24)
+
+- The rig now fits on any screen, fluidly. The full front panel is about
+  880px tall and the stock layout pins it to the bottom of the viewport,
+  so on low resolution laptops (1366x768 and below) and many phones the
+  top half, the VFO readout and the S-meter, was pushed off screen with
+  no way to reach it. The panel now scales itself (CSS zoom) to fit
+  below the top bar, bookmark row and frequency scale, and as it scales
+  down it widens the layout by the same factor, so the rig keeps its
+  full on-screen size instead of shrinking into a strip. On phones it
+  fills the screen width. It refits live on window resize, profile
+  changes and screen toggles. Below half size it stops shrinking and
+  scrolls inside the panel (very short landscape screens). Switching to
+  another theme restores the stock layout exactly. Browsers without
+  standard CSS zoom keep the old fixed layout.
+- The wide layout is modular: the sections (LCD, dial and keys, modes,
+  controls, display) are blocks that flow into two balanced columns,
+  LCD and dial on the left, everything else on the right, like a real
+  wide rig face. On short wide screens it engages automatically before
+  any shrinking, so a 1366x768 laptop gets a full-width rig at full
+  size. Screens with plenty of width (1440px and up) start in the wide
+  layout right away. The old cryptic chevron is now a labeled chip in
+  the top left corner that names the switch it performs, "|<- WIDE"
+  grows the rig leftward into two columns and "->| NARROW" folds it
+  back: click it to switch and keep your choice, right-click to hand
+  the decision back to the automatic fit (which has hysteresis, so it
+  cannot flap while resizing).
+- The face itself is fluid at any width: the S-meter and scope canvases
+  follow their column, the LCD readout and scope blocks share the width
+  evenly, sliders and listboxes grow with the panel, and the key groups
+  spread evenly around the dial.
+- The dial is the centerpiece and behaves like it: it grows into
+  whatever space the key columns leave free (up to 240px), instead of
+  being shrunk to 112px on short screens as before. The rig also scales
+  up (to 1.25x) to fill free screen height, so on a 1366x768 laptop the
+  dial ends up around 184px instead of 112px.
+- Fix: resizing the window no longer flickers. The fit re-measured the
+  panel while the previous scale was still applied, and the tiny error
+  fed back through the resize observer as visible oscillation; each fit
+  now measures from a clean slate, so it settles in one pass.
+- The rig can be picked up and arranged: drag the grip bar on its top
+  edge to move it anywhere on the screen, double-click (or double-tap)
+  the bar to snap it back to the stock corner. The position is
+  remembered and only applies while the Rig theme is active.
+- On portrait phones the rig no longer covers the whole waterfall: it
+  leaves a strip of waterfall visible above the panel, and the drag
+  grip lets you rearrange from there.
+- The stylesheet is loaded with the plugin version appended
+  (rig_skin.css?v=...), so browsers, phones especially, stop serving a
+  stale cached CSS after an update.
+- Fix: the audio scope's ms/Div click target was misplaced whenever the
+  canvas was displayed scaled; the hotspot is mapped through the real
+  canvas size.
+
 ## 0.9.7 (2026-07-24)
 
 - Fix: the plugin no longer disturbs the other themes. The two-VFO

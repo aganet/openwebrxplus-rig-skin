@@ -89,9 +89,13 @@ with peak hold, blue up to S9 and red beyond, with the scale running
   division. Fast settings draw a steady triggered sweep so you see the
   actual waveform shape; the slow settings roll as an amplitude envelope.
 
-On large screens a chevron in the top left corner widens the rig into a
-two column face, readouts left, scopes right, and the LCD gains a line
-with the current band, S units, squelch state, mute flag and UTC clock.
+On large screens the rig widens into a two column face, LCD and dial on
+the left, modes and controls on the right, and the LCD gains a line with
+the current band, S units, squelch state, mute flag and UTC clock. The
+chip in the top left corner names the switch it performs, "|&#8592; WIDE"
+grows the rig leftward into two columns and "&#8594;| NARROW" folds it
+back: click it to switch and keep your choice, right-click to let the
+rig decide again.
 
 ![wide layout with propagation](docs/screenshot-wide.png)
 
@@ -168,6 +172,27 @@ There is a "Rig" palette in the waterfall theme selector, a jet style ramp
 with a steep low end that keeps weak signals visible. The band scope picks
 it up automatically. Works best together with auto adjusting waterfall
 levels on the server.
+
+## Any screen size
+
+The panel is fluid: it scales itself so the whole front panel is always
+visible, and widens the layout as it scales down, so the rig keeps its
+full on-screen size instead of shrinking. On short wide screens (low
+resolution laptops) the sections flow into two balanced columns, LCD
+and dial on the left, modes and controls on the right, before any
+shrinking, and screens with plenty of width start wide right away; the
+layout chip in the top left corner pins one layout if you prefer
+(right-click it to go back to automatic). On phones the rig fills the
+screen width and leaves a strip of
+waterfall visible above it. Everything refits live when you resize the
+window, switch profiles or open the propagation and satellite screens.
+On very short landscape screens it stops at half size and scrolls
+instead.
+
+The rig is also movable: drag the grip bar on its top edge to place it
+anywhere, double-click (or double-tap) the bar to snap it back to its
+corner. The position is remembered per browser and only applies while
+the Rig theme is selected.
 
 ## Install
 

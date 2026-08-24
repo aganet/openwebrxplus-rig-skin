@@ -41,12 +41,24 @@ body.theme-rig #openwebrx-panel-receiver {
     width: 364px !important;
 }
 
+/* sliders and listboxes grow with the panel in the fluid layout; their
+   rows are block containers in the stock CSS, so slider rows become flex */
+body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-line:has(.openwebrx-panel-slider) {
+    display: flex;
+    align-items: center;
+    column-gap: 4px;
+}
+
 body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-slider {
     width: 135px;
+    flex: 1 1 auto;
+    min-width: 90px;
 }
 
 body.theme-rig #openwebrx-panel-receiver .openwebrx-panel-listbox {
     width: 135px;
+    flex: 1 1 auto;
+    min-width: 90px;
 }
 
 /* Corner screws on the receiver panel */
@@ -272,6 +284,18 @@ body.theme-rig #owrx-rig-info {
 }
 
 /* Frequency display as a backlit LCD window */
+/* the readout and scope columns share the LCD width evenly; below
+   ~700px of panel width the scope column wraps underneath as before */
+body.theme-rig #openwebrx-panel-receiver .frequencies {
+    flex: 1 1 340px;
+    min-width: 0;
+}
+
+body.theme-rig #owrx-rig-lcd-right {
+    flex: 1 1 340px;
+    min-width: 0;
+}
+
 body.theme-rig #openwebrx-panel-receiver .frequencies-container {
     position: relative;
     background: linear-gradient(180deg, #04070a 0%, #0a0f13 70%, #0d1216 100%);
@@ -298,6 +322,37 @@ body.theme-rig .rig-wide #owrx-rig-extra {
     white-space: pre;
 }
 
+/* drag grip along the panel's top edge, with a small handle bar */
+#owrx-rig-grip {
+    display: none;
+}
+
+body.theme-rig #owrx-rig-grip {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 60px;
+    right: 60px;
+    height: 14px;
+    cursor: move;
+    touch-action: none;
+    z-index: 5;
+}
+
+body.theme-rig #owrx-rig-grip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    width: 44px;
+    height: 5px;
+    margin-left: -22px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #3a4046, #23272b);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15),
+                0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
 /* expand chevron, top left of the panel; large screens only */
 #owrx-rig-expand {
     display: none;
@@ -307,23 +362,38 @@ body.theme-rig .rig-wide #owrx-rig-extra {
     body.theme-rig #owrx-rig-expand {
         display: block;
         position: absolute;
-        top: 1px;
+        top: 3px;
         left: 16px;
-        color: #6a747e;
+        z-index: 6;
+        padding: 0 7px;
+        border-radius: 3px;
+        background: #10161b;
+        box-shadow: 0 0 0 1px #1d242b;
+        color: #93a0ab;
         font-size: 7pt;
-        letter-spacing: -1px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        line-height: 13px;
         cursor: pointer;
         user-select: none;
         -webkit-user-select: none;
     }
 
     body.theme-rig #owrx-rig-expand:hover {
-        color: #cfd4d9;
+        color: #ffffff;
     }
 
-    /* wide, two column layout: readouts left, scopes right */
+    /* wide layout: the sections (LCD, dial and keys, modes, controls,
+       display) are modular blocks that flow into two balanced columns */
     body.theme-rig #openwebrx-panel-receiver.rig-wide {
         width: 744px !important;
+        column-count: 2;
+        column-gap: 16px;
+    }
+
+    /* each section stays in one piece when the columns balance */
+    body.theme-rig #openwebrx-panel-receiver.rig-wide > * {
+        break-inside: avoid;
     }
 }
 
@@ -396,9 +466,11 @@ body.theme-rig #openwebrx-smeter {
     display: none;
 }
 
+/* the LCD canvases follow their column, so the layout is fluid at any
+   panel width; the aspect ratio comes from the canvas backing size */
 #owrx-rig-meter canvas {
-    width: 340px;
-    height: 34px;
+    width: 100%;
+    height: auto;
 }
 
 /* band scope strip: narrow spectrum centered on the tuned frequency */
@@ -414,8 +486,8 @@ body.theme-rig #owrx-rig-bscope.visible {
 }
 
 #owrx-rig-bscope canvas {
-    width: 340px;
-    height: 70px;
+    width: 100%;
+    height: auto;
     cursor: crosshair;
 }
 
@@ -443,8 +515,8 @@ body.theme-rig #owrx-rig-scope.visible {
 }
 
 #owrx-rig-scope canvas {
-    width: 340px;
-    height: 64px;
+    width: 100%;
+    height: auto;
 }
 
 body.theme-rig #openwebrx-smeter-db {
@@ -537,7 +609,8 @@ body.theme-rig .openwebrx-section-divider {
 
 body.theme-rig #owrx-rig-knob-line {
     display: flex;
-    justify-content: center;
+    /* keys spread out with the fluid width, like a real wide front panel */
+    justify-content: space-evenly;
     align-items: center;
     gap: 9px;
     padding: 0 0 4px 0;
@@ -617,11 +690,15 @@ body.theme-rig #owrx-rig-knob-line {
     animation: owrx-rig-led-blink 0.5s step-end infinite;
 }
 
+/* the dial is the centerpiece: it grows into whatever space the key
+   columns leave free, up to a sensible cap */
 #owrx-rig-knob {
     position: relative;
-    flex: 0 0 auto;
-    width: 140px;
-    height: 140px;
+    flex: 1 1 140px;
+    min-width: 104px;
+    max-width: 240px;
+    aspect-ratio: 1;
+    height: auto;
     border-radius: 50%;
     cursor: grab;
     touch-action: none;
@@ -656,10 +733,11 @@ body.theme-rig #owrx-rig-knob-line {
 
 .owrx-rig-knob-face {
     position: absolute;
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
+    /* bezel and finger cup keep their proportions at any dial size */
+    top: 7%;
+    left: 7%;
+    right: 7%;
+    bottom: 7%;
     border-radius: 50%;
     background:
         linear-gradient(155deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 42%),
@@ -674,9 +752,9 @@ body.theme-rig #owrx-rig-knob-line {
     position: absolute;
     left: 50%;
     top: 10%;
-    width: 30px;
-    height: 30px;
-    margin-left: -15px;
+    width: 21%;
+    height: 21%;
+    margin-left: -10.5%;
     border-radius: 50%;
     background: radial-gradient(circle at 40% 32%, #000000 45%, #101214 75%, #303439 98%);
     box-shadow: inset 0 5px 9px rgba(0, 0, 0, 0.95),
@@ -773,11 +851,6 @@ body.theme-rig #owrx-rig-prop.visible {
 }
 
 .owrx-rig-prop-view.active {
-    display: block;
-}
-
-/* wide layout shows both views side by side */
-body.theme-rig .rig-wide #owrx-rig-prop.visible .owrx-rig-prop-view {
     display: block;
 }
 
@@ -1061,20 +1134,8 @@ body.theme-rig #owrx-rig-sats.visible {
         width: calc(100vw - 30px) !important;
     }
 
-    #owrx-rig-meter canvas,
-    #owrx-rig-bscope canvas,
-    #owrx-rig-scope canvas {
-        width: 100%;
-        height: auto;
-    }
-
     body.theme-rig #owrx-rig-knob-line {
         gap: 6px;
-    }
-
-    #owrx-rig-knob {
-        width: 104px;
-        height: 104px;
     }
 
     .owrx-rig-key {
@@ -1086,25 +1147,15 @@ body.theme-rig #owrx-rig-sats.visible {
     }
 }
 
-/* Shorter screens: shrink the dial so the panel keeps fitting */
-@media (max-height: 820px) {
-    #owrx-rig-knob {
-        width: 112px;
-        height: 112px;
-    }
-
-    .owrx-rig-knob-face {
-        top: 8px;
-        left: 8px;
-        right: 8px;
-        bottom: 8px;
-    }
-
-    .owrx-rig-knob-dimple {
-        width: 24px;
-        height: 24px;
-        margin-left: -12px;
-    }
+/* Auto-fit fallback: when even the minimum zoom cannot fit the rig
+   (very short landscape screens), the panel scrolls inside a capped
+   height set by the fit code */
+body.theme-rig #openwebrx-panel-receiver.rig-overflow {
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* overflow drops the flex-item min-height to 0 and the zero-height
+       panel column would crush the panel; keep its capped size instead */
+    flex-shrink: 0;
 }
 
 /* DX cluster window; independent of the selected theme so the DX
