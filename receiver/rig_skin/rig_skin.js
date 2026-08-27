@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.8';
+Plugins.rig_skin._version = '0.9.9';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -1070,7 +1070,13 @@ Plugins.rig_skin.createVfoKeys = function () {
     }
 
     function showFreq(box, hz) {
-        box.$freq.text(hz ? (hz / 1000000).toFixed(4) : '-.----');
+        var t = hz ? (hz / 1000000).toFixed(4) : '-.----';
+        // skip the write when unchanged: the once-a-second refresh must
+        // not invalidate the panel layout while idling
+        if (box._shown !== t) {
+            box._shown = t;
+            box.$freq.text(t);
+        }
     }
 
     // update the tuned box live on every dial move by hooking the stock
@@ -1956,6 +1962,8 @@ Plugins.rig_skin.createPanelFit = function () {
             panel.classList.add('rig-overflow');
         }
         setStyle('zoom', Math.abs(z - 1) < 0.005 ? '' : z.toFixed(3));
+        // the LCD canvases re-measure their displayed size on next draw
+        Plugins.rig_skin._lcdEpoch++;
 
         if (Plugins.rig_skin._applyPanelPos) Plugins.rig_skin._applyPanelPos();
     }
@@ -2261,12 +2269,40 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
         if (typeof UI !== 'undefined' && UI.volumeMuted >= 0) parts.push('MUTE');
         var clock = $('#openwebrx-clock-utc').text();
         if (clock) parts.push(clock);
-        $extra.text(parts.join('   '));
+        var txt = parts.join('   ');
+        if ($extra._shown !== txt) {
+            $extra._shown = txt;
+            $extra.text(txt);
+        }
     }
 
     Plugins.rig_skin._updateInfo = update;
     update();
     setInterval(update, 500);
+};
+
+// Render an LCD canvas at its displayed resolution: the fluid layout
+// stretches the canvases, so the backing store follows the on-screen
+// size (element width x panel zoom x devicePixelRatio) while the draw
+// code keeps using the logical W x H coordinate space. The size is
+// re-measured only when the panel fit ran (reading clientWidth every
+// frame forces needless reflows between the skin's DOM updates).
+Plugins.rig_skin._lcdEpoch = 1;
+
+Plugins.rig_skin.fitCanvas = function (canvas, ctx, W, H) {
+    if (canvas._rigEpoch !== Plugins.rig_skin._lcdEpoch) {
+        canvas._rigEpoch = Plugins.rig_skin._lcdEpoch;
+        var zoom = 1;
+        var panel = document.getElementById('openwebrx-panel-receiver');
+        if (panel && panel.style.zoom) zoom = parseFloat(panel.style.zoom) || 1;
+        var w = Math.round((canvas.clientWidth || W) * zoom * (window.devicePixelRatio || 1));
+        if (w >= 8 && canvas.width !== w) {
+            canvas.width = w;
+            canvas.height = Math.round(w * H / W);
+        }
+    }
+    var s = canvas.width / W;
+    ctx.setTransform(s, 0, 0, s, 0, 0);
 };
 
 // Band scope inside the LCD: a narrow spectrum and waterfall centered
@@ -2348,6 +2384,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     var avg = null, avgOff = null, avgSpan = null;
 
     function draw(data) {
+        Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
         var off = tunedOffset();
         // exact same level range as the main waterfall, so signals look
         // just as strong here, only magnified
@@ -2613,6 +2650,7 @@ Plugins.rig_skin.createScope = function ($freq) {
     var wavePeak = 0.3;
 
     function draw() {
+        Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
         ctx.clearRect(0, 0, W, H);
         updateSpan();
         drawFrame();
@@ -3262,6 +3300,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
     var target = 0, current = 0, peak = 0, peakT = 0, lastT = null, anim = null;
 
     function draw() {
+        Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
         drawScale();
         drawBar(BAR_Y, BAR_H, Math.round(current * SEG), Math.round(peak * SEG));
     }

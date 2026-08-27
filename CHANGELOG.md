@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.9 (2026-08-27)
+
+- Icom-style face. The keys are flat-top rectangles with near-square
+  corners and a matte finish instead of the glossy rounded domes, the
+  legends are printed matte silver instead of glowing white, and the
+  icon keys (display row, slider buttons) are dimmed to the same level,
+  so only the LCD, the LEDs and the active key light up, like a real
+  front panel. Legend contrast stays above the WCAG AAA bar (10:1).
+- The dial matches: gunmetal bezel and a matte rubber face with a soft
+  sheen instead of mirror chrome.
+- The S-meter, band scope and audio scope render at their displayed
+  resolution instead of being stretched from a fixed-size buffer, so
+  the LCD is pin sharp at any panel size, including the scaled-up wide
+  layout on large screens.
+- Less busywork per frame: the canvases re-measure their size only when
+  the layout actually changed, and the VFO and info line readouts skip
+  the DOM update when the text is unchanged. The whole skin (meter
+  ballistics, band scope, audio scope) costs about 4% of one core over
+  the stock theme.
+- All README screenshots regenerated from the current look.
+
 ## 0.9.8 (2026-08-24)
 
 - The rig now fits on any screen, fluidly. The full front panel is about

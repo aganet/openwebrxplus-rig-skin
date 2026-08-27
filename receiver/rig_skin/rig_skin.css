@@ -77,37 +77,52 @@ body.theme-rig #openwebrx-panel-receiver::after {
 body.theme-rig #openwebrx-panel-receiver::before { left: 4px; }
 body.theme-rig #openwebrx-panel-receiver::after { right: 4px; }
 
-/* Domed black keys with bright legends */
+/* Flat-top rectangular keys with bright legends, like an Icom front
+   panel: near-square corners, a matte face and a crisp edge light */
 body.theme-rig .openwebrx-button {
     position: relative;
-    background: radial-gradient(ellipse 120% 90% at 50% 28%, #3b3f45 0%, #26292d 55%, #16181b 100%);
-    border-radius: 6px;
+    background: linear-gradient(180deg, #33373c 0%, #24272b 45%, #17191c 100%);
+    border-radius: 2px;
     box-shadow: 0 0 0 1px #050607,
-                inset 0 1px 0 rgba(255, 255, 255, 0.20),
-                inset 0 -2px 3px rgba(0, 0, 0, 0.55),
-                0 3px 5px rgba(0, 0, 0, 0.65),
-                0 1px 0 rgba(255, 255, 255, 0.04);
-    color: #f3f5f7;
+                inset 0 1px 0 rgba(255, 255, 255, 0.16),
+                inset 0 -1px 2px rgba(0, 0, 0, 0.5),
+                0 2px 3px rgba(0, 0, 0, 0.6);
+    /* matte printed legends, not glowing white: only lit elements pop */
+    color: var(--rig-legend);
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
 }
 
-/* specular sheen across the top of each key */
+/* faint sheen along the top edge of each key */
 body.theme-rig .openwebrx-button::after {
     content: '';
     position: absolute;
-    left: 2px;
-    right: 2px;
+    left: 1px;
+    right: 1px;
     top: 1px;
-    height: 45%;
-    border-radius: 5px 5px 40% 40%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0));
+    height: 38%;
+    border-radius: 1px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
     pointer-events: none;
 }
 
 body.theme-rig .openwebrx-button:hover {
-    background: radial-gradient(ellipse 120% 90% at 50% 28%, #474c53 0%, #2f333a 55%, #1d2024 100%);
-    color: #ffffff;
+    background: linear-gradient(180deg, #3e434a 0%, #2c3035 45%, #1d2024 100%);
+    color: #e8ecef;
     filter: none;
+}
+
+/* icon keys (display row, slider buttons) carry white glyphs; dim them
+   to the same matte level as the printed legends */
+body.theme-rig #openwebrx-panel-receiver .openwebrx-button svg,
+body.theme-rig #openwebrx-panel-receiver .openwebrx-button img {
+    filter: brightness(0.8);
+}
+
+body.theme-rig #openwebrx-panel-receiver .openwebrx-button:hover svg,
+body.theme-rig #openwebrx-panel-receiver .openwebrx-button:hover img,
+body.theme-rig #openwebrx-panel-receiver .openwebrx-button.highlighted svg,
+body.theme-rig #openwebrx-panel-receiver .openwebrx-button.highlighted img {
+    filter: brightness(1);
 }
 
 body.theme-rig .openwebrx-button:active {
@@ -118,10 +133,10 @@ body.theme-rig .openwebrx-button:active {
 body.theme-rig .openwebrx-button:active,
 body.theme-rig .openwebrx-button.highlighted,
 body.theme-rig .openwebrx-demodulator-button.highlighted {
-    background: radial-gradient(ellipse 120% 90% at 50% 70%, #212428 0%, #17191c 60%, #0f1113 100%);
+    background: linear-gradient(180deg, #17191c 0%, #1d2024 55%, #212428 100%);
     box-shadow: 0 0 0 1px #050607,
                 inset 0 2px 4px rgba(0, 0, 0, 0.7),
-                inset 0 0 8px rgba(0, 0, 0, 0.5);
+                inset 0 0 6px rgba(0, 0, 0, 0.5);
     color: var(--rig-lcd);
     text-shadow: 0 0 6px var(--rig-lcd-glow);
     filter: none;
@@ -714,7 +729,8 @@ body.theme-rig #owrx-rig-knob-line {
     cursor: not-allowed;
 }
 
-/* chrome bezel is the outer edge of the dial */
+/* gunmetal bezel, subdued instead of mirror chrome, to match the
+   matte keys */
 .owrx-rig-knob-ring {
     position: absolute;
     top: 0;
@@ -723,14 +739,15 @@ body.theme-rig #owrx-rig-knob-line {
     bottom: 0;
     border-radius: 50%;
     background: conic-gradient(from 210deg,
-        #eef1f3 0deg, #8b9095 30deg, #4a4e53 70deg, #c8ccd0 110deg,
-        #ffffff 140deg, #7d8287 180deg, #43474b 220deg, #d6dade 260deg,
-        #f4f6f8 300deg, #90959a 340deg, #eef1f3 360deg);
+        #8f959b 0deg, #575c62 30deg, #33373c 70deg, #75797f 110deg,
+        #a2a8ae 140deg, #54585e 180deg, #2e3237 220deg, #7e8389 260deg,
+        #979da3 300deg, #5b6066 340deg, #8f959b 360deg);
     box-shadow: 0 0 0 1px #000000,
                 0 6px 14px rgba(0, 0, 0, 0.8),
                 0 2px 3px rgba(0, 0, 0, 0.6);
 }
 
+/* matte rubber face with a soft sheen, like an Icom tuning dial */
 .owrx-rig-knob-face {
     position: absolute;
     /* bezel and finger cup keep their proportions at any dial size */
@@ -740,11 +757,11 @@ body.theme-rig #owrx-rig-knob-line {
     bottom: 7%;
     border-radius: 50%;
     background:
-        linear-gradient(155deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 42%),
-        radial-gradient(circle at 35% 28%, #43484e 0%, #2a2e32 32%, #17191c 64%, #0b0d0e 100%);
+        linear-gradient(155deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 42%),
+        radial-gradient(circle at 38% 30%, #33373c 0%, #26292d 40%, #191b1e 70%, #0e1012 100%);
     box-shadow: 0 0 0 1px #08090a,
-                inset 0 1px 2px rgba(255, 255, 255, 0.16),
-                inset 0 -2px 6px rgba(0, 0, 0, 0.55);
+                inset 0 1px 1px rgba(255, 255, 255, 0.08),
+                inset 0 -2px 5px rgba(0, 0, 0, 0.5);
     will-change: transform;
 }
 
