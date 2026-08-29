@@ -1252,7 +1252,8 @@ Plugins.rig_skin.createSatWindow = function () {
         if (!Plugins.rig_skin._satTrack || !Plugins.rig_skin._satTrack.ready()) {
             ctx.font = '9px roboto-mono, monospace';
             ctx.fillStyle = '#5c6670';
-            ctx.fillText('loading orbits...', 8, MH - 8);
+            ctx.fillText(Plugins.rig_skin._satTrack && Plugins.rig_skin._satTrack.failed()
+                ? 'TLE download failed, retrying...' : 'loading orbits...', 8, MH - 8);
             return;
         }
         Plugins.rig_skin._satTrack.positions().forEach(function (sp) {
@@ -1448,10 +1449,11 @@ Plugins.rig_skin.createSatWindow = function () {
     // the TLE download can fail (the API rate-limits); retry while open
     var lastEnsure = 0;
     function ensureOrbits() {
-        if (!Plugins.rig_skin._satTrack || Plugins.rig_skin._satTrack.ready()) return;
+        var st = Plugins.rig_skin._satTrack;
+        if (!st || (st.ready() && !st.failed())) return;
         if (Date.now() - lastEnsure < 30000) return;
         lastEnsure = Date.now();
-        Plugins.rig_skin._satTrack.ensure(refresh);
+        st.ensure(refresh);
     }
 
     function tick() {
@@ -2195,11 +2197,13 @@ Plugins.rig_skin.createSatScreen = function () {
             var tles = {};
             SATS.forEach(function (s) { if (all[s.id]) tles[s.id] = all[s.id]; });
             if (Object.keys(tles).length === 0) {
+                tleFail = true;
                 // offline or blocked: run on the stale cache if there is one
                 if (cached && cached.tles) return cb(cached.tles);
                 $head.text('TLE download failed');
                 return;
             }
+            tleFail = false;
             try {
                 localStorage.setItem('rig_sat_tles', JSON.stringify({ ts: Date.now(), ids: ids, tles: tles }));
             } catch (e) {}
@@ -2211,6 +2215,9 @@ Plugins.rig_skin.createSatScreen = function () {
         groups.forEach(function (g) {
             grab('GROUP=' + g, function () {
                 if (--pending > 0) return;
+                // nothing at all from the groups means the network is out
+                // or celestrak blocks us; skip the by-number round
+                if (Object.keys(all).length === 0) return finish();
                 var missing = SATS.filter(function (s) { return !all[s.id]; });
                 if (!missing.length) return finish();
                 var left = missing.length;
@@ -2226,12 +2233,16 @@ Plugins.rig_skin.createSatScreen = function () {
     // live tracking for the SAT window: current geodetic position,
     // elevation from this receiver, ground track and the visibility
     // footprint of every satellite in the table
-    var trackRecs = null, passCache = null, passCacheT = 0;
+    var trackRecs = null, passCache = null, passCacheT = 0, tleFail = false;
 
     Plugins.rig_skin._satTrack = {
         ready: function () { return !!trackRecs; },
+        failed: function () { return tleFail; },
         ensure: function (cb) {
-            if (trackRecs) return cb();
+            // after a failed download the tracker runs on stale cached
+            // orbits; keep re-ensuring so it upgrades when the source
+            // is reachable again
+            if (trackRecs && !tleFail) return cb();
             ensureLib(function () {
                 ensureTles(function (tles) {
                     trackRecs = [];
@@ -2239,6 +2250,7 @@ Plugins.rig_skin.createSatScreen = function () {
                         var tle = tles[s.id];
                         if (tle) trackRecs.push({ sat: s, rec: satellite.twoline2satrec(tle.line1, tle.line2) });
                     });
+                    passCache = null;   // the pass list follows the new orbit set
                     cb();
                 });
             });
