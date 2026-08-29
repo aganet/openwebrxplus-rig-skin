@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.9.11 (2026-08-29)
+
+- The S-meter has two faces now: the segmented bar and a virtual analog
+  needle, switched with a right-click on the meter and remembered. The
+  needle runs on the same ballistics as the bar (fast attack, slow
+  decay), a thin ghost needle holds the peak, and the face shows the
+  live dB value and the S reading as numbers. The bar face gets the S
+  reading too, in its own row above the +60 end of the scale.
+- The squelch threshold is drawn on the meter: an SQL pointer under the
+  needle's arc and a line through the bar, at the exact spot where the
+  audio gate opens. Set the squelch by putting the marker just above
+  the noise, no more trial and error.
+- The NCDXF beacons can be shown on the DX cluster map: a BCN chip in
+  the DX window draws all 18 beacon sites as diamonds, click one to
+  listen in CW. While the beacon radar is running, the diamonds fill
+  with the measured grades, so the world map shows where propagation is
+  open right now. The radar's own small map is gone; the big map does
+  it better.
+- The radar grades by the median of each slot's readings instead of the
+  peak, so noise spikes cannot fake a beacon.
+- The face gained texture: a fine powder-coat grain on the panel metal
+  and a faint glass sheen across the LCD window. Both subtle.
+- Power-on: switching to the Rig theme boots the face in stages, LCD
+  first, then the dial, then the controls.
+
 ## 0.9.10 (2026-08-29)
 
 - Fix: no more CORS errors in the console on every load. The DX spot

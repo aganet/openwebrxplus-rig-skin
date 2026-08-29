@@ -23,7 +23,10 @@ body.theme-rig .openwebrx-dialog {
     /* prevent mobile browsers from inflating text out of the layout */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    background: linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
+    /* fine powder-coat grain over the metal gradient */
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
+        linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
     border-radius: 8px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
                 inset 0 -1px 0 rgba(0, 0, 0, 0.55),
@@ -329,6 +332,39 @@ body.theme-rig #openwebrx-panel-receiver .frequencies-container {
     padding: 6px 8px 2px 8px;
     flex-wrap: wrap;
     column-gap: 10px;
+    /* power on: the LCD fades up first when the rig theme comes alive */
+    animation: owrx-rig-poweron 0.55s ease-out both;
+}
+
+/* faint diagonal glass sheen over the LCD window */
+body.theme-rig #openwebrx-panel-receiver .frequencies-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 5px;
+    background: linear-gradient(115deg,
+        rgba(255, 255, 255, 0) 42%,
+        rgba(255, 255, 255, 0.025) 47%,
+        rgba(255, 255, 255, 0.045) 50%,
+        rgba(255, 255, 255, 0.02) 53%,
+        rgba(255, 255, 255, 0) 58%);
+    pointer-events: none;
+    z-index: 4;
+}
+
+@keyframes owrx-rig-poweron {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* then the dial, then the control sections, a beat apart each, like a
+   rig booting section by section */
+body.theme-rig #owrx-rig-knob-line {
+    animation: owrx-rig-poweron 0.5s ease-out 0.25s both;
+}
+
+body.theme-rig #openwebrx-panel-receiver .openwebrx-section {
+    animation: owrx-rig-poweron 0.5s ease-out 0.5s both;
 }
 
 /* extra readouts (S units, squelch, clock), wide layout only */

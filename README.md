@@ -76,10 +76,16 @@ the filter width and what one dial click does. You can tune on the
 readout itself: point at a digit, scroll, and that digit spins. This
 works on the MHz digits too; when the target leaves the receiver window
 the window moves along with you (the server must allow center frequency
-changes). The S-meter is segmented with peak hold, blue up to S9 and red
-beyond, with the scale running 1 3 5 7 9 +20 +40 +60. Below it a small
-status line shows the band, S units, squelch, mute and UTC time. Then
-two scopes:
+changes). The S-meter has two faces: the segmented bar, and a virtual
+analog needle you switch to with a right-click on the meter. Both run
+on real meter ballistics with peak hold, both print the S reading as a
+number, the needle face shows the live dB value too, and when the
+squelch is on, an SQL marker sits at the exact spot where the audio
+gate opens, so you set the squelch by putting it just above the noise.
+Below the meter a small status line shows the band, S units, squelch,
+mute and UTC time. Then two scopes:
+
+![the two meter faces](docs/screenshot-meters.png)
 
 - A band scope centered on the tuned frequency, like the center mode scope
   on a rig. Click it to tune, scroll it to step, SPAN switches the width
@@ -123,7 +129,9 @@ where you are); the wide layout shows them side by side:
   your own noise floor: green means solid copy, yellow weak, dim means
   nothing heard. The picture refreshes every 3 minutes and shows what
   your antenna actually hears, not what a model predicts. Turn the dial
-  or close the screen and the radio is yours again.
+  or close the screen and the radio is yours again. With the BCN chip
+  on in the DX window, the grades also color the beacons on the world
+  map, so you see at a glance which paths are open.
 - The live MUF world map from prop.kc2g.com.
 
 ![band conditions](docs/screenshot-prop.png)
@@ -163,6 +171,10 @@ now. The list gives the age of the spot, callsign, frequency, mode, and
 the bearing and distance from your receiver, handy with a directional
 antenna. Click a spot or a pin and the receiver jumps there with the
 right mode set.
+
+The BCN chip puts the 18 NCDXF/IARU beacons on the map as diamonds,
+click one to listen to it in CW; when the beacon radar is running they
+fill with its grades.
 
 The map is interactive: scroll to zoom toward the cursor, drag to pan,
 double-click to reset, pinch to zoom on a phone. Hover a spot to read

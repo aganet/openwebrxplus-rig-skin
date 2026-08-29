@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.10';
+Plugins.rig_skin._version = '0.9.11';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -166,12 +166,23 @@ Plugins.rig_skin.createDxWindow = function () {
             setActivity(!showActivity);
             render();
         });
+    var showBeacons = (typeof LS !== 'undefined' && LS.has('rig_dx_beacons'))
+        ? LS.loadBool('rig_dx_beacons') : false;
+    var $bcn = $('<span>').addClass('owrx-rig-dx-chip').text('BCN')
+        .attr('title', 'NCDXF/IARU beacons on the map; colored by the beacon radar grades, click one to listen')
+        .toggleClass('on', showBeacons)
+        .on('click', function () {
+            showBeacons = !showBeacons;
+            $bcn.toggleClass('on', showBeacons);
+            if (typeof LS !== 'undefined') LS.save('rig_dx_beacons', showBeacons);
+            render();
+        });
     var $count = $('<span>').addClass('owrx-rig-dx-count');
     var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
         .on('click', function () { setOpen(false); });
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
         .append($title).append($chips.band).append($chips.hf).append($chips.all)
-        .append($act).append($count).append($close);
+        .append($act).append($bcn).append($count).append($close);
 
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
@@ -640,6 +651,45 @@ Plugins.rig_skin.createDxWindow = function () {
             mctx.lineWidth = 0.8;
             mctx.stroke();
         }
+
+        // NCDXF beacons as diamonds, so they read differently from the
+        // round spot pins; filled with the radar's grade when measured,
+        // and the one transmitting right now gets a ring
+        if (showBeacons && Plugins.rig_skin._beacons) {
+            var bc = Plugins.rig_skin._beacons;
+            var st = bc.state();
+            var bandFreq = st.band >= 0 ? bc.freqs[st.band] : bc.freqs[0];
+            bc.loc.forEach(function (ll, i) {
+                var p = px(ll[1], ll[0]);
+                var d = st.data[i];
+                var color = !d ? '#8f959b' : d.snr >= 14 ? '#3adb4a'
+                    : d.snr >= 8 ? '#f0c040' : '#5b656e';
+                mctx.strokeStyle = color;
+                mctx.lineWidth = 1.4;
+                mctx.beginPath();
+                mctx.moveTo(p[0], p[1] - 4);
+                mctx.lineTo(p[0] + 4, p[1]);
+                mctx.lineTo(p[0], p[1] + 4);
+                mctx.lineTo(p[0] - 4, p[1]);
+                mctx.closePath();
+                if (d && d.snr >= 8) {
+                    mctx.fillStyle = color;
+                    mctx.fill();
+                }
+                mctx.stroke();
+                if (st.band >= 0 && i === st.active) {
+                    mctx.strokeStyle = '#5db8ff';
+                    mctx.lineWidth = 1;
+                    mctx.beginPath();
+                    mctx.arc(p[0], p[1], 7, 0, 2 * Math.PI);
+                    mctx.stroke();
+                }
+                pinBoxes.push([p[0], p[1], {
+                    call: bc.calls[i][0], freq: bandFreq, mode: 'CW',
+                    loc: ll, cont: bc.calls[i][1], time: Date.now()
+                }]);
+            });
+        }
     }
 
     // canvas coordinates from a pointer event
@@ -985,6 +1035,11 @@ Plugins.rig_skin.createDxWindow = function () {
             if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
         }
     }
+
+    // the radar refreshes the open window so beacon grades stay live
+    Plugins.rig_skin._dxRender = function () {
+        if (open) render();
+    };
 
     // live spots for the band scope tags: the scope requests the feed
     // while it is visible, so its tags stay fresh without the window open
@@ -1922,6 +1977,8 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
     // not a model. Turning the dial away or hiding the screen stops it.
     var radarBand = -1;              // index into BFREQ, -1 = off
     var radarData = {};              // beacon index -> { snr, time }
+    var slotBeacon = -1;             // beacon being sampled right now
+    var slotSamples = [];            // its 1 Hz SNR readings this slot
     var radarChips = [];
     var radarRows = [];
 
@@ -1951,7 +2008,26 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         $radarList.append(radarRows[radarRows.length - 1].$row);
     });
     $radarList.hide();
+
     $beacons.append($radarList);
+
+    // beacon sites, [lon, lat], for the DX map's beacon layer
+    var BLOC = [[-73.97, 40.75], [-85.94, 79.99], [-121.80, 37.15], [-156.26, 20.71],
+        [175.60, -41.05], [116.06, -32.11], [136.79, 34.45], [82.90, 54.98],
+        [114.15, 22.27], [79.87, 6.89], [28.27, -25.90], [39.85, -3.62],
+        [34.80, 32.11], [24.19, 60.32], [-16.88, 32.72], [-58.37, -34.61],
+        [-77.05, -12.07], [-66.85, 10.43]];
+
+    // the DX window draws the beacons on its world map and colors them
+    // by the radar's grades when the radar has measured something
+    Plugins.rig_skin._beacons = {
+        calls: BEACONS,
+        loc: BLOC,
+        freqs: BFREQ,
+        state: function () {
+            return { band: radarBand, data: radarData, active: slotBeacon };
+        }
+    };
 
     // peak in a narrow window around f against the local median floor
     function beaconSnr(f) {
@@ -1999,26 +2075,35 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         }
         var i = ((tenIdx - radarBand) % 18 + 18) % 18;
         var slotSec = sec % 10;
-        // skip the first seconds of the slot (tuning, keying delay)
+        if (i !== slotBeacon) {
+            slotBeacon = i;
+            slotSamples = [];
+        }
+        // skip the first seconds of the slot (tuning, keying delay), then
+        // grade by the median of the readings: a beacon is a continuous
+        // carrier so its median is the real SNR, while the median votes
+        // out the spikes that pure noise produces on single reads
         if (slotSec >= 2) {
             var snr = beaconSnr(BFREQ[radarBand]);
             if (snr !== null) {
-                var d = radarData[i];
-                var now = Date.now();
-                // merge within the current pass, replace on the next one
-                if (d && now - d.time < 15000) d.snr = Math.max(d.snr, snr);
-                else radarData[i] = d = { snr: snr, time: 0 };
-                d.time = now;
+                slotSamples.push(snr);
+                var s = slotSamples.slice().sort(function (a, b) { return a - b; });
+                radarData[i] = { snr: s[Math.floor(s.length / 2)], time: Date.now() };
             }
         }
+        renderRadar(i);
+    }
+
+    function renderRadar(i) {
         radarRows.forEach(function (r, n) {
             r.$row.toggleClass('listening', n === i);
             var d = radarData[n];
             if (!d) return;
-            var cls = d.snr >= 10 ? 'good' : d.snr >= 4 ? 'fair' : 'none';
-            r.$snr.text(d.snr >= 4 ? '+' + Math.round(d.snr) + ' dB' : '-')
+            var cls = d.snr >= 14 ? 'good' : d.snr >= 8 ? 'fair' : 'none';
+            r.$snr.text(d.snr >= 8 ? '+' + Math.round(d.snr) + ' dB' : '-')
                 .attr('class', 'bsnr ' + cls);
         });
+        if (Plugins.rig_skin._dxRender) Plugins.rig_skin._dxRender();
     }
 
     var views = [
@@ -2596,9 +2681,11 @@ Plugins.rig_skin.fitCanvas = function (canvas, ctx, W, H) {
         var panel = document.getElementById('openwebrx-panel-receiver');
         if (panel && panel.style.zoom) zoom = parseFloat(panel.style.zoom) || 1;
         var w = Math.round((canvas.clientWidth || W) * zoom * (window.devicePixelRatio || 1));
-        if (w >= 8 && canvas.width !== w) {
+        var h = Math.round(w * H / W);
+        // the aspect can change too (the meter styles differ in height)
+        if (w >= 8 && (canvas.width !== w || canvas.height !== h)) {
             canvas.width = w;
-            canvas.height = Math.round(w * H / W);
+            canvas.height = h;
         }
     }
     var s = canvas.width / W;
@@ -3125,7 +3212,7 @@ Plugins.rig_skin.createScope = function ($freq) {
 
     $('#owrx-rig-meter')
         .css('cursor', 'pointer')
-        .attr('title', 'Toggle audio scope')
+        .attr('title', 'Toggle audio scope (right-click: bar / needle meter)')
         .on('click', function () {
             var on = !$scope.hasClass('visible');
             setVisible(on);
@@ -3539,27 +3626,64 @@ Plugins.rig_skin.createMeter = function ($freq) {
     var canvas = document.createElement('canvas');
     canvas.width = W * dpr;
     canvas.height = H * dpr;
-    $freq.append($('<div>').attr('id', 'owrx-rig-meter').append(canvas));
+    var $meter = $('<div>').attr('id', 'owrx-rig-meter').append(canvas);
+    $freq.append($meter);
 
     var ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
     var S9 = 0.65;                       // bar position of S9, red zone beyond
     var SEG = 34, SEGW = 8, GAP = 2;     // segment geometry, SEG*(SEGW+GAP) == W
-    var BAR_Y = 18, BAR_H = 12;
+    var VAL_H = 13;                      // value row above the scale
+    var BAR_Y = VAL_H + 18, BAR_H = 12;
+
+    // two meter faces: the segmented bar or a virtual analog needle,
+    // switched with a right-click on the meter and remembered
+    var style = (typeof LS !== 'undefined' && LS.has('rig_meter_style'))
+        ? LS.loadStr('rig_meter_style') : 'bar';
+
+    function meterH() {
+        return style === 'needle' ? 76 : 34 + VAL_H;
+    }
+
+    $meter.on('contextmenu', function (e) {
+        e.preventDefault();
+        style = style === 'bar' ? 'needle' : 'bar';
+        if (typeof LS !== 'undefined') LS.save('rig_meter_style', style);
+        Plugins.rig_skin._lcdEpoch++;   // the canvas re-measures at the new aspect
+        draw();
+    });
 
     // modern-rig meter colors: blue segments up to S9, red beyond
     function segColor(t) {
         return t > S9 ? '#ff4130' : '#2ea3ff';
     }
 
-    function drawScale() {
+    function sText(v) {
+        return v <= 0 ? 'S0' : v <= S9 ? 'S' + Math.round(v / S9 * 9)
+            : 'S9+' + (Math.round((v - S9) / (1 - S9) * 12) * 5);
+    }
+
+    // squelch threshold in meter units: the slider is in dB on the same
+    // scale the stock code maps onto the meter, so the marker is exact
+    var $sql = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+
+    function squelchT() {
+        if (!$sql.length || typeof Waterfall === 'undefined' || !Waterfall.getRange) return null;
+        var v = parseFloat($sql.val());
+        if (!isFinite(v) || v <= parseFloat($sql.attr('min'))) return null;
+        var r = Waterfall.getRange();
+        var t = (v - (r.min - 20)) / ((r.max + 20) - (r.min - 20));
+        return t > 0 && t <= 1 ? t : null;
+    }
+
+    function drawScale(reserve) {
         ctx.clearRect(0, 0, W, H);
         ctx.font = 'bold 11px roboto-mono, monospace';
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
         ctx.fillStyle = '#aab4bd';
-        ctx.fillText('S', 0, 1);
+        ctx.fillText('S', 0, VAL_H + 1);
 
         var marks = [];
         for (var s = 1; s <= 9; s += 2) marks.push({ t: s / 9 * S9, label: '' + s });
@@ -3571,8 +3695,8 @@ Plugins.rig_skin.createMeter = function ($freq) {
             var x = Math.min(m.t * W, W - 1);
             ctx.fillStyle = m.t > S9 ? '#ff4130' : '#aab4bd';
             ctx.textAlign = x > W - 12 ? 'right' : 'center';
-            ctx.fillText(m.label, x, 1);
-            ctx.fillRect(x - 0.5, 14, 1, 3);
+            ctx.fillText(m.label, x, VAL_H + 1);
+            ctx.fillRect(x - 0.5, VAL_H + 14, 1, 3);
         });
     }
 
@@ -3597,12 +3721,135 @@ Plugins.rig_skin.createMeter = function ($freq) {
         }
     }
 
+    // virtual analog meter: scale arc with a red zone past S9 and a
+    // needle on a pivot below the canvas, driven by the same ballistics
+    // as the bar; a thin ghost needle holds the peak
+    var NH = 76, PIVOT_Y = 172, R_ARC = 155, A_MAX = 50;   // degrees each side
+
+    function needleXY(t, r) {
+        var a = (-A_MAX + 2 * A_MAX * Math.min(1, t)) * Math.PI / 180;
+        return [W / 2 + Math.sin(a) * r, PIVOT_Y - Math.cos(a) * r];
+    }
+
+    function arc(t0, t1, r, color, width) {
+        var a0 = (-A_MAX + 2 * A_MAX * t0 - 90) * Math.PI / 180;
+        var a1 = (-A_MAX + 2 * A_MAX * t1 - 90) * Math.PI / 180;
+        ctx.beginPath();
+        ctx.arc(W / 2, PIVOT_Y, r, a0, a1);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+    }
+
+    function drawNeedle() {
+        ctx.clearRect(0, 0, W, NH);
+        arc(0, S9, R_ARC, '#aab4bd', 2);
+        arc(S9, 1, R_ARC, '#ff4130', 3);
+        ctx.font = 'bold 10px roboto-mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        for (var s = 1; s <= 9; s += 2) {
+            var t = s / 9 * S9;
+            var p0 = needleXY(t, R_ARC - 5), p1 = needleXY(t, R_ARC + 3);
+            ctx.strokeStyle = '#aab4bd';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+            var pl = needleXY(t, R_ARC + 8);
+            ctx.fillStyle = '#aab4bd';
+            ctx.fillText('' + s, pl[0], pl[1] + 5);
+        }
+        [20, 40, 60].forEach(function (db, i) {
+            var t = S9 + (i + 1) / 3 * (1 - S9);
+            var p0 = needleXY(t, R_ARC - 5), p1 = needleXY(t, R_ARC + 3);
+            ctx.strokeStyle = '#ff4130';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+            var pl = needleXY(t, R_ARC + 8);
+            ctx.fillStyle = '#ff4130';
+            ctx.fillText('+' + db, pl[0], pl[1] + 5);
+        });
+        // the corner readouts live at the top, clear of the arc ends
+        ctx.textBaseline = 'top';
+        // live dB readout, derived from the same mapping as the needle
+        if (typeof Waterfall !== 'undefined' && Waterfall.getRange) {
+            var rng = Waterfall.getRange();
+            var db = (rng.min - 20) + current * ((rng.max + 20) - (rng.min - 20));
+            ctx.font = '10px roboto-mono, monospace';
+            ctx.fillStyle = '#93a0ab';
+            ctx.textAlign = 'left';
+            ctx.fillText(db.toFixed(1) + ' dB', 4, 3);
+        }
+        // squelch threshold: a small pointer under the arc (separate from
+        // the scale); the needle past it means the audio gate is open
+        var sq = squelchT();
+        if (sq !== null) {
+            var tip = needleXY(sq, R_ARC - 9);
+            var b0 = needleXY(sq - 0.014, R_ARC - 17);
+            var b1 = needleXY(sq + 0.014, R_ARC - 17);
+            ctx.fillStyle = '#f0c040';
+            ctx.beginPath();
+            ctx.moveTo(tip[0], tip[1]);
+            ctx.lineTo(b0[0], b0[1]);
+            ctx.lineTo(b1[0], b1[1]);
+            ctx.closePath();
+            ctx.fill();
+            ctx.font = 'bold 8px roboto-mono, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            var lp = needleXY(sq, R_ARC - 20);
+            ctx.fillText('SQL', lp[0], lp[1]);
+            ctx.textBaseline = 'bottom';
+        }
+        // numeric readout, like a modern rig's meter
+        ctx.font = 'bold 13px roboto-mono, monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = current > S9 ? '#ff4130' : '#f2f5f7';
+        ctx.shadowColor = 'rgba(215, 232, 255, 0.4)';
+        ctx.shadowBlur = 5;
+        ctx.fillText(sText(current), W - 4, 2);
+        ctx.shadowBlur = 0;
+        ctx.textBaseline = 'bottom';
+        // peak ghost, then the live needle over it
+        if (peak > current + 0.01) {
+            var g0 = needleXY(peak, 34), g1 = needleXY(peak, R_ARC - 8);
+            ctx.strokeStyle = '#4a545e';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(g0[0], g0[1]); ctx.lineTo(g1[0], g1[1]); ctx.stroke();
+        }
+        var n0 = needleXY(current, 30), n1 = needleXY(current, R_ARC - 6);
+        ctx.strokeStyle = current > S9 ? '#ff4130' : '#f2f5f7';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = 'rgba(215, 232, 255, 0.45)';
+        ctx.shadowBlur = 4;
+        ctx.beginPath(); ctx.moveTo(n0[0], n0[1]); ctx.lineTo(n1[0], n1[1]); ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
     var target = 0, current = 0, peak = 0, peakT = 0, lastT = null, anim = null;
 
     function draw() {
-        Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
-        drawScale();
-        drawBar(BAR_Y, BAR_H, Math.round(current * SEG), Math.round(peak * SEG));
+        Plugins.rig_skin.fitCanvas(canvas, ctx, W, meterH());
+        if (style === 'needle') drawNeedle();
+        else {
+            drawScale();
+            drawBar(BAR_Y, BAR_H, Math.round(current * SEG), Math.round(peak * SEG));
+            // squelch threshold line through the bar
+            var sq = squelchT();
+            if (sq !== null) {
+                var x = Math.round(sq * W);
+                ctx.fillStyle = '#f0c040';
+                ctx.fillRect(x - 1, BAR_Y - 3, 2, BAR_H + 6);
+            }
+            // Icom style numeric value in its own row, above the +60 end
+            // of the scale
+            ctx.font = 'bold 12px roboto-mono, monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = current > S9 ? '#ff4130' : '#f2f5f7';
+            ctx.fillText(sText(current), W - 1, 0);
+            ctx.textBaseline = 'bottom';
+        }
     }
 
     // 30fps timer instead of requestAnimationFrame: plenty for a damped
