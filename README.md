@@ -151,6 +151,8 @@ glows green. Click a row to tune. The HAM and WX chips show or hide the
 amateur and weather birds. Drag the window by its header, resize it by
 the corner. It remembers where you left it.
 
+![satellite tracking](docs/screenshot-satwin.png)
+
 The list has the popular active birds. FM: ISS, SO-50, AO-91, PO-101,
 AO-27, AO-123 and the nine TEVEL2 satellites (they share 436.400 and
 take turns). Linear: RS-44, AO-7 with its 10 m downlink you can hear on
