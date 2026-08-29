@@ -141,16 +141,29 @@ where you are); the wide layout shows them side by side:
 
 ## Satellites
 
-The SAT key opens the pass list: predicted passes over the receiver's own
-location for a handful of satellites worth listening to (ISS, SO-50,
-AO-91, RS-44, AO-7 with its 10 m downlink you can hear on an HF antenna,
-Meteor M2-3 and M2-4 for weather images). Each row shows the time and a
-countdown, duration, max elevation color coded by how good the pass is,
-and the downlink. A pass in progress glows green with NOW. The MIN control
-hides passes too low to be useful. Click the frequency and the receiver
-jumps there with the right mode, across bands if the server allows it.
+The SAT button in the top banner opens the tracking window. It is a
+world map with the live position of every bird, updated every few
+seconds. A bird above your horizon turns green and shows its ground
+track and footprint. Click a bird to see its path. Click it again to
+tune the downlink. Under the map is the pass list for the next 24
+hours: when, how long, how high, and the frequency. A pass in progress
+glows green. Click a row to tune. The HAM and WX chips show or hide the
+amateur and weather birds. Drag the window by its header, resize it by
+the corner. It remembers where you left it.
 
-Orbits come from a public TLE API, cached for half a day, and the pass
+The list has the popular active birds. FM: ISS, SO-50, AO-91, PO-101,
+AO-27, AO-123 and the nine TEVEL2 satellites (they share 436.400 and
+take turns). Linear: RS-44, AO-7 with its 10 m downlink you can hear on
+an HF antenna, FO-29, AO-73, JO-97, XW-3 and MO-122. Digital: the
+IO-117 digipeater and NO-44 for APRS. Weather: Meteor M2-3 and M2-4
+with LRPT images, NOAA 15 and 19 with APT.
+
+The SAT key on the LCD still has the compact pass list, with the MIN
+control to hide passes too low to be useful. Click the frequency and
+the receiver jumps there with the right mode, across bands if the
+server allows it.
+
+Orbits come from celestrak.org, cached for half a day. All the pass
 math runs in your browser.
 
 ![satellite passes](docs/screenshot-sats.png)
@@ -165,7 +178,8 @@ get one chip, the newest. This works whenever the Rig theme is on; the
 DX window does not have to be open.
 
 The DX button in the top banner opens a window with live spots from the
-DX cluster network, on a world map and in a list. The map shows every
+DX cluster network, on a world map and in a list. The DX and SAT
+buttons only show on the Rig theme. The other themes stay untouched. The map shows every
 spot as a pin, the great circle path from your QTH to the station, and
 the day/night line, so you see at a glance which paths are open right
 now. The list gives the age of the spot, callsign, frequency, mode, and
@@ -400,6 +414,6 @@ Data and libraries the plugin uses:
 - Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
 - Solar data: NOAA SWPC (public domain)
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
-- TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/)
+- TLE data: [celestrak.org](https://celestrak.org/)
 - DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](http://www.dxsummit.fi/)
 - Coastlines: [Natural Earth](https://www.naturalearthdata.com/) (public domain), bundled

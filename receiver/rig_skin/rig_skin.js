@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.9.11';
+Plugins.rig_skin._version = '0.10.0';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -45,6 +45,7 @@ Plugins.rig_skin.init = function () {
     Plugins.rig_skin.registerWfTheme();
     Plugins.rig_skin.createVfoLine();
     Plugins.rig_skin.createDxWindow();
+    Plugins.rig_skin.createSatWindow();
     Plugins.rig_skin.createSpotRibbon();
     try { Plugins.rig_skin.createPwa(); } catch (e) {}
     return true;
@@ -690,6 +691,7 @@ Plugins.rig_skin.createDxWindow = function () {
                 }]);
             });
         }
+
     }
 
     // canvas coordinates from a pointer event
@@ -1058,6 +1060,416 @@ Plugins.rig_skin.createDxWindow = function () {
         }
     };
 
+};
+
+// Satellite tracking window: a SAT button in the top banner opens a
+// world map with every satellite's live position, ground track and
+// visibility footprint, green while above this receiver's horizon.
+// Click a bird to tune its downlink. Orbits come from the same tracker
+// the passes screen uses; positions refresh every 5 seconds.
+Plugins.rig_skin.createSatWindow = function () {
+    var open = false, timer = null, landLoading = false;
+    var MW = 432, MH = 216;
+    var dpr = window.devicePixelRatio || 1;
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var pins = [];       // [x, y, sat, elevation]
+    var selected = null; // sat name whose path is pinned on the map
+
+    function sizeCanvas(w) {
+        MW = w;
+        MH = Math.round(w / 2);
+        canvas.width = MW * dpr;
+        canvas.height = MH * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    // category filters: amateur birds and weather birds, both on by default
+    var cats = { ham: true, wx: true };
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_satwin_cats')) {
+            var cc = JSON.parse(LS.loadStr('rig_satwin_cats'));
+            cats.ham = cc.ham !== false;
+            cats.wx = cc.wx !== false;
+        }
+    } catch (e) {}
+
+    function catChip(key, label, title) {
+        return $('<span>').addClass('owrx-rig-dx-chip').text(label).attr('title', title)
+            .toggleClass('on', cats[key])
+            .on('click', function () {
+                cats[key] = !cats[key];
+                $(this).toggleClass('on', cats[key]);
+                if (typeof LS !== 'undefined') LS.save('rig_satwin_cats', JSON.stringify(cats));
+                refresh();
+            });
+    }
+
+    var $title = $('<span>').addClass('owrx-rig-dx-title').text('SAT TRACKING');
+    var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
+        .on('click', function () { setOpen(false); });
+    var $hdr = $('<div>').addClass('owrx-rig-dx-hdr').append($title)
+        .append(catChip('ham', 'HAM', 'Amateur radio satellites'))
+        .append(catChip('wx', 'WX', 'Weather satellites'))
+        .append($close);
+    var $tip = $('<div>').addClass('owrx-rig-dx-tip');
+    var $plist = $('<table>').addClass('owrx-rig-satwin-list');
+    var $lcd = $('<div>').addClass('owrx-rig-dx-lcd').append(canvas).append($tip).append($plist);
+    var $foot = $('<div>').addClass('owrx-rig-dx-foot')
+        .append($('<span>').text('click a bird for its path, click again to tune'))
+        .append($('<span>').text('TLE: celestrak.org'));
+    var $grip = $('<div>').addClass('owrx-rig-dx-grip');
+    var $win = $('<div>').attr('id', 'owrx-rig-satwin')
+        .append($hdr).append($lcd).append($foot).append($grip).appendTo('body');
+
+    // window size: persisted, resizable by the corner grip; the map
+    // canvas is re-rendered at the new resolution
+    var winW = 464, listH = 150;
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_satwin_size')) {
+            var sz = JSON.parse(LS.loadStr('rig_satwin_size'));
+            winW = sz.w || winW;
+            listH = sz.h || listH;
+        }
+    } catch (e) {}
+
+    function applySize() {
+        winW = Math.min(Math.max(winW, 340), 1100);
+        listH = Math.min(Math.max(listH, 60), 600);
+        $win.css('width', winW + 'px');
+        $plist.css('max-height', listH + 'px');
+        sizeCanvas(winW - 32);   // panel + lcd padding
+    }
+    applySize();
+
+    (function () {
+        var sx, sy, w0, h0, sizing = false;
+        function point(e) {
+            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+            return [t.clientX, t.clientY];
+        }
+        $grip.on('mousedown touchstart', function (e) {
+            var pt = point(e);
+            sx = pt[0]; sy = pt[1]; w0 = winW; h0 = listH;
+            sizing = true;
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        $(document).on('mousemove touchmove', function (e) {
+            if (!sizing) return;
+            var pt = point(e);
+            winW = w0 + pt[0] - sx;
+            listH = h0 + pt[1] - sy;
+            applySize();
+            render();
+        });
+        $(document).on('mouseup touchend', function () {
+            if (!sizing) return;
+            sizing = false;
+            if (typeof LS !== 'undefined') {
+                LS.save('rig_satwin_size', JSON.stringify({ w: winW, h: listH }));
+            }
+        });
+    })();
+
+    function px(lat, lon) {
+        return [(lon + 180) / 360 * MW, (90 - lat) / 180 * MH];
+    }
+
+    function qth() {
+        var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;
+        return (pos && typeof pos.lat === 'number') ? pos : null;
+    }
+
+    function render() {
+        if (!open) return;
+        ctx.clearRect(0, 0, MW, MH);
+        pins = [];
+        if (Plugins.rig_skin._land) {
+            ctx.fillStyle = '#2c4658';
+            Plugins.rig_skin._land.forEach(function (poly) {
+                ctx.beginPath();
+                var prevX = null;
+                poly.forEach(function (pt) {
+                    var p = px(pt[1], pt[0]);
+                    // antimeridian wrap: lift the pen, no streaks
+                    if (prevX !== null && Math.abs(p[0] - prevX) > MW / 2) ctx.moveTo(p[0], p[1]);
+                    else prevX === null ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
+                    prevX = p[0];
+                });
+                ctx.fill();
+            });
+        }
+        // day/night terminator, same math as the DX map
+        var now = new Date();
+        var doy = (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+            Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000;
+        var decl = -23.44 * Math.cos(2 * Math.PI / 365 * (doy + 10)) * Math.PI / 180;
+        var sunLon = (12 - (now.getUTCHours() + now.getUTCMinutes() / 60)) * 15;
+        ctx.fillStyle = 'rgba(0,0,12,0.30)';
+        ctx.beginPath();
+        for (var x = 0; x <= MW; x += 4) {
+            var lon = x / MW * 360 - 180;
+            var H0 = (lon - sunLon) * Math.PI / 180;
+            var lat = Math.atan(-Math.cos(H0) / Math.tan(decl)) * 180 / Math.PI;
+            var p = px(lat, lon);
+            x ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]);
+        }
+        var north = decl > 0;
+        ctx.lineTo(MW, north ? MH : 0);
+        ctx.lineTo(0, north ? MH : 0);
+        ctx.closePath();
+        ctx.fill();
+
+        var pos = qth();
+        if (pos) {
+            var q = px(pos.lat, pos.lon);
+            ctx.fillStyle = '#ff5148';
+            ctx.beginPath();
+            ctx.arc(q[0], q[1], 2.8, 0, 7);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+        }
+
+        if (!Plugins.rig_skin._satTrack || !Plugins.rig_skin._satTrack.ready()) {
+            ctx.font = '9px roboto-mono, monospace';
+            ctx.fillStyle = '#5c6670';
+            ctx.fillText('loading orbits...', 8, MH - 8);
+            return;
+        }
+        Plugins.rig_skin._satTrack.positions().forEach(function (sp) {
+            if (!cats[sp.sat.cat]) return;
+            var up = sp.el !== null && sp.el > 0;
+            var sel = sp.sat.name === selected;
+            // track and footprint only for selected or above-horizon
+            // birds; with this many the map drowns otherwise
+            if (up || sel) {
+                ctx.strokeStyle = sel ? 'rgba(93, 184, 255, 0.8)' : 'rgba(58, 219, 74, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                var pv = null;
+                sp.track.forEach(function (pt) {
+                    var p = px(pt[1], pt[0]);
+                    if (pv !== null && Math.abs(p[0] - pv) > MW / 2) ctx.moveTo(p[0], p[1]);
+                    else pv === null ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
+                    pv = p[0];
+                });
+                ctx.stroke();
+                ctx.strokeStyle = sel ? 'rgba(93, 184, 255, 0.5)' : 'rgba(58, 219, 74, 0.35)';
+                ctx.beginPath();
+                var la0 = sp.lat * Math.PI / 180, lo0 = sp.lon * Math.PI / 180;
+                var a = sp.foot * Math.PI / 180;
+                pv = null;
+                for (var az = 0; az <= 360; az += 12) {
+                    var azr = az * Math.PI / 180;
+                    var la2 = Math.asin(Math.sin(la0) * Math.cos(a) +
+                        Math.cos(la0) * Math.sin(a) * Math.cos(azr));
+                    var lo2 = lo0 + Math.atan2(Math.sin(azr) * Math.sin(a) * Math.cos(la0),
+                        Math.cos(a) - Math.sin(la0) * Math.sin(la2));
+                    var p = px(la2 * 180 / Math.PI, ((lo2 * 180 / Math.PI + 540) % 360) - 180);
+                    if (pv !== null && Math.abs(p[0] - pv) > MW / 2) ctx.moveTo(p[0], p[1]);
+                    else pv === null ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
+                    pv = p[0];
+                }
+                ctx.stroke();
+            }
+            // the bird itself, with its name
+            var pp = px(sp.lat, sp.lon);
+            var hs = sel ? 3.5 : 2.5;
+            ctx.fillStyle = up ? '#3adb4a' : '#f0c040';
+            ctx.fillRect(pp[0] - hs, pp[1] - hs, hs * 2, hs * 2);
+            ctx.strokeStyle = sel ? '#eef3f7' : 'rgba(0, 0, 0, 0.7)';
+            ctx.lineWidth = sel ? 1 : 0.7;
+            ctx.strokeRect(pp[0] - hs, pp[1] - hs, hs * 2, hs * 2);
+            ctx.font = 'bold 8px monospace';
+            ctx.fillStyle = up ? '#3adb4a' : '#f0c040';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 3;
+            ctx.fillText(sp.sat.name, pp[0] + 5, pp[1] - 4);
+            ctx.shadowBlur = 0;
+            pins.push([pp[0], pp[1], sp.sat, sp.el]);
+        });
+    }
+
+    function ensureLand() {
+        if (Plugins.rig_skin._land || landLoading) return;
+        landLoading = true;
+        $.getScript(Plugins.rig_skin._base + 'rig_skin_map.js')
+            .done(render)
+            .fail(function () { landLoading = false; });
+    }
+
+    function canvasXY(e) {
+        var r = canvas.getBoundingClientRect();
+        return [(e.clientX - r.left) * MW / r.width, (e.clientY - r.top) * MH / r.height];
+    }
+
+    function pinAt(cx, cy) {
+        var best = null, bd = 10 * 10;
+        pins.forEach(function (b) {
+            var d = (b[0] - cx) * (b[0] - cx) + (b[1] - cy) * (b[1] - cy);
+            if (d < bd) { bd = d; best = b; }
+        });
+        return best;
+    }
+
+    $(canvas).on('mousemove', function (e) {
+        var xy = canvasXY(e);
+        var b = pinAt(xy[0], xy[1]);
+        if (!b) { $tip.removeClass('show'); return; }
+        $tip.html(b[2].name + '<br>' + b[2].freq +
+            (b[3] !== null ? '<br>el ' + Math.round(b[3]) + '&deg;' : ''));
+        var lr = $lcd[0].getBoundingClientRect();
+        $tip.css({ left: (e.clientX - lr.left + 10) + 'px', top: (e.clientY - lr.top + 10) + 'px' })
+            .addClass('show');
+    });
+
+    // first click pins a bird's path; a second click on it tunes,
+    // a click on open water clears the selection
+    $(canvas).on('click', function (e) {
+        var xy = canvasXY(e);
+        var b = pinAt(xy[0], xy[1]);
+        if (!b) {
+            selected = null;
+            render();
+        } else if (selected === b[2].name) {
+            Plugins.rig_skin.tuneTo(b[2].f, b[2].mode);
+        } else {
+            selected = b[2].name;
+            render();
+        }
+    });
+
+    // restore position, kept inside the viewport
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_satwin_pos')) {
+            var p = JSON.parse(LS.loadStr('rig_satwin_pos'));
+            $win.css({
+                left: Math.min(Math.max(p.left, 0), window.innerWidth - 60) + 'px',
+                top: Math.min(Math.max(p.top, 0), window.innerHeight - 60) + 'px'
+            });
+        }
+    } catch (e) {}
+
+    // drag by the header
+    (function () {
+        var sx, sy, ox, oy, moving = false;
+        function point(e) {
+            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+            return [t.clientX, t.clientY];
+        }
+        $hdr.on('mousedown touchstart', function (e) {
+            if ($(e.target).is('.owrx-rig-dx-close')) return;
+            var pt = point(e), off = $win.offset();
+            sx = pt[0]; sy = pt[1];
+            ox = off.left - $(window).scrollLeft();
+            oy = off.top - $(window).scrollTop();
+            moving = true;
+            e.preventDefault();
+        });
+        $(document).on('mousemove touchmove', function (e) {
+            if (!moving) return;
+            var pt = point(e);
+            $win.css({ left: (ox + pt[0] - sx) + 'px', top: (oy + pt[1] - sy) + 'px' });
+        });
+        $(document).on('mouseup touchend', function () {
+            if (!moving) return;
+            moving = false;
+            if (typeof LS !== 'undefined') {
+                var o = $win.position();
+                LS.save('rig_satwin_pos', JSON.stringify({ left: o.left, top: o.top }));
+            }
+        });
+    })();
+
+    function fmtUtc(d) {
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+    }
+
+    // every upcoming pass in the next 24 hours, soonest first;
+    // a row click pins the bird on the map and tunes it
+    function renderList() {
+        if (!open) return;
+        var st = Plugins.rig_skin._satTrack;
+        if (!st || !st.ready()) return;
+        var passes = st.passes();
+        $plist.empty();
+        if (!passes.length) {
+            $plist.append($('<tr>').append($('<td>')
+                .text('no passes: receiver position not configured')));
+            return;
+        }
+        var now = Date.now();
+        passes.forEach(function (p) {
+            if (p.los.getTime() < now || !cats[p.sat.cat]) return;
+            var active = p.aos.getTime() <= now;
+            var mins = Math.round((p.los - p.aos) / 60000);
+            var toGo = Math.round((p.aos.getTime() - now) / 60000);
+            var when = active ? 'NOW' : fmtUtc(p.aos) + ' (' +
+                (toGo >= 60 ? Math.floor(toGo / 60) + 'h' + (toGo % 60) : toGo + 'm') + ')';
+            $plist.append($('<tr>').toggleClass('active', active)
+                .append($('<td>').addClass('name').text(p.sat.name))
+                .append($('<td>').addClass('when').text(when))
+                .append($('<td>').addClass('dur').text(mins + 'm'))
+                .append($('<td>').addClass('el').text(Math.round(p.maxEl) + '°'))
+                .append($('<td>').addClass('freq').text(p.sat.freq))
+                .on('click', function () {
+                    selected = p.sat.name;
+                    render();
+                    Plugins.rig_skin.tuneTo(p.sat.f, p.sat.mode);
+                }));
+        });
+    }
+
+    function refresh() {
+        render();
+        renderList();
+    }
+
+    // the TLE download can fail (the API rate-limits); retry while open
+    var lastEnsure = 0;
+    function ensureOrbits() {
+        if (!Plugins.rig_skin._satTrack || Plugins.rig_skin._satTrack.ready()) return;
+        if (Date.now() - lastEnsure < 30000) return;
+        lastEnsure = Date.now();
+        Plugins.rig_skin._satTrack.ensure(refresh);
+    }
+
+    function tick() {
+        if (!open) return;
+        ensureOrbits();
+        refresh();
+    }
+
+    function setOpen(on) {
+        open = on;
+        $win.toggleClass('visible', on);
+        $btn.toggleClass('highlighted', on);
+        if (on) {
+            ensureLand();
+            ensureOrbits();
+            refresh();
+            if (!timer) timer = setInterval(tick, 5000);
+        } else if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-sat-button')
+        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+            '<rect x="9.4" y="9.4" width="5.2" height="5.2" transform="rotate(45 12 12)"/>' +
+            '<path d="M3.5 7l4 4M16.5 13l4 4M5.5 5l6 6M12.5 12l6 6"/>' +
+            '<path d="M14 3.5a6.5 6.5 0 0 1 6.5 6.5"/>' +
+            '</svg><br/>SAT')
+        .attr('title', 'Live satellite tracking map')
+        .on('click', function () { setOpen(!open); });
+    var $dxBtn = $('#owrx-rig-dx-button');
+    if ($dxBtn.length) $dxBtn.after($btn);
+    else $('.openwebrx-main-buttons').append($btn);
 };
 
 // mode for a clicked DX spot; set it only when it is unambiguous
@@ -1643,18 +2055,39 @@ Plugins.rig_skin.tuneTo = function (f, mode) {
 };
 
 // Satellite passes over the receiver location. TLEs come from
-// tle.ivanstanojevic.me (cached for 12 hours), orbit propagation uses
-// the MIT licensed satellite.js loaded on demand, and the downlink
+// celestrak.org group files (cached for 12 hours), orbit propagation
+// uses the MIT licensed satellite.js loaded on demand, and the downlink
 // frequencies are a small built-in table. Collapsed by default.
 Plugins.rig_skin.createSatScreen = function () {
     var SATS = [
-        { id: 25544, name: 'ISS', freq: '145.800 FM', f: 145800000, mode: 'nfm' },
-        { id: 27607, name: 'SO-50', freq: '436.795 FM', f: 436795000, mode: 'nfm' },
-        { id: 43017, name: 'AO-91', freq: '145.960 FM', f: 145960000, mode: 'nfm' },
-        { id: 44909, name: 'RS-44', freq: '435.640 SSB', f: 435640000, mode: 'usb' },
-        { id: 7530, name: 'AO-7', freq: '29.450 SSB', f: 29450000, mode: 'usb' },
-        { id: 57166, name: 'METEOR M2-3', freq: '137.900 LRPT', f: 137900000, mode: 'nfm' },
-        { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT', f: 137100000, mode: 'nfm' }
+        { id: 25544, name: 'ISS', freq: '145.800 FM', f: 145800000, mode: 'nfm', cat: 'ham' },
+        { id: 27607, name: 'SO-50', freq: '436.795 FM', f: 436795000, mode: 'nfm', cat: 'ham' },
+        { id: 43017, name: 'AO-91', freq: '145.960 FM', f: 145960000, mode: 'nfm', cat: 'ham' },
+        { id: 43678, name: 'PO-101', freq: '145.900 FM', f: 145900000, mode: 'nfm', cat: 'ham' },
+        { id: 22825, name: 'AO-27', freq: '436.795 FM', f: 436795000, mode: 'nfm', cat: 'ham' },
+        { id: 61781, name: 'AO-123', freq: '435.400 FM', f: 435400000, mode: 'nfm', cat: 'ham' },
+        { id: 63217, name: 'TEVEL2-1', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63219, name: 'TEVEL2-2', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63218, name: 'TEVEL2-3', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63213, name: 'TEVEL2-4', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63214, name: 'TEVEL2-5', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63215, name: 'TEVEL2-6', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63238, name: 'TEVEL2-7', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63239, name: 'TEVEL2-8', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 63237, name: 'TEVEL2-9', freq: '436.400 FM', f: 436400000, mode: 'nfm', cat: 'ham' },
+        { id: 44909, name: 'RS-44', freq: '435.640 SSB', f: 435640000, mode: 'usb', cat: 'ham' },
+        { id: 7530, name: 'AO-7', freq: '29.450 SSB', f: 29450000, mode: 'usb', cat: 'ham' },
+        { id: 24278, name: 'FO-29', freq: '435.850 SSB', f: 435850000, mode: 'usb', cat: 'ham' },
+        { id: 39444, name: 'AO-73', freq: '145.950 SSB', f: 145950000, mode: 'usb', cat: 'ham' },
+        { id: 43803, name: 'JO-97', freq: '145.855 SSB', f: 145855000, mode: 'usb', cat: 'ham' },
+        { id: 50466, name: 'XW-3', freq: '435.180 SSB', f: 435180000, mode: 'usb', cat: 'ham' },
+        { id: 60209, name: 'MO-122', freq: '145.925 SSB', f: 145925000, mode: 'usb', cat: 'ham' },
+        { id: 53109, name: 'IO-117', freq: '435.310 DATA', f: 435310000, mode: 'usb', cat: 'ham' },
+        { id: 26931, name: 'NO-44', freq: '145.825 APRS', f: 145825000, mode: 'nfm', cat: 'ham' },
+        { id: 57166, name: 'METEOR M2-3', freq: '137.900 LRPT', f: 137900000, mode: 'nfm', cat: 'wx' },
+        { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT', f: 137100000, mode: 'nfm', cat: 'wx' },
+        { id: 25338, name: 'NOAA 15', freq: '137.620 APT', f: 137620000, mode: 'nfm', cat: 'wx' },
+        { id: 33591, name: 'NOAA 19', freq: '137.100 APT', f: 137100000, mode: 'nfm', cat: 'wx' }
     ];
 
     function tuneSat(s) {
@@ -1669,7 +2102,7 @@ Plugins.rig_skin.createSatScreen = function () {
     var $sat = $('<div>').attr('id', 'owrx-rig-sats')
         .append($head).append($list)
         .append($('<div>').addClass('owrx-rig-prop-cap')
-            .append($('<span>').addClass('owrx-rig-prop-label').text('PASSES over this receiver - TLE: ivanstanojevic.me'))
+            .append($('<span>').addClass('owrx-rig-prop-label').text('PASSES over this receiver - TLE: celestrak.org'))
             .append($minCtl)
             .append($('<span>').addClass('owrx-rig-prop-hide').text('HIDE')));
     $('#owrx-rig-prop').after($sat);
@@ -1703,6 +2136,19 @@ Plugins.rig_skin.createSatScreen = function () {
         document.head.appendChild(s);
     }
 
+    function parseTles(text, into) {
+        var lines = text.split(/\r?\n/);
+        for (var i = 0; i + 1 < lines.length; i++) {
+            var l1 = lines[i], l2 = lines[i + 1];
+            if (l1.charAt(0) === '1' && l1.charAt(1) === ' ' &&
+                l2 && l2.charAt(0) === '2' && l2.charAt(1) === ' ') {
+                into[parseInt(l1.substring(2, 7), 10)] = { line1: l1, line2: l2 };
+            }
+        }
+    }
+
+    // Celestrak group files cover most birds in three requests; anything
+    // missing (the decommissioned NOAAs) is fetched by catalog number
     function ensureTles(cb) {
         var cached = null;
         try {
@@ -1710,10 +2156,27 @@ Plugins.rig_skin.createSatScreen = function () {
         } catch (e) {}
         if (cached && cached.tles && Date.now() - cached.ts < 12 * 3600 * 1000) return cb(cached.tles);
 
-        var tles = {}, pending = SATS.length;
-        function done() {
-            if (--pending > 0) return;
+        var base = 'https://celestrak.org/NORAD/elements/gp.php?FORMAT=TLE&';
+        var all = {};
+
+        // celestrak throttles by holding connections open, so every
+        // request gets a hard timeout; a hung one just counts as done
+        function grab(query, done) {
+            var ctl = new AbortController();
+            var timer = setTimeout(function () { ctl.abort(); }, 15000);
+            fetch(base + query, { signal: ctl.signal })
+                .then(function (r) { return r.text(); })
+                .then(function (t) { parseTles(t, all); })
+                .catch(function () {})
+                .then(function () { clearTimeout(timer); done(); });
+        }
+
+        function finish() {
+            var tles = {};
+            SATS.forEach(function (s) { if (all[s.id]) tles[s.id] = all[s.id]; });
             if (Object.keys(tles).length === 0) {
+                // offline or blocked: run on the stale cache if there is one
+                if (cached && cached.tles) return cb(cached.tles);
                 $head.text('TLE download failed');
                 return;
             }
@@ -1722,16 +2185,131 @@ Plugins.rig_skin.createSatScreen = function () {
             } catch (e) {}
             cb(tles);
         }
-        SATS.forEach(function (s) {
-            fetch('https://tle.ivanstanojevic.me/api/tle/' + s.id)
-                .then(function (r) { return r.json(); })
-                .then(function (j) {
-                    if (j.line1 && j.line2) tles[s.id] = { line1: j.line1, line2: j.line2 };
-                    done();
-                })
-                .catch(done);
+
+        var groups = ['stations', 'amateur', 'weather'];
+        var pending = groups.length;
+        groups.forEach(function (g) {
+            grab('GROUP=' + g, function () {
+                if (--pending > 0) return;
+                var missing = SATS.filter(function (s) { return !all[s.id]; });
+                if (!missing.length) return finish();
+                var left = missing.length;
+                missing.forEach(function (s) {
+                    grab('CATNR=' + s.id, function () {
+                        if (--left === 0) finish();
+                    });
+                });
+            });
         });
     }
+
+    // live tracking for the SAT window: current geodetic position,
+    // elevation from this receiver, ground track and the visibility
+    // footprint of every satellite in the table
+    var trackRecs = null, passCache = null, passCacheT = 0;
+
+    Plugins.rig_skin._satTrack = {
+        ready: function () { return !!trackRecs; },
+        ensure: function (cb) {
+            if (trackRecs) return cb();
+            ensureLib(function () {
+                ensureTles(function (tles) {
+                    trackRecs = [];
+                    SATS.forEach(function (s) {
+                        var tle = tles[s.id];
+                        if (tle) trackRecs.push({ sat: s, rec: satellite.twoline2satrec(tle.line1, tle.line2) });
+                    });
+                    cb();
+                });
+            });
+        },
+        positions: function () {
+            if (!trackRecs) return [];
+            var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;
+            var obs = (pos && typeof pos.lat === 'number') ? {
+                latitude: satellite.degreesToRadians(pos.lat),
+                longitude: satellite.degreesToRadians(pos.lon),
+                height: 0.1
+            } : null;
+            var now = new Date();
+            var gmst = satellite.gstime(now);
+            var out = [];
+            trackRecs.forEach(function (e) {
+                var pv = satellite.propagate(e.rec, now);
+                if (!pv || !pv.position) return;
+                var gd = satellite.eciToGeodetic(pv.position, gmst);
+                var el = null;
+                if (obs) {
+                    var la = satellite.ecfToLookAngles(obs, satellite.eciToEcf(pv.position, gmst));
+                    el = la.elevation * 180 / Math.PI;
+                }
+                // ground track from 10 min back to 90 min ahead, cached
+                // for a minute (the track barely moves that fast)
+                if (!e.track || now.getTime() - e.trackT > 60000) {
+                    e.track = [];
+                    for (var t = -600; t <= 5400; t += 90) {
+                        var d = new Date(now.getTime() + t * 1000);
+                        var p2 = satellite.propagate(e.rec, d);
+                        if (!p2 || !p2.position) continue;
+                        var g2 = satellite.eciToGeodetic(p2.position, satellite.gstime(d));
+                        e.track.push([satellite.degreesLong(g2.longitude), satellite.degreesLat(g2.latitude)]);
+                    }
+                    e.trackT = now.getTime();
+                }
+                out.push({
+                    sat: e.sat,
+                    lon: satellite.degreesLong(gd.longitude),
+                    lat: satellite.degreesLat(gd.latitude),
+                    el: el,
+                    // footprint radius in degrees of arc on the ground
+                    foot: Math.acos(6371 / (6371 + gd.height)) * 180 / Math.PI,
+                    track: e.track
+                });
+            });
+            return out;
+        },
+        // upcoming passes over this receiver in the next 24 hours,
+        // recomputed every 10 minutes; [] when no position is set
+        passes: function () {
+            if (!trackRecs) return null;
+            var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;
+            if (!pos || typeof pos.lat !== 'number') return [];
+            if (passCache && Date.now() - passCacheT < 600000) return passCache;
+            var obs = {
+                latitude: satellite.degreesToRadians(pos.lat),
+                longitude: satellite.degreesToRadians(pos.lon),
+                height: 0.1
+            };
+            var out = [];
+            trackRecs.forEach(function (e) {
+                var inPass = false, aos = null, maxEl = 0, found = 0;
+                for (var t = 0; t <= 24 * 3600 && found < 3; t += 30) {
+                    var d = new Date(Date.now() + t * 1000);
+                    var pv = satellite.propagate(e.rec, d);
+                    if (!pv || !pv.position) continue;
+                    var la = satellite.ecfToLookAngles(obs, satellite.eciToEcf(pv.position, satellite.gstime(d)));
+                    var el = la.elevation * 180 / Math.PI;
+                    if (el > 0) {
+                        if (!inPass) {
+                            inPass = true;
+                            aos = d;
+                            maxEl = el;
+                        } else if (el > maxEl) {
+                            maxEl = el;
+                        }
+                    } else if (inPass) {
+                        inPass = false;
+                        found++;
+                        out.push({ sat: e.sat, aos: aos, los: d, maxEl: maxEl });
+                    }
+                }
+            });
+            out.sort(function (a, b) { return a.aos - b.aos; });
+            passCache = out;
+            passCacheT = Date.now();
+            return out;
+        }
+    };
 
     function computePasses(tles) {
         var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;

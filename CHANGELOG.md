@@ -1,6 +1,28 @@
 # Changelog
 
-## 0.9.11 (2026-08-29)
+## 0.10.0 (2026-08-30)
+
+- Satellite tracking window. A new SAT button next to DX opens a world
+  map with the live position of every bird, updated every few seconds.
+  A bird above your horizon turns green and shows its ground track and
+  footprint. Click a bird to see its path, click again to tune the
+  downlink. Under the map, every pass for the next 24 hours: when, how
+  long, how high, and the frequency. A pass in progress glows NOW;
+  click a row to tune. HAM and WX chips show or hide the amateur and
+  weather birds. The window drags by its header, resizes by the corner
+  grip, and remembers its place.
+- Many more birds. FM: ISS, SO-50, AO-91, PO-101, AO-27, AO-123 and
+  the nine TEVEL2 satellites. Linear: RS-44, AO-7, FO-29, AO-73,
+  JO-97, XW-3, MO-122. Digital: IO-117, NO-44. Weather: Meteor M2-3
+  and M2-4, NOAA 15 and 19.
+- TLEs come from celestrak.org group files now: three requests instead
+  of one per satellite, a 12 hour cache, a timeout on every request
+  and a retry while the window is open. The old per-satellite API
+  rate-limited and could hang the whole screen.
+- Fixed the IO-117 (GreenCube) catalog number; it was tracking the
+  wrong object from the same launch.
+- The DX and SAT buttons only show on the Rig theme. On every other
+  theme the plugin now leaves the top banner exactly as stock.
 
 - The S-meter has two faces now: the segmented bar and a virtual analog
   needle drawn like the real Icom meter face, a wide curved arc with
