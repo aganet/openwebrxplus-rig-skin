@@ -76,14 +76,14 @@ the filter width and what one dial click does. You can tune on the
 readout itself: point at a digit, scroll, and that digit spins. This
 works on the MHz digits too; when the target leaves the receiver window
 the window moves along with you (the server must allow center frequency
-changes). The S-meter has two faces: the segmented bar, and a virtual
-analog needle you switch to with a right-click on the meter. Both run
-on real meter ballistics with peak hold, both print the S reading as a
-number, the needle face shows the live dB value too, and when the
-squelch is on, an SQL marker sits at the exact spot where the audio
-gate opens, so you set the squelch by putting it just above the noise.
-Below the meter a small status line shows the band, S units, squelch,
-mute and UTC time. Then two scopes:
+changes). The S-meter has two faces: a segmented bar, and an analog
+needle drawn like an Icom meter face. Right-click the meter to switch.
+Both move with proper meter ballistics, hold the peak, and show the S
+value as a number; the needle face also shows the dB reading. With the
+squelch on, an SQL marker sits where the gate opens. Drag the marker
+and the squelch follows, so you set it right on the meter, just above
+the noise. Below the meter a status line shows the band, S units,
+squelch, mute and UTC time. Then two scopes:
 
 ![the two meter faces](docs/screenshot-meters.png)
 

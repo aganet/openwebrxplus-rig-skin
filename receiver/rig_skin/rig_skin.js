@@ -3212,7 +3212,7 @@ Plugins.rig_skin.createScope = function ($freq) {
 
     $('#owrx-rig-meter')
         .css('cursor', 'pointer')
-        .attr('title', 'Toggle audio scope (right-click: bar / needle meter)')
+        .attr('title', 'Toggle audio scope (right-click: bar / needle meter; drag the SQL marker to set the squelch)')
         .on('click', function () {
             var on = !$scope.hasClass('visible');
             setVisible(on);
@@ -3641,9 +3641,10 @@ Plugins.rig_skin.createMeter = function ($freq) {
     // switched with a right-click on the meter and remembered
     var style = (typeof LS !== 'undefined' && LS.has('rig_meter_style'))
         ? LS.loadStr('rig_meter_style') : 'bar';
+    if (style !== 'needle') style = 'bar';
 
     function meterH() {
-        return style === 'needle' ? 76 : 34 + VAL_H;
+        return style === 'needle' ? NH : 34 + VAL_H;
     }
 
     $meter.on('contextmenu', function (e) {
@@ -3677,7 +3678,61 @@ Plugins.rig_skin.createMeter = function ($freq) {
         return t > 0 && t <= 1 ? t : null;
     }
 
-    function drawScale(reserve) {
+    // the SQL marker is draggable: grab it on any face and the squelch
+    // slider follows, so the threshold is set right on the instrument
+    var sqDrag = false, sqWas = false;
+
+    function pointerT(e) {
+        var r = canvas.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width * W;
+        var y = (e.clientY - r.top) / r.height * meterH();
+        if (style === 'needle') {
+            var deg = Math.atan2(x - W / 2, PIVOT_Y - y) * 180 / Math.PI;
+            return (deg + A_MAX) / (2 * A_MAX);
+        }
+        return x / W;
+    }
+
+    function setSquelchFromT(t) {
+        if (!$sql.length || typeof Waterfall === 'undefined') return;
+        var r = Waterfall.getRange();
+        var db = (r.min - 20) + Math.max(0, Math.min(1, t)) * ((r.max + 20) - (r.min - 20));
+        db = Math.max(parseFloat($sql.attr('min')), Math.min(parseFloat($sql.attr('max')), db));
+        $sql.val(Math.round(db)).trigger('input').trigger('change');
+        draw();
+    }
+
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('pointerdown', function (e) {
+        var sq = squelchT();
+        if (sq !== null && Math.abs(pointerT(e) - sq) < 0.05) {
+            sqDrag = true;
+            sqWas = true;
+            e.preventDefault();
+            e.stopPropagation();
+            try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        }
+    });
+    canvas.addEventListener('pointermove', function (e) {
+        if (sqDrag) {
+            setSquelchFromT(pointerT(e));
+        } else {
+            var sq = squelchT();
+            canvas.style.cursor = (sq !== null && Math.abs(pointerT(e) - sq) < 0.05)
+                ? 'ew-resize' : '';
+        }
+    });
+    canvas.addEventListener('pointerup', function () { sqDrag = false; });
+    canvas.addEventListener('pointercancel', function () { sqDrag = false; });
+    // grabbing the marker must not toggle the audio scope
+    canvas.addEventListener('click', function (e) {
+        if (sqWas) {
+            sqWas = false;
+            e.stopPropagation();
+        }
+    });
+
+    function drawScale() {
         ctx.clearRect(0, 0, W, H);
         ctx.font = 'bold 11px roboto-mono, monospace';
         ctx.textBaseline = 'top';
@@ -3724,7 +3779,11 @@ Plugins.rig_skin.createMeter = function ($freq) {
     // virtual analog meter: scale arc with a red zone past S9 and a
     // needle on a pivot below the canvas, driven by the same ballistics
     // as the bar; a thin ghost needle holds the peak
-    var NH = 76, PIVOT_Y = 172, R_ARC = 155, A_MAX = 50;   // degrees each side
+    // curved like the real face and spanning nearly the full width,
+    // with the arc ends riding high enough above the bottom edge that
+    // the needle stays long at full deflection; the apex clears the
+    // top readout row
+    var NH = 116, PIVOT_Y = 265, R_ARC = 225, A_MAX = 40;  // degrees each side
 
     function needleXY(t, r) {
         var a = (-A_MAX + 2 * A_MAX * Math.min(1, t)) * Math.PI / 180;
@@ -3743,31 +3802,43 @@ Plugins.rig_skin.createMeter = function ($freq) {
 
     function drawNeedle() {
         ctx.clearRect(0, 0, W, NH);
-        arc(0, S9, R_ARC, '#aab4bd', 2);
-        arc(S9, 1, R_ARC, '#ff4130', 3);
-        ctx.font = 'bold 10px roboto-mono, monospace';
+        // Icom style face: one continuous shallow arc, white then red
+        // past S9, fine ticks, the numbers with clear air above them
+        arc(0, S9, R_ARC, '#e8ecef', 2);
+        arc(S9, 1, R_ARC, '#ff4130', 2);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        for (var s = 1; s <= 9; s += 2) {
+        ctx.font = 'bold 10px roboto-mono, monospace';
+        for (var s = 1; s <= 9; s++) {
             var t = s / 9 * S9;
-            var p0 = needleXY(t, R_ARC - 5), p1 = needleXY(t, R_ARC + 3);
-            ctx.strokeStyle = '#aab4bd';
+            var major = (s % 2) === 1;
+            var p0 = needleXY(t, R_ARC), p1 = needleXY(t, R_ARC + (major ? 7 : 4));
+            ctx.strokeStyle = '#e8ecef';
             ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
-            var pl = needleXY(t, R_ARC + 8);
-            ctx.fillStyle = '#aab4bd';
-            ctx.fillText('' + s, pl[0], pl[1] + 5);
+            if (major) {
+                var pl = needleXY(t, R_ARC + 14);
+                ctx.fillStyle = '#e8ecef';
+                ctx.fillText('' + s, pl[0], pl[1] + 3);
+            }
         }
-        [20, 40, 60].forEach(function (db, i) {
-            var t = S9 + (i + 1) / 3 * (1 - S9);
-            var p0 = needleXY(t, R_ARC - 5), p1 = needleXY(t, R_ARC + 3);
+        // S sits as the first label of the row, just before the 1
+        var ps = needleXY(-0.04, R_ARC + 14);
+        ctx.fillStyle = '#e8ecef';
+        ctx.fillText('S', ps[0], ps[1] + 3);
+        for (var d = 10; d <= 60; d += 10) {
+            var td = S9 + d / 60 * (1 - S9);
+            var majorD = (d % 20) === 0;
+            var q0 = needleXY(td, R_ARC), q1 = needleXY(td, R_ARC + (majorD ? 7 : 4));
             ctx.strokeStyle = '#ff4130';
             ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
-            var pl = needleXY(t, R_ARC + 8);
-            ctx.fillStyle = '#ff4130';
-            ctx.fillText('+' + db, pl[0], pl[1] + 5);
-        });
+            ctx.beginPath(); ctx.moveTo(q0[0], q0[1]); ctx.lineTo(q1[0], q1[1]); ctx.stroke();
+            if (majorD) {
+                var ql = needleXY(td, R_ARC + 14);
+                ctx.fillStyle = '#ff4130';
+                ctx.fillText('+' + d + (d === 60 ? 'dB' : ''), ql[0], ql[1] + 3);
+            }
+        }
         // the corner readouts live at the top, clear of the arc ends
         ctx.textBaseline = 'top';
         // live dB readout, derived from the same mapping as the needle
@@ -3797,7 +3868,8 @@ Plugins.rig_skin.createMeter = function ($freq) {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             var lp = needleXY(sq, R_ARC - 20);
-            ctx.fillText('SQL', lp[0], lp[1]);
+            // near the arc ends the label would leave the face
+            if (lp[1] < NH - 10) ctx.fillText('SQL', lp[0], lp[1]);
             ctx.textBaseline = 'bottom';
         }
         // numeric readout, like a modern rig's meter
@@ -3809,24 +3881,52 @@ Plugins.rig_skin.createMeter = function ($freq) {
         ctx.shadowBlur = 5;
         ctx.fillText(sText(current), W - 4, 2);
         ctx.shadowBlur = 0;
+        if (peak > current + 0.02) {
+            ctx.font = '10px roboto-mono, monospace';
+            ctx.fillStyle = '#5b656e';
+            ctx.fillText('pk ' + sText(peak), W - 4, 17);
+        }
         ctx.textBaseline = 'bottom';
-        // peak ghost, then the live needle over it
+        // the needle runs from the bottom edge of the face to just past
+        // the arc, so it stays long and visible at any deflection
+        function needleBase(t) {
+            var a = (-A_MAX + 2 * A_MAX * Math.min(1, t)) * Math.PI / 180;
+            return (PIVOT_Y - NH) / Math.cos(a);
+        }
         if (peak > current + 0.01) {
-            var g0 = needleXY(peak, 34), g1 = needleXY(peak, R_ARC - 8);
-            ctx.strokeStyle = '#4a545e';
-            ctx.lineWidth = 1;
+            var g0 = needleXY(peak, needleBase(peak)), g1 = needleXY(peak, R_ARC + 1);
+            ctx.strokeStyle = '#6b7680';
+            ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(g0[0], g0[1]); ctx.lineTo(g1[0], g1[1]); ctx.stroke();
         }
-        var n0 = needleXY(current, 30), n1 = needleXY(current, R_ARC - 6);
-        ctx.strokeStyle = current > S9 ? '#ff4130' : '#f2f5f7';
+        var n0 = needleXY(current, needleBase(current)), n1 = needleXY(current, R_ARC + 3);
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
-        ctx.shadowColor = 'rgba(215, 232, 255, 0.45)';
-        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'rgba(215, 232, 255, 0.6)';
+        ctx.shadowBlur = 5;
         ctx.beginPath(); ctx.moveTo(n0[0], n0[1]); ctx.lineTo(n1[0], n1[1]); ctx.stroke();
         ctx.shadowBlur = 0;
     }
 
     var target = 0, current = 0, peak = 0, peakT = 0, lastT = null, anim = null;
+
+    // the value row above the scale: the S reading, with the held peak
+    // in small print beside it
+    function drawValueRow() {
+        ctx.textBaseline = 'top';
+        ctx.font = 'bold 12px roboto-mono, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = current > S9 ? '#ff4130' : '#f2f5f7';
+        var val = sText(current);
+        ctx.fillText(val, W - 1, 0);
+        if (peak > current + 0.02) {
+            var vw = ctx.measureText(val).width;
+            ctx.font = '10px roboto-mono, monospace';
+            ctx.fillStyle = '#5b656e';
+            ctx.fillText('pk ' + sText(peak), W - vw - 9, 2);
+        }
+        ctx.textBaseline = 'bottom';
+    }
 
     function draw() {
         Plugins.rig_skin.fitCanvas(canvas, ctx, W, meterH());
@@ -3841,14 +3941,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
                 ctx.fillStyle = '#f0c040';
                 ctx.fillRect(x - 1, BAR_Y - 3, 2, BAR_H + 6);
             }
-            // Icom style numeric value in its own row, above the +60 end
-            // of the scale
-            ctx.font = 'bold 12px roboto-mono, monospace';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'top';
-            ctx.fillStyle = current > S9 ? '#ff4130' : '#f2f5f7';
-            ctx.fillText(sText(current), W - 1, 0);
-            ctx.textBaseline = 'bottom';
+            drawValueRow();
         }
     }
 

@@ -3,15 +3,20 @@
 ## 0.9.11 (2026-08-29)
 
 - The S-meter has two faces now: the segmented bar and a virtual analog
-  needle, switched with a right-click on the meter and remembered. The
-  needle runs on the same ballistics as the bar (fast attack, slow
-  decay), a thin ghost needle holds the peak, and the face shows the
-  live dB value and the S reading as numbers. The bar face gets the S
-  reading too, in its own row above the +60 end of the scale.
+  needle drawn like the real Icom meter face, a wide curved arc with
+  fine ticks, S to 9 in white and the +20/+40/+60dB overscale in red,
+  switched with a right-click on the meter and remembered. The needle
+  runs on the same ballistics as the bar (fast attack, slow decay),
+  stays long and visible at any deflection, and a ghost needle holds
+  the peak with a small "pk" readout. Both faces show the S reading as
+  a number; the needle face adds the live dB value.
 - The squelch threshold is drawn on the meter: an SQL pointer under the
   needle's arc and a line through the bar, at the exact spot where the
-  audio gate opens. Set the squelch by putting the marker just above
-  the noise, no more trial and error.
+  audio gate opens. The marker is draggable on both faces: grab it and
+  the squelch slider follows, so you set the squelch by dropping the
+  marker just above the noise, right on the instrument.
+- The frequency readout uses heavy Icom style digits (bold sans with
+  tabular figures) instead of the thin monospace.
 - The NCDXF beacons can be shown on the DX cluster map: a BCN chip in
   the DX window draws all 18 beacon sites as diamonds, click one to
   listen in CW. While the beacon radar is running, the diamonds fill

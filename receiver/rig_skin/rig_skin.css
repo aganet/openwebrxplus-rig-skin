@@ -270,13 +270,19 @@ body.theme-rig #owrx-rig-info {
     flex: 1 1 auto;
     text-align: right;
     color: var(--rig-lcd-dim);
-    font-size: 19pt;
+    /* heavy Icom-style digits; tabular figures keep every digit the
+       same width so the per-digit wheel targets stay put */
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    font-size: 20pt;
+    letter-spacing: 0.5px;
     line-height: 1;
     white-space: nowrap;
 }
 
 .owrx-rig-vfo-box.active .owrx-rig-vfo-freq {
-    color: var(--rig-lcd);
+    color: #ffffff;
 }
 
 /* per-digit tuning: the hovered digit of the active readout lights up
