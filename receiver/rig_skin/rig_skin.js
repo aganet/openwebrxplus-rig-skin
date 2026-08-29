@@ -2081,11 +2081,11 @@ Plugins.rig_skin.createSatScreen = function () {
         { id: 39444, name: 'AO-73', freq: '145.950 SSB', f: 145950000, mode: 'usb', cat: 'ham' },
         { id: 43803, name: 'JO-97', freq: '145.855 SSB', f: 145855000, mode: 'usb', cat: 'ham' },
         { id: 50466, name: 'XW-3', freq: '435.180 SSB', f: 435180000, mode: 'usb', cat: 'ham' },
-        { id: 60209, name: 'MO-122', freq: '145.925 SSB', f: 145925000, mode: 'usb', cat: 'ham' },
+        { id: 60209, name: 'MO-122', freq: '435.825 SSB', f: 435825000, mode: 'usb', cat: 'ham' },
         { id: 53109, name: 'IO-117', freq: '435.310 DATA', f: 435310000, mode: 'usb', cat: 'ham' },
         { id: 26931, name: 'NO-44', freq: '145.825 APRS', f: 145825000, mode: 'nfm', cat: 'ham' },
         { id: 57166, name: 'METEOR M2-3', freq: '137.900 LRPT', f: 137900000, mode: 'nfm', cat: 'wx' },
-        { id: 59051, name: 'METEOR M2-4', freq: '137.100 LRPT', f: 137100000, mode: 'nfm', cat: 'wx' },
+        { id: 59051, name: 'METEOR M2-4', freq: '137.900 LRPT', f: 137900000, mode: 'nfm', cat: 'wx' },
         { id: 25338, name: 'NOAA 15', freq: '137.620 APT', f: 137620000, mode: 'nfm', cat: 'wx' },
         { id: 33591, name: 'NOAA 19', freq: '137.100 APT', f: 137100000, mode: 'nfm', cat: 'wx' }
     ];
@@ -4353,7 +4353,9 @@ Plugins.rig_skin.createMeter = function ($freq) {
     });
 
     function drawScale() {
-        ctx.clearRect(0, 0, W, H);
+        // the bar face is taller than the original H; clear all of it or
+        // the squelch marker leaves droppings below the rail
+        ctx.clearRect(0, 0, W, meterH());
         ctx.font = 'bold 11px roboto-mono, monospace';
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';

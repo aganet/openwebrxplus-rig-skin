@@ -21,6 +21,13 @@
   rate-limited and could hang the whole screen.
 - Fixed the IO-117 (GreenCube) catalog number; it was tracking the
   wrong object from the same launch.
+- Satellite data checked against AMSAT and current status pages.
+  MO-122 now tunes its real downlink at 435.825 (the table had the
+  uplink), and both Meteor birds sit on 137.900, where they currently
+  transmit.
+- Fix: moving the squelch no longer leaves yellow droppings on the bar
+  meter. The marker was drawn taller than the area the bar face
+  cleared.
 - The DX and SAT buttons only show on the Rig theme. On every other
   theme the plugin now leaves the top banner exactly as stock.
 
