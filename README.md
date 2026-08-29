@@ -72,15 +72,14 @@ listen across two bands at once.
 
 The two VFO readouts lead the LCD, with the mode on a blue badge and
 FIL / TS and the hover frequency on a line under them, so you always know
-the filter width and what one dial click does. The readout tunes by
-digit: hover a digit and it lights up, scroll and exactly that digit
-spins by its place value. Spinning a large digit moves the receiver
-window along, so the waterfall follows you across bands (window moves
-need the stock "allow center frequency changes" server setting, like
-the built-in controls). The S-meter is segmented with peak hold, blue
-up to S9 and red beyond, with the scale running 1 3 5 7 9 +20 +40 +60,
-and under it a line with the current band, S units, squelch state, mute
-flag and UTC clock. Then two scopes:
+the filter width and what one dial click does. You can tune on the
+readout itself: point at a digit, scroll, and that digit spins. This
+works on the MHz digits too; when the target leaves the receiver window
+the window moves along with you (the server must allow center frequency
+changes). The S-meter is segmented with peak hold, blue up to S9 and red
+beyond, with the scale running 1 3 5 7 9 +20 +40 +60. Below it a small
+status line shows the band, S units, squelch, mute and UTC time. Then
+two scopes:
 
 - A band scope centered on the tuned frequency, like the center mode scope
   on a rig. Click it to tune, scroll it to step, SPAN switches the width
@@ -118,13 +117,13 @@ where you are); the wide layout shows them side by side:
   second. Click a frequency to listen in CW; while you sit on it the row
   turns green and shows your live S reading. Three minutes on 14.100
   tells you more about the state of 20 m than any prediction.
-- The beacon radar: arm a band chip (20m to 10m) on the beacon view and
-  the rig parks on that frequency while the rotation brings all 18
-  beacons past, ten seconds each. Every beacon is graded by measured SNR
-  against the live noise floor, green for solid, yellow for weak, dim
-  for not heard, refreshed each 3 minute cycle. It is your antenna's
-  real propagation map, not an estimate. Turning the dial or hiding the
-  screen hands the receiver back.
+- The beacon radar. Pick a band (20m to 10m) on the beacon view and the
+  rig parks on the beacon frequency while the rotation brings all 18
+  beacons past, ten seconds each. Each one gets a grade measured against
+  your own noise floor: green means solid copy, yellow weak, dim means
+  nothing heard. The picture refreshes every 3 minutes and shows what
+  your antenna actually hears, not what a model predicts. Turn the dial
+  or close the screen and the radio is yours again.
 - The live MUF world map from prop.kc2g.com.
 
 ![band conditions](docs/screenshot-prop.png)
@@ -149,12 +148,12 @@ math runs in your browser.
 
 ## DX cluster
 
-Spots from the DX cluster network appear right on the top ribbon: small
-dark chips with the callsign, next to your yellow bookmarks, at their
-exact frequency on the visible waterfall. Click a chip and the receiver
-jumps there with a sensible mode; hover it for frequency, mode and the
-spotter's comment. Overlapping spots collapse to the freshest one, so
-pileups stay readable. The feed runs while the Rig theme is active.
+Live spots also show up on the bookmark ribbon above the waterfall:
+small dark chips with the callsign, sitting at the spot's frequency
+next to the yellow bookmarks. Click one and you are there, with a
+sensible mode set. When several spots pile up on the same frequency you
+get one chip, the newest. This works whenever the Rig theme is on; the
+DX window does not have to be open.
 
 The DX button in the top banner opens a window with live spots from the
 DX cluster network, on a world map and in a list. The map shows every
@@ -215,13 +214,12 @@ the Rig theme is selected.
 
 ## Install as an app
 
-The receiver carries a web app manifest with a rig dial icon, so it
-installs to the home screen and opens fullscreen like a native app,
-ideal for a wall mounted tablet. On Android and desktop the browser
-offers the install when the receiver is served over https; on iPads and
-iPhones use Safari's Share, Add to Home Screen, which works on any
-origin and gives a clean fullscreen rig (and avoids the touch gesture
-problems of Chrome on iPadOS, which must wrap Safari's engine).
+The receiver can be installed like an app: it gets a rig dial icon and
+opens fullscreen, no browser bars, which is exactly what I want on the
+wall mounted tablet. On Android and on the desktop the browser offers
+to install it when the receiver runs over https. On an iPad or iPhone
+use Share and Add to Home Screen in Safari; that works on any address,
+and it is also the best way around Chrome's touch problems on the iPad.
 
 ## Install
 
