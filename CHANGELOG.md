@@ -28,6 +28,12 @@
 - Fix: moving the squelch no longer leaves yellow droppings on the bar
   meter. The marker was drawn taller than the area the bar face
   cleared.
+- Fix: the TLE cache resets itself when the satellite list changes, so
+  new birds show up right after an update instead of hiding behind a
+  12 hour old cache.
+- No more cache clearing to get updates. The plugin revalidates its own
+  files in the background once an hour, so after an update a normal
+  reload is enough; the browser fetches the new build by itself.
 - The DX and SAT buttons only show on the Rig theme. On every other
   theme the plugin now leaves the top banner exactly as stock.
 

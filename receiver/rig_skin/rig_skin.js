@@ -31,6 +31,22 @@ Plugins.rig_skin.init = function () {
         href: Plugins.rig_skin._base + 'rig_skin.css?v=' + Plugins.rig_skin._version
     }).appendTo('head');
 
+    // the loader fetches rig_skin.js with a plain URL that browsers
+    // cache across releases; revalidate it in the background (at most
+    // once an hour) so a normal reload picks up a new build without
+    // clearing the cache. A new build carries a new version, which in
+    // turn refreshes the CSS above.
+    try {
+        var reval = parseInt(localStorage.getItem('rig_skin_revalidate') || '0', 10);
+        if (Date.now() - reval > 3600000) {
+            localStorage.setItem('rig_skin_revalidate', '' + Date.now());
+            ['rig_skin.js', 'rig_skin_map.js'].forEach(function (f) {
+                fetch(Plugins.rig_skin._base + f, { cache: 'no-cache', mode: 'no-cors' })
+                    .catch(function () {});
+            });
+        }
+    } catch (e) {}
+
     // Register the theme in the selector
     $('#openwebrx-themes-listbox').append(
         $('<option>').val('rig').text('Rig')
@@ -2150,11 +2166,15 @@ Plugins.rig_skin.createSatScreen = function () {
     // Celestrak group files cover most birds in three requests; anything
     // missing (the decommissioned NOAAs) is fetched by catalog number
     function ensureTles(cb) {
+        // the cache is only valid for the exact satellite list it was
+        // built for, or new birds would stay invisible until it expires
+        var ids = SATS.map(function (s) { return s.id; }).join(',');
         var cached = null;
         try {
             cached = JSON.parse(localStorage.getItem('rig_sat_tles') || 'null');
         } catch (e) {}
-        if (cached && cached.tles && Date.now() - cached.ts < 12 * 3600 * 1000) return cb(cached.tles);
+        if (cached && cached.tles && cached.ids === ids &&
+            Date.now() - cached.ts < 12 * 3600 * 1000) return cb(cached.tles);
 
         var base = 'https://celestrak.org/NORAD/elements/gp.php?FORMAT=TLE&';
         var all = {};
@@ -2181,7 +2201,7 @@ Plugins.rig_skin.createSatScreen = function () {
                 return;
             }
             try {
-                localStorage.setItem('rig_sat_tles', JSON.stringify({ ts: Date.now(), tles: tles }));
+                localStorage.setItem('rig_sat_tles', JSON.stringify({ ts: Date.now(), ids: ids, tles: tles }));
             } catch (e) {}
             cb(tles);
         }
