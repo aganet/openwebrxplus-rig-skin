@@ -2193,6 +2193,26 @@ Plugins.rig_skin.createSatScreen = function () {
                 .then(function () { clearTimeout(timer); done(); });
         }
 
+        // second source, tried only when celestrak returns nothing at
+        // all: the per-satellite API, same timeout discipline
+        function grabFallback(done) {
+            var left = SATS.length;
+            SATS.forEach(function (s) {
+                var ctl = new AbortController();
+                var timer = setTimeout(function () { ctl.abort(); }, 15000);
+                fetch('https://tle.ivanstanojevic.me/api/tle/' + s.id, { signal: ctl.signal })
+                    .then(function (r) { return r.json(); })
+                    .then(function (j) {
+                        if (j.line1 && j.line2) all[s.id] = { line1: j.line1, line2: j.line2 };
+                    })
+                    .catch(function () {})
+                    .then(function () {
+                        clearTimeout(timer);
+                        if (--left === 0) done();
+                    });
+            });
+        }
+
         function finish() {
             var tles = {};
             SATS.forEach(function (s) { if (all[s.id]) tles[s.id] = all[s.id]; });
@@ -2215,9 +2235,10 @@ Plugins.rig_skin.createSatScreen = function () {
         groups.forEach(function (g) {
             grab('GROUP=' + g, function () {
                 if (--pending > 0) return;
-                // nothing at all from the groups means the network is out
-                // or celestrak blocks us; skip the by-number round
-                if (Object.keys(all).length === 0) return finish();
+                // nothing at all from the groups means celestrak is down
+                // or blocks us; try the second source instead of the
+                // by-number round
+                if (Object.keys(all).length === 0) return grabFallback(finish);
                 var missing = SATS.filter(function (s) { return !all[s.id]; });
                 if (!missing.length) return finish();
                 var left = missing.length;

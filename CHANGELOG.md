@@ -30,9 +30,10 @@
   cleared.
 - Fix: the TLE cache resets itself when the satellite list changes, so
   new birds show up right after an update instead of hiding behind a
-  12 hour old cache. When the download fails the tracker runs on the
-  old orbits, says so in the window, and quietly retries until the
-  source is reachable again.
+  12 hour old cache. When celestrak does not answer, the orbits come
+  from a second source (tle.ivanstanojevic.me) instead; failing both,
+  the tracker runs on the old orbits, says so in the window, and
+  quietly retries until a source is reachable again.
 - No more cache clearing to get updates. The plugin revalidates its own
   files in the background once an hour, so after an update a normal
   reload is enough; the browser fetches the new build by itself.
