@@ -228,11 +228,12 @@ and it is also the best way around Chrome's touch problems on the iPad.
 Grab the latest `openwebrxplus-rig-skin-x.y.z.zip` from the
 [releases page](https://github.com/aganet/openwebrxplus-rig-skin/releases),
 unzip the `rig_skin/` folder into your plugins tree, and load it by name.
-From the folder that holds your `docker-compose.yml` (swap in the current
-version number):
+From the folder that holds your `docker-compose.yml`, this fetches the
+latest release and sets everything up:
 
 ```sh
-V=0.9.4
+V=$(curl -s https://api.github.com/repos/aganet/openwebrxplus-rig-skin/releases/latest \
+  | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p')
 curl -fL -o rig-skin.zip \
   "https://github.com/aganet/openwebrxplus-rig-skin/releases/download/v${V}/openwebrxplus-rig-skin-${V}.zip"
 unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
@@ -248,8 +249,19 @@ instead. The zip carries three files (`rig_skin.js`, `rig_skin.css`,
 
 ### Update to a newer version
 
-Same as above: download the newer zip and unzip it over the existing
-folder. `unzip -o` overwrites the old files. Then hard-refresh the browser
+The same commands update an existing install, minus the init.js line
+(you already have it). From the compose folder:
+
+```sh
+V=$(curl -s https://api.github.com/repos/aganet/openwebrxplus-rig-skin/releases/latest \
+  | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p')
+curl -fL -o rig-skin.zip \
+  "https://github.com/aganet/openwebrxplus-rig-skin/releases/download/v${V}/openwebrxplus-rig-skin-${V}.zip"
+unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
+rm rig-skin.zip
+```
+
+`unzip -o` overwrites the old files. Then hard-refresh the browser
 (Ctrl+Shift+R). No container restart needed when the folder is
 bind-mounted.
 
