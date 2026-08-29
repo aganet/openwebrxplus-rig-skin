@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.9.10 (2026-08-29)
+
+- DX cluster spots on the top ribbon: spots inside the visible waterfall
+  show as small dark chips with the callsign, next to the stock yellow
+  bookmarks and at their exact frequency. Click a chip to tune (CW, SSB
+  and digital pick a sensible mode); hover for frequency, mode and the
+  spotter's comment. Overlapping spots collapse to the freshest one, so
+  an FT8 pileup stays one readable chip. The spot feed runs while the
+  Rig theme is active, no need to keep the DX window open.
+- Beacon radar: in the propagation screen's beacon view, arm a band chip
+  (20m to 10m) and the rig parks on that beacon frequency in CW while
+  the NCDXF/IARU rotation brings all 18 world beacons past, ten seconds
+  each. Every beacon is graded by measured SNR against the live noise
+  floor (green, yellow, or dim for not heard), refreshed each 3 minute
+  cycle: real propagation from your own antenna, not a model. Turning
+  the dial or hiding the screen hands the receiver back.
+- Tune by digit: hover any digit of the big frequency readout and scroll
+  to spin exactly that digit by its place value. Spinning a large digit
+  moves the receiver window along, so the waterfall follows you across
+  bands (window moves use the stock "allow center frequency changes"
+  server permission, like the built-in controls). Respects LOCK.
+- Install as an app: the page carries a web app manifest with a rig dial
+  icon, so the receiver installs to the home screen and opens fullscreen
+  like a native app. Android and desktop offer the install on https;
+  on iPads use Safari's Add to Home Screen, which also gives a clean
+  fullscreen rig without the Chrome gesture problems.
+- The band / S-units / squelch / clock line under the S-meter now shows
+  in the one-column layout too, not only in the wide face.
+- Touch polish: bigger SPAN, HIDE and ms/Div tap targets on the scopes,
+  dark thin scrollbars on the skin's scroll areas, and compact beacon
+  locations in the radar list (full names on hover).
+
 ## 0.9.9 (2026-08-27)
 
 - Icom-style face. The keys are flat-top rectangles with near-square

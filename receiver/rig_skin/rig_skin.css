@@ -276,6 +276,14 @@ body.theme-rig #owrx-rig-info {
     color: var(--rig-lcd);
 }
 
+/* per-digit tuning: the hovered digit of the active readout lights up
+   and the wheel spins it by its place value */
+.owrx-rig-vfo-box.active .owrx-rig-digit:hover {
+    color: #5db8ff;
+    text-shadow: 0 0 8px rgba(93, 184, 255, 0.7);
+    cursor: ns-resize;
+}
+
 .owrx-rig-vfo-rx {
     background: #16201a;
     color: #46524a;
@@ -328,7 +336,7 @@ body.theme-rig #openwebrx-panel-receiver .frequencies-container {
     display: none;
 }
 
-body.theme-rig .rig-wide #owrx-rig-extra {
+body.theme-rig #owrx-rig-extra {
     display: block;
     color: var(--rig-lcd-dim);
     font-family: 'roboto-mono', monospace;
@@ -1047,6 +1055,47 @@ body.theme-rig #owrx-rig-prop.visible {
     text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
 }
 
+/* beacon radar: band chips and the 18-beacon graded list */
+.owrx-rig-radar-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.owrx-rig-radar-label {
+    color: #93a0ab;
+    font-size: 8pt;
+    letter-spacing: 2px;
+    margin-right: 2px;
+}
+
+.owrx-rig-radar-list {
+    columns: 2;
+    column-gap: 12px;
+}
+
+.owrx-rig-radar-list .owrx-rig-beacon-row {
+    break-inside: avoid;
+}
+
+.owrx-rig-beacon-row .bsnr {
+    flex: 0 0 auto;
+    min-width: 44px;
+    text-align: right;
+    white-space: nowrap;
+    color: #5c6670;
+}
+
+.owrx-rig-beacon-row .bsnr.good {
+    color: #3adb4a;
+    text-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
+}
+
+.owrx-rig-beacon-row .bsnr.fair {
+    color: #f0c040;
+}
+
 /* satellite passes screen */
 #owrx-rig-sats {
     display: none;
@@ -1173,6 +1222,29 @@ body.theme-rig #openwebrx-panel-receiver.rig-overflow {
     /* overflow drops the flex-item min-height to 0 and the zero-height
        panel column would crush the panel; keep its capped size instead */
     flex-shrink: 0;
+}
+
+/* dark thin scrollbars on the skin's own scroll areas */
+body.theme-rig #openwebrx-panel-receiver.rig-overflow,
+.owrx-rig-dx-list {
+    scrollbar-width: thin;
+    scrollbar-color: #2e343b #0d1013;
+}
+
+body.theme-rig #openwebrx-panel-receiver.rig-overflow::-webkit-scrollbar,
+.owrx-rig-dx-list::-webkit-scrollbar {
+    width: 7px;
+}
+
+body.theme-rig #openwebrx-panel-receiver.rig-overflow::-webkit-scrollbar-thumb,
+.owrx-rig-dx-list::-webkit-scrollbar-thumb {
+    background: #2e343b;
+    border-radius: 4px;
+}
+
+body.theme-rig #openwebrx-panel-receiver.rig-overflow::-webkit-scrollbar-track,
+.owrx-rig-dx-list::-webkit-scrollbar-track {
+    background: #0d1013;
 }
 
 /* DX cluster window; independent of the selected theme so the DX
@@ -1392,6 +1464,45 @@ body.theme-rig #openwebrx-panel-receiver.rig-overflow {
 
 .owrx-rig-dx-grip:hover {
     filter: brightness(1.5);
+}
+
+/* DX spot chips on the top ribbon, beside the stock bookmarks; the
+   strip exists only visually while the rig theme is active */
+#owrx-rig-spots {
+    display: none;
+}
+
+body.theme-rig #owrx-rig-spots {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 13px;
+    pointer-events: none;
+    /* above the stock bookmark flags, so the chips stay clickable */
+    z-index: 5;
+}
+
+.owrx-rig-spot {
+    position: absolute;
+    bottom: 0;
+    padding: 0 4px;
+    pointer-events: auto;
+    cursor: pointer;
+    background: rgba(8, 13, 18, 0.92);
+    box-shadow: 0 0 0 1px #2e4a57;
+    border-radius: 2px;
+    color: #5db8ff;
+    font-family: 'roboto-mono', monospace;
+    font-size: 9px;
+    line-height: 12px;
+    white-space: nowrap;
+}
+
+.owrx-rig-spot:hover {
+    background: #1d5fae;
+    color: #ffffff;
 }
 
 /* Top banner follows the rig look: the photo backdrop and the glowing
