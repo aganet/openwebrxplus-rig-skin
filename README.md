@@ -77,7 +77,8 @@ readout itself: point at a digit, scroll, and that digit spins. This
 works on the MHz digits too; when the target leaves the receiver window
 the window moves along with you (the server must allow center frequency
 changes). The S-meter has two faces: a segmented bar, and an analog
-needle drawn like an Icom meter face. Right-click the meter to switch.
+needle drawn like an Icom meter face. Right-click the meter to switch,
+or hold your finger on it on a phone.
 Both move with proper meter ballistics, hold the peak, and show the S
 value as a number; the needle face also shows the dB reading. With the
 squelch on, an SQL marker sits where the gate opens. Drag the marker

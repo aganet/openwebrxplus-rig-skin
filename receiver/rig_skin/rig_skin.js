@@ -3647,12 +3647,54 @@ Plugins.rig_skin.createMeter = function ($freq) {
         return style === 'needle' ? NH : 34 + VAL_H;
     }
 
-    $meter.on('contextmenu', function (e) {
-        e.preventDefault();
+    var pressTimer = null, pressed = false;
+
+    function toggleStyle() {
         style = style === 'bar' ? 'needle' : 'bar';
         if (typeof LS !== 'undefined') LS.save('rig_meter_style', style);
         Plugins.rig_skin._lcdEpoch++;   // the canvas re-measures at the new aspect
         draw();
+    }
+
+    $meter.on('contextmenu', function (e) {
+        e.preventDefault();
+        // Android fires contextmenu on long press; drop the fallback
+        // timer so the long press cannot toggle twice
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        toggleStyle();
+    });
+
+    // phones have no right-click, and iOS never fires contextmenu: a
+    // long press on the meter switches the face there
+    $meter.on('pointerdown', function (e) {
+        if (e.originalEvent.pointerType !== 'touch') return;
+        var sx = e.originalEvent.clientX, sy = e.originalEvent.clientY;
+        pressTimer = setTimeout(function () {
+            pressTimer = null;
+            if (sqDrag) return;   // holding the SQL marker is not a press
+            pressed = true;
+            toggleStyle();
+        }, 550);
+        $meter.on('pointermove.press', function (ev) {
+            if (pressTimer && Math.abs(ev.originalEvent.clientX - sx) +
+                Math.abs(ev.originalEvent.clientY - sy) > 10) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        });
+        $meter.one('pointerup.press pointercancel.press', function () {
+            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            $meter.off('pointermove.press');
+        });
+    });
+
+    // the release after a long press must not toggle the audio scope
+    // (this handler is bound before the scope's, so it can stop it)
+    $meter.on('click', function (e) {
+        if (pressed) {
+            pressed = false;
+            e.stopImmediatePropagation();
+        }
     });
 
     // modern-rig meter colors: blue segments up to S9, red beyond

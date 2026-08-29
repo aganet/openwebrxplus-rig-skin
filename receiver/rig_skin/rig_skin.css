@@ -505,6 +505,11 @@ body.theme-rig #owrx-rig-info .webrx-mouse-freq {
     display: none;
     margin: 4px 0 2px 0;
     line-height: 0;
+    /* long press switches the meter face on touch devices; keep the
+       browser's selection callout out of the way */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 body.theme-rig #owrx-rig-meter {

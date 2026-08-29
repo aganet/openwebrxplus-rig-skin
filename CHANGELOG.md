@@ -9,7 +9,8 @@
   runs on the same ballistics as the bar (fast attack, slow decay),
   stays long and visible at any deflection, and a ghost needle holds
   the peak with a small "pk" readout. Both faces show the S reading as
-  a number; the needle face adds the live dB value.
+  a number; the needle face adds the live dB value. On phones, hold
+  your finger on the meter to switch faces.
 - The squelch threshold is drawn on the meter: an SQL pointer under the
   needle's arc and a line through the bar, at the exact spot where the
   audio gate opens. The marker is draggable on both faces: grab it and
