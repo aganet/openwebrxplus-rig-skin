@@ -2,6 +2,14 @@
 
 ## 0.9.10 (2026-08-29)
 
+- Fix: no more CORS errors in the console on every load. The DX spot
+  backlog always asked HolyCluster's history API first, but that
+  endpoint sends no CORS headers, so no browser could ever read it and
+  the attempt only logged errors before falling back. The backlog now
+  goes straight to DXSummit on plain-http pages; on https pages, where
+  neither API accepts browser calls, it is skipped and spots come from
+  the live HolyCluster websocket and the local cache as before.
+
 - DX cluster spots on the top ribbon: spots inside the visible waterfall
   show as small dark chips with the callsign, next to the stock yellow
   bookmarks and at their exact frequency. Click a chip to tune (CW, SSB

@@ -907,32 +907,30 @@ Plugins.rig_skin.createDxWindow = function () {
             .fail(function () { landLoading = false; });
     }
 
+    // Backlog from DXSummit, whose API allows browser calls but only
+    // over plain http (the https endpoint hangs). HolyCluster's history
+    // endpoint sends no CORS headers at all, so a browser can never read
+    // it and asking only fills the console with errors; live spots
+    // stream from its websocket either way, which CORS does not gate.
     function backlog() {
-        var now = Math.floor(Date.now() / 1000);
-        $.getJSON('https://' + HC + '/history?start_time=' + (now - 3600) +
-                  '&end_time=' + now)
-            .done(function (d) { addSpots(d.spots || []); })
-            .fail(function () {
-                // https pages cannot reach the http-only DXSummit API
-                if (location.protocol !== 'http:') return;
-                $.getJSON('http://www.dxsummit.fi/api/v1/spots?limit=150')
-                    .done(function (d) {
-                        $win.find('.owrx-rig-dx-src').text('HolyCluster + DXSummit');
-                        addSpots((d || []).map(function (r) {
-                            return {
-                                dx_callsign: r.dx_call,
-                                freq: r.frequency,
-                                mode: '',
-                                time: Date.parse(r.time + 'Z') / 1000,
-                                // DXSummit longitudes are west-positive
-                                dx_loc: (typeof r.dx_longitude === 'number')
-                                    ? [-r.dx_longitude, r.dx_latitude] : null,
-                                dx_continent: r.dx_country || '',
-                                spotter_callsign: r.de_call,
-                                comment: r.info || ''
-                            };
-                        }));
-                    });
+        if (location.protocol !== 'http:') return;
+        $.getJSON('http://www.dxsummit.fi/api/v1/spots?limit=150')
+            .done(function (d) {
+                $win.find('.owrx-rig-dx-src').text('HolyCluster + DXSummit');
+                addSpots((d || []).map(function (r) {
+                    return {
+                        dx_callsign: r.dx_call,
+                        freq: r.frequency,
+                        mode: '',
+                        time: Date.parse(r.time + 'Z') / 1000,
+                        // DXSummit longitudes are west-positive
+                        dx_loc: (typeof r.dx_longitude === 'number')
+                            ? [-r.dx_longitude, r.dx_latitude] : null,
+                        dx_continent: r.dx_country || '',
+                        spotter_callsign: r.de_call,
+                        comment: r.info || ''
+                    };
+                }));
             });
     }
 
