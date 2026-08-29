@@ -25,8 +25,7 @@
   it better.
 - The radar grades by the median of each slot's readings instead of the
   peak, so noise spikes cannot fake a beacon.
-- The face gained texture: a fine powder-coat grain on the panel metal
-  and a faint glass sheen across the LCD window. Both subtle.
+- The face gained texture: a fine powder-coat grain on the panel metal.
 - Power-on: switching to the Rig theme boots the face in stages, LCD
   first, then the dial, then the controls.
 

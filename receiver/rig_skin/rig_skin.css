@@ -342,22 +342,6 @@ body.theme-rig #openwebrx-panel-receiver .frequencies-container {
     animation: owrx-rig-poweron 0.55s ease-out both;
 }
 
-/* faint diagonal glass sheen over the LCD window */
-body.theme-rig #openwebrx-panel-receiver .frequencies-container::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 5px;
-    background: linear-gradient(115deg,
-        rgba(255, 255, 255, 0) 42%,
-        rgba(255, 255, 255, 0.025) 47%,
-        rgba(255, 255, 255, 0.045) 50%,
-        rgba(255, 255, 255, 0.02) 53%,
-        rgba(255, 255, 255, 0) 58%);
-    pointer-events: none;
-    z-index: 4;
-}
-
 @keyframes owrx-rig-poweron {
     from { opacity: 0; }
     to { opacity: 1; }
