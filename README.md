@@ -388,9 +388,19 @@ console and type:
 Plugins.rig_skin._version
 ```
 
-It prints the version string, e.g. `"0.9.4"`. If it shows an older
-version than you installed, the browser is serving a cached copy;
-hard-refresh with Ctrl+Shift+R.
+It prints the version string, e.g. `"0.10.1"`.
+
+Since 0.10.1 updates apply themselves. The plugin checks the server
+version in the background about once an hour. When the server has a
+newer build, the page reloads once by itself and you are on it. The
+CSS follows the plugin version, so it comes fresh with it.
+
+One exception: if the browser still runs 0.9.x, it has a cached copy
+from before the self-update existed. That needs one last hard refresh:
+Ctrl+Shift+R on a computer. On a phone, clear the site's data (in
+Chrome: the padlock icon in the address bar, then site settings, then
+delete data) or open the receiver once in a private tab to confirm the
+server side is fine. After that, never again.
 
 To check what the server hands out, independent of the browser cache:
 
