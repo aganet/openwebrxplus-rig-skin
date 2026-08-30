@@ -390,19 +390,13 @@ Plugins.rig_skin._version
 
 It prints the version string, e.g. `"0.10.1"`.
 
-Browsers cache the plugin file and can keep serving an old copy after
-the server got a new one. Phones do it the most. Since 0.10.1 the
-plugin handles that: when you open the page, it asks the server which
-version it has. If the server has a newer one, the page reloads once
-and runs it. This check only happens right after the page opens, never
-while you are listening. The CSS is requested with the version in the
-URL, so a new plugin always brings its own new CSS.
+Browsers like to keep an old copy of the plugin, phones the most.
+Since 0.10.1 this is handled: on page open the plugin compares its
+version with the server and reloads once when the server has a newer
+one. So you always run the latest, CSS included.
 
-One exception: a browser still running 0.9.x has a cached copy from
-before this check existed. That needs one last hard refresh:
-Ctrl+Shift+R on a computer. On a phone, clear the site's data (in
-Chrome: the padlock icon in the address bar, then site settings, then
-delete data). After that the check takes over.
+Coming from 0.9.x you need one last hard refresh: Ctrl+Shift+R, or on
+a phone clear the site data. From then on it takes care of itself.
 
 To check what the server hands out, independent of the browser cache:
 
