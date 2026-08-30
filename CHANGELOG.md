@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.1 (2026-08-30)
+
+- Fix: the panel no longer vibrates on certain window sizes (issue #3,
+  thanks ea7cl). The auto-fit computes the panel width from the zoom,
+  the zoom from the measured height, and the height depends back on
+  the width. On some window sizes that loop has no stable answer in
+  whole pixels, so the panel flipped one pixel back and forth on every
+  frame, since 0.9.9. The fit now keeps its last answer when a new one
+  differs by only a pixel or two, so rounding noise cannot shake the
+  panel; real resizes adapt as before.
+- Fix: shrinking the window below the two-column threshold now drops
+  the wide layout instead of keeping it from the larger size.
+
 ## 0.10.0 (2026-08-30)
 
 - Satellite tracking window. A new SAT button next to DX opens a world

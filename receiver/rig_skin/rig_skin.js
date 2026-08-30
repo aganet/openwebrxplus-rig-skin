@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.0';
+Plugins.rig_skin._version = '0.10.1';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -2887,6 +2887,8 @@ Plugins.rig_skin.createPanelFit = function () {
     // collapses to min-content once the fluid width is cleared
     var stockWidth = panel.style.width;
     var autoWide = false;
+    var lastW = 0;   // last applied fluid width, for the 1px stickiness
+    var lastZ = 0;   // last applied zoom, same reason
 
     // assign only when the value differs: identical writes still invalidate
     // style and can keep the ResizeObserver loop warm
@@ -2942,6 +2944,12 @@ Plugins.rig_skin.createPanelFit = function () {
                 autoWide = wide;
             }
             Plugins.rig_skin._setWideView(wide);
+        } else if (Plugins.rig_skin._setWideView &&
+                !(typeof LS !== 'undefined' && LS.has('rig_wide_user'))) {
+            // shrinking below the two-column gate must also drop the
+            // wide layout, or a stale rig-wide class rides along
+            Plugins.rig_skin._setWideView(false);
+            autoWide = false;
         }
 
         var natW = panel.offsetWidth, natH = panel.offsetHeight;
@@ -2961,16 +2969,36 @@ Plugins.rig_skin.createPanelFit = function () {
         if (z < 1) {
             // fluid width: widen the layout as it zooms down, so the rig
             // keeps its natural on-screen width (or the screen width when
-            // smaller)
+            // smaller). Width, zoom and measured height feed each other,
+            // and integer rounding can leave no fixed point: without the
+            // stickiness below the panel flips 1px forever, a visible
+            // vibration (issue #3).
             var target = Math.min(natW, availW);
             var w = Math.round(target / z) - 20;
+            if (Math.abs(w - lastW) <= 2) w = lastW;
             if (Math.abs(w - (natW - 20)) > 2) {
                 panel.style.setProperty('width', w + 'px', 'important');
-                // a wider panel lays out shorter; refine once
+                // a wider panel lays out shorter; refine once. The
+                // refined value must stick across runs too: the mid-step
+                // measurement wobbles 1px and alternates the result
                 z = Math.max(MIN_ZOOM, Math.min(1, availH / panel.offsetHeight));
-                setStyle('width', (Math.round(target / z) - 20) + 'px', true);
+                var w2 = Math.round(target / z) - 20;
+                if (Math.abs(w2 - lastW) <= 2) w2 = lastW;
+                else if (Math.abs(w2 - w) <= 2) w2 = w;
+                setStyle('width', w2 + 'px', true);
+                lastW = w2;
+            } else {
+                lastW = 0;
             }
+        } else {
+            lastW = 0;
         }
+
+        // the zoom must stick across runs too: the canvases re-round
+        // their heights under a new zoom, the content wobbles a pixel
+        // or three, and chasing it flips the third decimal forever
+        if (Math.abs(z - lastZ) < 0.004) z = lastZ;
+        else lastZ = z;
 
         if (availH / panel.offsetHeight < MIN_ZOOM) {
             setStyle('max-height', Math.max(120, Math.floor(availH / z)) + 'px');
