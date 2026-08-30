@@ -1282,6 +1282,28 @@ body.theme-rig #openwebrx-panel-receiver.rig-overflow::-webkit-scrollbar-track,
     background: #0d1013;
 }
 
+/* running version, bottom-left like the print on a front panel */
+#owrx-rig-version {
+    display: none;
+}
+
+body.theme-rig #owrx-rig-version {
+    display: block;
+    position: absolute;
+    right: 10px;
+    bottom: 2px;
+    color: rgba(160, 170, 180, 0.45);
+    font-family: 'roboto-mono', monospace;
+    font-size: 7pt;
+    line-height: 1;
+    text-decoration: none;
+    user-select: none;
+}
+
+body.theme-rig #owrx-rig-version:hover {
+    color: rgba(200, 212, 222, 0.9);
+}
+
 /* DX cluster and SAT tracking windows; their banner buttons and the
    windows themselves only show while the rig theme is active */
 #owrx-rig-dx-button,

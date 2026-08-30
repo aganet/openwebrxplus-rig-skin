@@ -1701,6 +1701,16 @@ Plugins.rig_skin.createVfoLine = function () {
     Plugins.rig_skin.createSatScreen();
     Plugins.rig_skin.createPanelFit();
     Plugins.rig_skin.createPanelDrag();
+
+    // running version in the panel corner, like the print on a real
+    // front panel; shown by CSS only while the rig theme is active,
+    // click opens the releases page
+    $('<a>').attr('id', 'owrx-rig-version')
+        .attr('href', 'https://github.com/aganet/openwebrxplus-rig-skin/releases')
+        .attr('target', '_blank').attr('rel', 'noopener')
+        .attr('title', 'rig skin releases on GitHub')
+        .text('rig skin ' + Plugins.rig_skin._version)
+        .appendTo('#openwebrx-panel-receiver');
 };
 
 Plugins.rig_skin.createVfoKeys = function () {

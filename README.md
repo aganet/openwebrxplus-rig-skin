@@ -378,6 +378,29 @@ Tip: if an edit to `plugins/receiver/init.js` does not show up, restart the
 container. Some editors replace the file on save, which breaks a
 single-file bind mount until a restart.
 
+## Updating
+
+Fetch the update script once:
+
+```sh
+curl -O https://raw.githubusercontent.com/aganet/openwebrxplus-rig-skin/main/update-rig-skin.sh
+chmod +x update-rig-skin.sh
+```
+
+From then on every update is one command:
+
+```sh
+./update-rig-skin.sh           # latest release
+./update-rig-skin.sh 0.10.4    # or a specific version
+```
+
+The script finds the plugins folder by itself. Set `PLUGINS_DIR` if
+yours is somewhere unusual. It checks the download before touching the
+install and never deletes anything. Then reload the receiver page.
+
+The running version is printed on the rig's bottom-right corner. Click
+it to open the releases page.
+
 ## Check the version
 
 Each release bumps a version number inside the plugin. To see which one

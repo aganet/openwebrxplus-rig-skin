@@ -11,6 +11,13 @@ Both from requests by ea7cl, thanks again.
 - Fix: the rig cannot be dragged under the top banner anymore (issue
   #7). Dragging it high stops just below the frequency scale, so the
   grip and the layout chip always stay reachable.
+- The running version is printed on the panel's bottom-right corner,
+  like the print on a real front panel. Click it to open the releases
+  page on GitHub.
+- New update-rig-skin.sh script in the repo: one command updates the
+  plugin to the latest release, or to a version you name. It finds the
+  plugins folder by itself and checks the download before touching the
+  install. It never deletes anything.
 
 ## 0.10.3 (2026-08-30)
 
