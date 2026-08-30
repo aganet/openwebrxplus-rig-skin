@@ -32,28 +32,19 @@ Plugins.rig_skin.init = function () {
     }).appendTo('head');
 
     // the loader fetches rig_skin.js with a plain URL that browsers
-    // (phones especially) cache across releases. Revalidate it in the
-    // background at most once an hour, and when the fetched build is
-    // newer than the one running, reload once: nobody should have to
-    // clear a cache to get an update. A new build carries a new
-    // version, which in turn refreshes the CSS above.
+    // (phones especially) cache across releases; revalidate it in the
+    // background at most once an hour, so the user's next reload gets
+    // a new build without clearing the cache. Nothing reloads on its
+    // own. A new build carries a new version, which in turn refreshes
+    // the CSS above.
     try {
         var reval = parseInt(localStorage.getItem('rig_skin_revalidate') || '0', 10);
         if (Date.now() - reval > 3600000) {
             localStorage.setItem('rig_skin_revalidate', '' + Date.now());
-            fetch(Plugins.rig_skin._base + 'rig_skin_map.js', { cache: 'no-cache', mode: 'no-cors' })
-                .catch(function () {});
-            fetch(Plugins.rig_skin._base + 'rig_skin.js', { cache: 'no-cache' })
-                .then(function (r) { return r.text(); })
-                .then(function (t) {
-                    var m = t.match(/_version = '([0-9.]+)'/);
-                    if (m && m[1] !== Plugins.rig_skin._version &&
-                        !sessionStorage.getItem('rig_skin_reloaded')) {
-                        sessionStorage.setItem('rig_skin_reloaded', '1');
-                        location.reload();
-                    }
-                })
-                .catch(function () {});
+            ['rig_skin.js', 'rig_skin_map.js'].forEach(function (f) {
+                fetch(Plugins.rig_skin._base + f, { cache: 'no-cache', mode: 'no-cors' })
+                    .catch(function () {});
+            });
         }
     } catch (e) {}
 

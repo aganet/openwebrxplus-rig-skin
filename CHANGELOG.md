@@ -12,10 +12,10 @@
   panel; real resizes adapt as before.
 - Fix: shrinking the window below the two-column threshold now drops
   the wide layout instead of keeping it from the larger size.
-- No more stale versions from the browser cache. On page open the
-  plugin compares its version with the server and reloads once when
-  the server has a newer one. Coming from 0.9.x needs one last hard
-  refresh; from then on it takes care of itself.
+- The browser cache holds updates back less: the plugin re-checks its
+  own files against the server in the background, so the next reload
+  gets the new version. Nothing reloads on its own. Coming from 0.9.x
+  still needs one hard refresh.
 
 ## 0.10.0 (2026-08-30)
 
