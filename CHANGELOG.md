@@ -12,12 +12,13 @@
   panel; real resizes adapt as before.
 - Fix: shrinking the window below the two-column threshold now drops
   the wide layout instead of keeping it from the larger size.
-- Updates apply themselves now. Browsers, phones especially, cache the
-  plugin across releases. The hourly background check now compares the
-  version on the server with the one running, and when the server has
-  a newer build the page reloads once by itself. The CSS follows the
-  plugin version, so it comes fresh with it. Nobody needs to clear a
-  cache again.
+- No more stale versions from the browser cache. When the page opens,
+  the plugin asks the server which version it has; if the server has a
+  newer one, the page reloads once and runs it. The check happens only
+  right after the page opens, never while you are listening. The CSS
+  is requested with the version in the URL, so a new plugin always
+  brings its own new CSS. Browsers still on 0.9.x need one last hard
+  refresh; after that the check takes over.
 
 ## 0.10.0 (2026-08-30)
 
