@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.2 (2026-08-30)
+
+- Fix: the station photo is back (thanks René, HB9WCN). The dark rig
+  banner painted over the top container, and that is where the photo
+  lives, so expanding the receiver details showed a dark box instead.
+  The dark bar now steps aside while the details are expanded and the
+  photo shows like on the stock themes, custom photos included. On
+  collapse the rig bar returns.
+
 ## 0.10.1 (2026-08-30)
 
 - Fix: the panel no longer vibrates on certain window sizes (issue #3,
