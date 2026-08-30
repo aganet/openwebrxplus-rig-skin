@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.3 (2026-08-30)
+
+Both from reports by ea7cl, thanks for the feedback and the support.
+
+- The dragged rig position is anchored to the bottom-right corner now
+  (issue #4). Rotating a phone or resizing the window keeps the rig at
+  the corner where it belongs, instead of leaving it mid-screen. A
+  position saved by an older version is dropped once; drag the rig
+  again and it sticks correctly from then on.
+- DX cluster spots on 144 MHz and up only show within 2000 km of the
+  receiver (issue #5). A 2 m spot from another continent cannot be
+  heard anyway; 2000 km still lets tropo and sporadic E through. HF
+  spots are not touched.
+
 ## 0.10.2 (2026-08-30)
 
 - Fix: the station photo is back (thanks René, HB9WCN). The dark rig

@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.2';
+Plugins.rig_skin._version = '0.10.3';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -367,6 +367,14 @@ Plugins.rig_skin.createDxWindow = function () {
                 comment: (r.comment || '').trim()
             };
             if (!s.time || now - s.time > MAX_AGE) return;
+            // spots on VHF and up only matter within real propagation
+            // range of this receiver; a 2 m spot from another continent
+            // cannot be heard here (issue #5). 2000 km still lets tropo
+            // and sporadic E through.
+            if (s.freq >= 144000000 && s.loc) {
+                var d = distKm(s.loc);
+                if (d !== null && d > 2000) return;
+            }
             var k = normKey(s);
             if (!spots[k] || spots[k].time < s.time) {
                 spots[k] = s;
@@ -395,7 +403,13 @@ Plugins.rig_skin.createDxWindow = function () {
             var list = JSON.parse(LS.loadStr('rig_dx_cache'));
             var now = Date.now();
             list.forEach(function (s) {
-                if (s && s.call && now - s.time < MAX_AGE) spots[normKey(s)] = s;
+                if (!s || !s.call || now - s.time >= MAX_AGE) return;
+                // same VHF range cut as addSpots, for cached spots
+                if (s.freq >= 144000000 && s.loc) {
+                    var d = distKm(s.loc);
+                    if (d !== null && d > 2000) return;
+                }
+                spots[normKey(s)] = s;
             });
         } catch (e) {}
     }
@@ -472,6 +486,15 @@ Plugins.rig_skin.createDxWindow = function () {
         return (p && typeof p.lat === 'number') ? p : null;
     }
 
+    function distKm(loc) {
+        var p = qth();
+        if (!p || !loc) return null;
+        var toR = Math.PI / 180;
+        var f1 = p.lat * toR, f2 = loc[1] * toR, dl = (loc[0] - p.lon) * toR;
+        return 6371 * Math.acos(Math.min(1,
+            Math.sin(f1) * Math.sin(f2) + Math.cos(f1) * Math.cos(f2) * Math.cos(dl)));
+    }
+
     function bearingDist(loc) {
         var p = qth();
         if (!p || !loc) return null;
@@ -480,8 +503,7 @@ Plugins.rig_skin.createDxWindow = function () {
         var y = Math.sin(dl) * Math.cos(f2);
         var x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
         var brg = (Math.atan2(y, x) / toR + 360) % 360;
-        var d = 6371 * Math.acos(Math.min(1,
-            Math.sin(f1) * Math.sin(f2) + Math.cos(f1) * Math.cos(f2) * Math.cos(dl)));
+        var d = distKm(loc);
         return [Math.round(brg), d < 1500 ? Math.round(d) + 'km' : (d / 1000).toFixed(1) + 'Mm'];
     }
 
@@ -3050,7 +3072,12 @@ Plugins.rig_skin.createPanelDrag = function () {
     function saved() {
         try {
             if (typeof LS !== 'undefined' && LS.has('rig_pos')) {
-                return JSON.parse(LS.loadStr('rig_pos'));
+                var p = JSON.parse(LS.loadStr('rig_pos'));
+                // the position is anchored to the bottom-right corner, so
+                // rotating a phone keeps the rig at the corner instead of
+                // mid-screen (issue #4); drop the old top-left format
+                if (typeof p.right === 'number' && typeof p.bottom === 'number') return p;
+                LS.delete('rig_pos');
             }
         } catch (e) {}
         return null;
@@ -3084,8 +3111,15 @@ Plugins.rig_skin.createPanelDrag = function () {
 
     Plugins.rig_skin._applyPanelPos = function () {
         var pos = $('body').hasClass('theme-rig') ? saved() : null;
-        if (pos) place(clamp(pos));
-        else reset();
+        if (pos) {
+            var r = panel.getBoundingClientRect();
+            place(clamp({
+                left: window.innerWidth - pos.right - r.width,
+                top: window.innerHeight - pos.bottom - r.height
+            }));
+        } else {
+            reset();
+        }
     };
 
     var start = null;
@@ -3111,7 +3145,10 @@ Plugins.rig_skin.createPanelDrag = function () {
             lastTap = 0;
             var r = panel.getBoundingClientRect();
             if (typeof LS !== 'undefined') {
-                LS.save('rig_pos', JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top) }));
+                LS.save('rig_pos', JSON.stringify({
+                    right: Math.round(window.innerWidth - r.right),
+                    bottom: Math.round(window.innerHeight - r.bottom)
+                }));
             }
         } else if (e.timeStamp - lastTap < 400) {
             lastTap = 0;
