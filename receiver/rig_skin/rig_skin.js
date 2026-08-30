@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.3';
+Plugins.rig_skin._version = '0.10.4';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -363,6 +363,7 @@ Plugins.rig_skin.createDxWindow = function () {
                 time: Math.round(r.time * 1000),      // s -> ms
                 loc: (r.dx_loc && r.dx_loc.length === 2) ? r.dx_loc : null,
                 cont: r.dx_continent || '',
+                dxcc: r.dx_dxcc_code || 0,
                 spotter: r.spotter_callsign || '',
                 comment: (r.comment || '').trim()
             };
@@ -512,6 +513,12 @@ Plugins.rig_skin.createDxWindow = function () {
         return m < 60 ? m + 'm' : Math.round(m / 60) + 'h';
     }
 
+    // country flag from the spot's DXCC entity, when the feed sent one
+    function flagOf(s) {
+        var f = s.dxcc && Plugins.rig_skin._dxccFlag[s.dxcc];
+        return f ? f + ' ' : '';
+    }
+
     // --- rendering ---
 
     function renderList(list) {
@@ -524,7 +531,7 @@ Plugins.rig_skin.createDxWindow = function () {
                     (s.comment ? ': ' + s.comment : ''))
                 .on('click', function () { tuneSpot(s); });
             $tr.append($('<td>').addClass('age').text(ageText(s.time)));
-            $tr.append($('<td>').addClass('call').text(s.call));
+            $tr.append($('<td>').addClass('call').text(flagOf(s) + s.call));
             $tr.append($('<td>').addClass('freq').toggleClass('inwin', inWindow(s))
                 .text((s.freq / 1000000).toFixed(4)));
             $tr.append($('<td>').addClass('mode').text(s.mode));
@@ -754,7 +761,7 @@ Plugins.rig_skin.createDxWindow = function () {
     function showTip(spot, clientX, clientY) {
         if (!spot) { $tip.removeClass('show'); return; }
         var bd = bearingDist(spot.loc);
-        $tip.html(spot.call + (bd ? '<br>' + bd[0] + '&deg; ' + bd[1] : '') +
+        $tip.html(flagOf(spot) + spot.call + (bd ? '<br>' + bd[0] + '&deg; ' + bd[1] : '') +
             (spot.cont ? '<br>' + spot.cont : ''));
         var lr = $lcd[0].getBoundingClientRect();
         $tip.css({ left: (clientX - lr.left + 10) + 'px', top: (clientY - lr.top + 10) + 'px' })
@@ -1511,6 +1518,53 @@ Plugins.rig_skin.createSatWindow = function () {
     var $dxBtn = $('#owrx-rig-dx-button');
     if ($dxBtn.length) $dxBtn.after($btn);
     else $('.openwebrx-main-buttons').append($btn);
+};
+
+// DXCC entity number to flag, from the ARRL entity list
+// (github.com/k0swe/dxcc-json, Apache 2.0)
+Plugins.rig_skin._dxccFlag = {
+    1:'🇨🇦',3:'🇦🇫',4:'🇲🇺',5:'🇦🇽',6:'🇺🇸',7:'🇦🇱',9:'🇦🇸',10:'🇹🇫',11:'🇮🇳',12:'🇦🇮',
+    13:'🇦🇶',14:'🇦🇲',15:'🇷🇺',16:'🇳🇿',17:'🇻🇪',18:'🇦🇿',20:'🇺🇲',21:'🇪🇸',22:'🇵🇼',
+    24:'🇧🇻',27:'🇧🇾',29:'🇪🇸',31:'🇰🇮',32:'🇪🇸',33:'🇮🇴',34:'🇳🇿',35:'🇨🇽',36:'🇵🇫',
+    37:'🇨🇷',38:'🇨🇨',40:'🇬🇷',41:'🇹🇫',43:'🇵🇷',45:'🇬🇷',46:'🇲🇾',47:'🇨🇱',48:'🇰🇮',
+    49:'🇬🇶',50:'🇲🇽',51:'🇪🇷',52:'🇪🇪',53:'🇪🇹',54:'🇷🇺',56:'🇧🇷',60:'🇧🇸',61:'🇷🇺',
+    62:'🇧🇧',63:'🇬🇫',64:'🇧🇲',65:'🇻🇬',66:'🇧🇿',69:'🇰🇾',70:'🇨🇺',71:'🇪🇨',72:'🇩🇴',
+    74:'🇸🇻',75:'🇬🇪',76:'🇬🇹',77:'🇬🇩',78:'🇭🇹',79:'🇬🇵',80:'🇭🇳',82:'🇯🇲',84:'🇲🇶',
+    86:'🇳🇮',88:'🇵🇦',89:'🇹🇨',90:'🇹🇹',91:'🇦🇼',94:'🇦🇬',95:'🇩🇲',96:'🇲🇸',97:'🇱🇨',
+    98:'🇻🇨',99:'🇹🇫',100:'🇦🇷',103:'🇬🇺',104:'🇧🇴',105:'🇺🇸',106:'🇬🇬',107:'🇬🇳',
+    108:'🇧🇷',109:'🇬🇼',110:'🇺🇸',111:'🇭🇲',112:'🇨🇱',114:'🇮🇲',116:'🇨🇴',117:'🇺🇳',
+    118:'🇸🇯',120:'🇪🇨',122:'🇯🇪',123:'🇺🇸',124:'🇹🇫',125:'🇨🇱',126:'🇷🇺',129:'🇬🇾',
+    130:'🇰🇿',131:'🇹🇫',132:'🇵🇾',133:'🇳🇿',135:'🇰🇬',136:'🇵🇪',137:'🇰🇷',138:'🇺🇸',
+    140:'🇸🇷',141:'🇫🇰',142:'🇮🇳',143:'🇱🇦',144:'🇺🇾',145:'🇱🇻',146:'🇱🇹',147:'🇦🇺',
+    148:'🇻🇪',149:'🇵🇹',150:'🇦🇺',152:'🇲🇴',153:'🇦🇺',157:'🇳🇷',158:'🇻🇺',159:'🇲🇻',
+    160:'🇹🇴',161:'🇨🇴',162:'🇳🇨',163:'🇵🇬',165:'🇲🇺',166:'🇲🇵',168:'🇲🇭',169:'🇾🇹',
+    170:'🇳🇿',171:'🇦🇺',172:'🇵🇳',173:'🇫🇲',174:'🇺🇸',175:'🇵🇫',176:'🇫🇯',177:'🇯🇵',
+    179:'🇲🇩',180:'🇬🇷',181:'🇲🇿',182:'🇺🇸',185:'🇸🇧',187:'🇳🇪',188:'🇳🇺',189:'🇦🇺',
+    190:'🇼🇸',191:'🇨🇰',192:'🇯🇵',195:'🇬🇶',197:'🇺🇸',199:'🇧🇻',201:'🇿🇦',202:'🇵🇷',
+    203:'🇦🇩',204:'🇲🇽',205:'🇸🇭',206:'🇦🇹',207:'🇲🇺',209:'🇧🇪',211:'🇨🇦',212:'🇧🇬',
+    213:'🇫🇷',214:'🇫🇷',215:'🇨🇾',216:'🇨🇴',217:'🇨🇱',219:'🇸🇹',221:'🇩🇰',222:'🇫🇴',
+    223:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',224:'🇫🇮',225:'🇮🇹',227:'🇫🇷',230:'🇩🇪',232:'🇸🇴',233:'🇬🇮',
+    234:'🇨🇰',235:'🇬🇧',236:'🇬🇷',237:'🇬🇱',238:'🇦🇶',239:'🇭🇺',240:'🇬🇧',241:'🇦🇶',
+    242:'🇮🇸',245:'🇮🇪',248:'🇮🇹',249:'🇰🇳',250:'🇸🇭',251:'🇱🇮',252:'🇨🇦',253:'🇧🇷',
+    254:'🇱🇺',256:'🇵🇹',257:'🇲🇹',259:'🇸🇯',260:'🇲🇨',262:'🇹🇯',263:'🇳🇱',
+    265:'🏴󠁧󠁢󠁮󠁩󠁲󠁿',266:'🇳🇴',269:'🇵🇱',270:'🇹🇰',272:'🇵🇹',273:'🇧🇷',274:'🇸🇭',
+    275:'🇷🇴',276:'🇹🇫',277:'🇵🇲',278:'🇸🇲',279:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',280:'🇹🇲',281:'🇪🇸',
+    282:'🇹🇻',283:'🇬🇧',284:'🇸🇪',285:'🇻🇮',286:'🇺🇬',287:'🇨🇭',288:'🇺🇦',289:'🇺🇳',
+    291:'🇺🇸',292:'🇺🇿',293:'🇻🇳',294:'🏴󠁧󠁢󠁷󠁬󠁳󠁿',295:'🇻🇦',296:'🇷🇸',297:'🇺🇸',
+    298:'🇼🇫',299:'🇲🇾',301:'🇰🇮',302:'🇪🇭',303:'🇦🇺',304:'🇧🇭',305:'🇧🇩',306:'🇧🇹',
+    308:'🇨🇷',309:'🇲🇲',312:'🇰🇭',315:'🇱🇰',318:'🇨🇳',321:'🇭🇰',324:'🇮🇳',327:'🇮🇩',
+    330:'🇮🇷',333:'🇮🇶',336:'🇮🇱',339:'🇯🇵',342:'🇯🇴',344:'🇰🇵',345:'🇧🇳',348:'🇰🇼',
+    354:'🇱🇧',363:'🇲🇳',369:'🇳🇵',370:'🇴🇲',372:'🇵🇰',375:'🇵🇭',376:'🇶🇦',378:'🇸🇦',
+    379:'🇸🇨',381:'🇸🇬',382:'🇩🇯',384:'🇸🇾',386:'🇹🇼',387:'🇹🇭',390:'🇹🇷',391:'🇦🇪',
+    400:'🇩🇿',401:'🇦🇴',402:'🇧🇼',404:'🇧🇮',406:'🇨🇲',408:'🇨🇫',409:'🇨🇻',410:'🇹🇩',
+    411:'🇰🇲',412:'🇨🇬',414:'🇨🇩',416:'🇧🇯',420:'🇬🇦',422:'🇬🇲',424:'🇬🇭',428:'🇨🇮',
+    430:'🇰🇪',432:'🇱🇸',434:'🇱🇷',436:'🇱🇾',438:'🇲🇬',440:'🇲🇼',442:'🇲🇱',444:'🇲🇷',
+    446:'🇲🇦',450:'🇳🇬',452:'🇿🇼',453:'🇫🇷',454:'🇷🇼',456:'🇸🇳',458:'🇸🇱',460:'🇫🇯',
+    462:'🇿🇦',464:'🇳🇦',466:'🇸🇩',468:'🇸🇿',470:'🇹🇿',474:'🇹🇳',478:'🇪🇬',480:'🇧🇫',
+    482:'🇿🇲',483:'🇹🇬',489:'🇫🇯',490:'🇰🇮',492:'🇾🇪',497:'🇭🇷',499:'🇸🇮',501:'🇧🇦',
+    502:'🇲🇰',503:'🇨🇿',504:'🇸🇰',505:'🇹🇼',506:'🇨🇳',507:'🇸🇧',508:'🇵🇫',509:'🇵🇫',
+    510:'🇵🇸',511:'🇹🇱',512:'🇳🇨',513:'🇵🇳',514:'🇲🇪',515:'🇦🇸',516:'🇫🇷',517:'🇨🇼',
+    518:'🇸🇽',519:'🇧🇶',520:'🇧🇶',521:'🇸🇸',522:'🇽🇰'
 };
 
 // mode for a clicked DX spot; set it only when it is unambiguous
@@ -3083,12 +3137,19 @@ Plugins.rig_skin.createPanelDrag = function () {
         return null;
     }
 
-    // keep the whole panel on screen, at its current displayed size
+    // keep the whole panel on screen, at its current displayed size.
+    // The top limit is the bottom of the top stack, not the viewport:
+    // the banner and frequency scale paint above the panel and would
+    // bury the grip and the layout chip (issue #7)
     function clamp(pos) {
         var r = panel.getBoundingClientRect();
+        var topEdge = 4;
+        $('.webrx-top-container, #openwebrx-frequency-container').each(function () {
+            topEdge = Math.max(topEdge, this.getBoundingClientRect().bottom + 4);
+        });
         return {
             left: Math.min(Math.max(pos.left, 4), Math.max(4, window.innerWidth - r.width - 4)),
-            top: Math.min(Math.max(pos.top, 4), Math.max(4, window.innerHeight - r.height - 4))
+            top: Math.min(Math.max(pos.top, topEdge), Math.max(topEdge, window.innerHeight - r.height - 4))
         };
     }
 

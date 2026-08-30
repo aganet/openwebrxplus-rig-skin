@@ -184,10 +184,10 @@ DX cluster network, on a world map and in a list. The DX and SAT
 buttons only show on the Rig theme. The other themes stay untouched. The map shows every
 spot as a pin, the great circle path from your QTH to the station, and
 the day/night line, so you see at a glance which paths are open right
-now. The list gives the age of the spot, callsign, frequency, mode, and
-the bearing and distance from your receiver, handy with a directional
-antenna. Click a spot or a pin and the receiver jumps there with the
-right mode set.
+now. The list gives the age of the spot, the country flag and callsign,
+frequency, mode, and the bearing and distance from your receiver, handy
+with a directional antenna. Click a spot or a pin and the receiver
+jumps there with the right mode set.
 
 The BCN chip puts the 18 NCDXF/IARU beacons on the map as diamonds,
 click one to listen to it in CW; when the beacon radar is running they
@@ -425,4 +425,5 @@ Data and libraries the plugin uses:
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
 - TLE data: [celestrak.org](https://celestrak.org/)
 - DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](http://www.dxsummit.fi/)
+- Country flags: DXCC entity list from [k0swe/dxcc-json](https://github.com/k0swe/dxcc-json) (Apache 2.0), bundled
 - Coastlines: [Natural Earth](https://www.naturalearthdata.com/) (public domain), bundled

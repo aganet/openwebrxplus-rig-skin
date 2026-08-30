@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.4 (2026-08-31)
+
+Both from requests by ea7cl, thanks again.
+
+- Country flags in the DX cluster (issue #6). Every spot shows the
+  flag of its DXCC entity before the callsign, in the list and in the
+  map tooltip. The flag table is built in, no lookups anywhere. Spots
+  from the backlog source carry no country data and stay plain.
+- Fix: the rig cannot be dragged under the top banner anymore (issue
+  #7). Dragging it high stops just below the frequency scale, so the
+  grip and the layout chip always stay reachable.
+
 ## 0.10.3 (2026-08-30)
 
 Both from reports by ea7cl, thanks for the feedback and the support.
