@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.5 (2026-08-31)
+
+- Fix: the rig comes back where you left it (issue #8, thanks ea7cl).
+  Hiding the panel with the Receiver button and showing it again could
+  leave it almost entirely off the bottom of the screen if it had been
+  dragged before. The show animation flips the panel in 3D, and the
+  position code measured it mid-flip, when it is nearly flat.
+- The S-meter can be calibrated. Set your offsets in init.js and the
+  meter reads true S units: 6 dB per point, S9 at -73 dBm, or -93 dBm
+  on VHF/UHF with the IARU standard. The needle face then shows real
+  dBm, and the SQL marker and the status line follow. Without the
+  setting the meter stays relative, exactly as before. The README
+  explains how to find your offsets.
+- iPhone and iPad: the dial and the drag grip claim their touches, so
+  the page cannot scroll away mid-turn, and the page locks its own
+  scrolling while the rig is up. Safari and the home-screen app work
+  well; Chrome on iOS still fights the wheel from its native side,
+  use Safari there.
+- The deprecated Apple meta tag warning in Chrome is gone.
+
 ## 0.10.4 (2026-08-31)
 
 Both from requests by ea7cl, thanks again.

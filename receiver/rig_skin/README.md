@@ -13,7 +13,7 @@ live spots on a world map, click-to-tune.
 ## Load
 
 ```js
-// local
+// localf
 Plugins.load('rig_skin');
 // or remote
 Plugins.load('https://aganet.github.io/openwebrxplus-rig-skin/receiver/rig_skin/rig_skin.js');

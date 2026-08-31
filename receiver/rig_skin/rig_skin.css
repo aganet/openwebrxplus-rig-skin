@@ -1282,6 +1282,19 @@ body.theme-rig #openwebrx-panel-receiver.rig-overflow::-webkit-scrollbar-track,
     background: #0d1013;
 }
 
+/* Touch browsers hijack drags they mistake for page scrolls (worst in
+   the iOS Chrome shell). The rig page never needs to scroll itself,
+   so lock the document while the theme is up and give the browser
+   nothing to claim. */
+html:has(body.theme-rig) {
+    overscroll-behavior: none;
+}
+
+body.theme-rig {
+    overscroll-behavior: none;
+    overflow: hidden;
+}
+
 /* running version, bottom-left like the print on a front panel */
 #owrx-rig-version {
     display: none;

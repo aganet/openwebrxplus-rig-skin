@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.4';
+Plugins.rig_skin._version = '0.10.5';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -130,7 +130,10 @@ Plugins.rig_skin.createPwa = function () {
     }).appendTo('head');
 
     if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+        // Apple's meta for iOS home-screen, plus the modern name Chrome
+        // asks for (it warns about the Apple one being deprecated)
         $('<meta>', { name: 'apple-mobile-web-app-capable', content: 'yes' }).appendTo('head');
+        $('<meta>', { name: 'mobile-web-app-capable', content: 'yes' }).appendTo('head');
         $('<meta>', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' }).appendTo('head');
     }
 };
@@ -3147,19 +3150,28 @@ Plugins.rig_skin.createPanelDrag = function () {
         return null;
     }
 
+    // the panel's visual size from its layout size and zoom: the stock
+    // show/hide animation flips the panel in 3D, which squashes
+    // getBoundingClientRect to nothing mid-flip and used to plant the
+    // panel at the screen bottom (issue #8); offsetWidth is immune
+    function panelSize() {
+        var z = parseFloat(panel.style.zoom) || 1;
+        return { w: panel.offsetWidth * z, h: panel.offsetHeight * z };
+    }
+
     // keep the whole panel on screen, at its current displayed size.
     // The top limit is the bottom of the top stack, not the viewport:
     // the banner and frequency scale paint above the panel and would
     // bury the grip and the layout chip (issue #7)
     function clamp(pos) {
-        var r = panel.getBoundingClientRect();
+        var s = panelSize();
         var topEdge = 4;
         $('.webrx-top-container, #openwebrx-frequency-container').each(function () {
             topEdge = Math.max(topEdge, this.getBoundingClientRect().bottom + 4);
         });
         return {
-            left: Math.min(Math.max(pos.left, 4), Math.max(4, window.innerWidth - r.width - 4)),
-            top: Math.min(Math.max(pos.top, topEdge), Math.max(topEdge, window.innerHeight - r.height - 4))
+            left: Math.min(Math.max(pos.left, 4), Math.max(4, window.innerWidth - s.w - 4)),
+            top: Math.min(Math.max(pos.top, topEdge), Math.max(topEdge, window.innerHeight - s.h - 4))
         };
     }
 
@@ -3183,15 +3195,24 @@ Plugins.rig_skin.createPanelDrag = function () {
     Plugins.rig_skin._applyPanelPos = function () {
         var pos = $('body').hasClass('theme-rig') ? saved() : null;
         if (pos) {
-            var r = panel.getBoundingClientRect();
+            // a hidden panel measures zero; leave it alone, the resize
+            // observer refits it the moment it shows again
+            if (!panel.offsetWidth) return;
+            var s = panelSize();
             place(clamp({
-                left: window.innerWidth - pos.right - r.width,
-                top: window.innerHeight - pos.bottom - r.height
+                left: window.innerWidth - pos.right - s.w,
+                top: window.innerHeight - pos.bottom - s.h
             }));
         } else {
             reset();
         }
     };
+
+    // same WebKit touch handling as the knob: without it, dragging the
+    // rig on an iPhone scrolls the page instead
+    ['touchstart', 'touchmove'].forEach(function (t) {
+        grip.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+    });
 
     var start = null;
     grip.addEventListener('pointerdown', function (e) {
@@ -4475,6 +4496,46 @@ Plugins.rig_skin.createMeter = function ($freq) {
             : 'S9+' + (Math.round((v - S9) / (1 - S9) * 12) * 5);
     }
 
+    // Calibrated mode: an operator who knows the hardware sets, in
+    // init.js before the plugin loads,
+    //   Plugins.rig_skin.smeter = { offset_hf: -55, offset_vhf: -72, iaru_vhf: true };
+    // The raw level plus the offset is real dBm, and the scale becomes
+    // true S-units (6 dB each, S9 = -73 dBm, or -93 above 30 MHz with
+    // iaru_vhf). Without the setting the meter stays relative, as
+    // before. S0 sits 54 dB below S9, the red zone spans 60 dB.
+    function calOffset() {
+        var cfg = Plugins.rig_skin.smeter;
+        if (!cfg) return null;
+        var f = (typeof UI !== 'undefined' && UI.getFrequency) ? UI.getFrequency() : 0;
+        var off = f >= 30000000 ? cfg.offset_vhf : cfg.offset_hf;
+        return typeof off === 'number' ? off : 0;
+    }
+
+    function calS9() {
+        var cfg = Plugins.rig_skin.smeter;
+        var f = (typeof UI !== 'undefined' && UI.getFrequency) ? UI.getFrequency() : 0;
+        return (cfg && cfg.iaru_vhf && f >= 30000000) ? -93 : -73;
+    }
+
+    // deflection on the printed scale for a calibrated dBm, and back
+    function calT(dbm) {
+        var s9 = calS9();
+        if (dbm <= s9) return Math.max(0, (dbm - (s9 - 54)) / 54) * S9;
+        return Math.min(1, S9 + (dbm - s9) / 60 * (1 - S9));
+    }
+
+    function calDbmFromT(t) {
+        var s9 = calS9();
+        return t <= S9 ? (s9 - 54) + t / S9 * 54 : s9 + (t - S9) / (1 - S9) * 60;
+    }
+
+    // the live raw level in dBm, or null when not calibrated
+    function calDbm() {
+        var off = calOffset();
+        if (off === null || typeof smeter_level === 'undefined' || smeter_level <= 0) return null;
+        return 10 * Math.log10(smeter_level) + off;
+    }
+
     // squelch threshold in meter units: the slider is in dB on the same
     // scale the stock code maps onto the meter, so the marker is exact
     var $sql = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
@@ -4483,8 +4544,14 @@ Plugins.rig_skin.createMeter = function ($freq) {
         if (!$sql.length || typeof Waterfall === 'undefined' || !Waterfall.getRange) return null;
         var v = parseFloat($sql.val());
         if (!isFinite(v) || v <= parseFloat($sql.attr('min'))) return null;
-        var r = Waterfall.getRange();
-        var t = (v - (r.min - 20)) / ((r.max + 20) - (r.min - 20));
+        var off = calOffset();
+        var t;
+        if (off !== null) {
+            t = calT(v + off);
+        } else {
+            var r = Waterfall.getRange();
+            t = (v - (r.min - 20)) / ((r.max + 20) - (r.min - 20));
+        }
         return t > 0 && t <= 1 ? t : null;
     }
 
@@ -4505,8 +4572,16 @@ Plugins.rig_skin.createMeter = function ($freq) {
 
     function setSquelchFromT(t) {
         if (!$sql.length || typeof Waterfall === 'undefined') return;
-        var r = Waterfall.getRange();
-        var db = (r.min - 20) + Math.max(0, Math.min(1, t)) * ((r.max + 20) - (r.min - 20));
+        t = Math.max(0, Math.min(1, t));
+        var db;
+        var off = calOffset();
+        if (off !== null) {
+            // inverse of calT, back into the slider's raw dB domain
+            db = calDbmFromT(t) - off;
+        } else {
+            var r = Waterfall.getRange();
+            db = (r.min - 20) + t * ((r.max + 20) - (r.min - 20));
+        }
         db = Math.max(parseFloat($sql.attr('min')), Math.min(parseFloat($sql.attr('max')), db));
         $sql.val(Math.round(db)).trigger('input').trigger('change');
         draw();
@@ -4653,14 +4728,20 @@ Plugins.rig_skin.createMeter = function ($freq) {
         }
         // the corner readouts live at the top, clear of the arc ends
         ctx.textBaseline = 'top';
-        // live dB readout, derived from the same mapping as the needle
+        // live dB readout, derived from the same mapping as the needle;
+        // real dBm when the operator calibrated the meter
         if (typeof Waterfall !== 'undefined' && Waterfall.getRange) {
-            var rng = Waterfall.getRange();
-            var db = (rng.min - 20) + current * ((rng.max + 20) - (rng.min - 20));
+            var dbText;
+            if (calOffset() !== null) {
+                dbText = calDbmFromT(current).toFixed(1) + ' dBm';
+            } else {
+                var rng = Waterfall.getRange();
+                dbText = ((rng.min - 20) + current * ((rng.max + 20) - (rng.min - 20))).toFixed(1) + ' dB';
+            }
             ctx.font = '10px roboto-mono, monospace';
             ctx.fillStyle = '#93a0ab';
             ctx.textAlign = 'left';
-            ctx.fillText(db.toFixed(1) + ' dB', 4, 3);
+            ctx.fillText(dbText, 4, 3);
         }
         // squelch threshold: a small pointer under the arc (separate from
         // the scale); the needle past it means the audio gate is open
@@ -4787,8 +4868,13 @@ Plugins.rig_skin.createMeter = function ($freq) {
     }
 
     Plugins.rig_skin.setMeterTarget = function (value) {
-        Plugins.rig_skin._sLevel = Math.max(0, Math.min(1, value));
-        target = Math.max(0, Math.min(1, value));
+        var dbm = calDbm();
+        var t = dbm !== null ? calT(dbm) : Math.max(0, Math.min(1, value));
+        // _sLevel carries the deflection on the printed scale; the info
+        // line and the beacon list read it, so their S readings follow
+        // the calibration too
+        Plugins.rig_skin._sLevel = t;
+        target = t;
         if (!anim) {
             lastT = null;
             anim = setTimeout(tick, 0);
@@ -4877,6 +4963,15 @@ Plugins.rig_skin.createKnob = function ($line) {
         }
         spinning = requestAnimationFrame(frame);
     }
+
+    // WebKit (every browser on an iPhone or iPad) does not reliably
+    // honor touch-action or a cancelled pointerdown; cancelling the
+    // native touch events is the one signal it always respects, or the
+    // page scroll steals the drag mid-turn. The tuning logic stays in
+    // the pointer handlers, so other browsers are unaffected.
+    ['touchstart', 'touchmove'].forEach(function (t) {
+        knob.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+    });
 
     knob.addEventListener('pointerdown', function (e) {
         e.preventDefault();

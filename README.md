@@ -84,7 +84,46 @@ value as a number; the needle face also shows the dB reading. With the
 squelch on, an SQL marker sits where the gate opens. Drag the marker
 and the squelch follows, so you set it right on the meter, just above
 the noise. Below the meter a status line shows the band, S units,
-squelch, mute and UTC time. Then two scopes:
+squelch, mute and UTC time.
+
+Out of the box the meter is relative: it shows the same value as the
+stock bar, on a rig-style scale. The S numbers depend on your
+waterfall calibration, not on real dBm. If you know your hardware, you
+can calibrate it. Put this in `plugins/receiver/init.js`, the same
+file that loads the plugin (the Install section below shows where it
+lives on your server), before the `Plugins.load` line:
+
+```js
+Plugins.rig_skin.smeter = {
+    offset_hf: -55,    // dB offset below 30 MHz
+    offset_vhf: -72,   // dB offset above 30 MHz
+    iaru_vhf: true     // S9 = -93 dBm above 30 MHz (IARU standard)
+};
+```
+
+With this set, the meter reads true S units: 6 dB per S point, S9 at
+-73 dBm (or -93 dBm on VHF/UHF with `iaru_vhf`). The needle face shows
+real dBm, and the SQL marker and the status line follow the same
+calibration. It applies to every visitor of your receiver.
+
+How to find your offsets, from best to simplest:
+
+- Feed a known level from a signal generator and adjust the offset
+  until the dBm readout matches.
+- Compare against a real rig on the same antenna: tune both to the
+  same steady station and adjust until the S readings agree.
+- No reference at all: tune to a quiet spot on the band and set the
+  offset so the noise floor reads believable, S3 to S5 on 40 m, around
+  S0 to S1 on 70 cm. Not precise, but honest enough.
+- If you already calibrated the smeter plugin, copy its values; they
+  mean the same thing as long as its linearity factor is at 1.0, the
+  default.
+
+Change the offset, reload the page, look at the meter, repeat. The
+offsets depend on your SDR, its gain and your antenna, so if you change
+the RF gain in a profile, give them a new pass.
+
+Then two scopes:
 
 ![the two meter faces](docs/screenshot-meters.png)
 
@@ -186,8 +225,10 @@ spot as a pin, the great circle path from your QTH to the station, and
 the day/night line, so you see at a glance which paths are open right
 now. The list gives the age of the spot, the country flag and callsign,
 frequency, mode, and the bearing and distance from your receiver, handy
-with a directional antenna. Click a spot or a pin and the receiver
-jumps there with the right mode set.
+with a directional antenna. Spots from the backlog source carry no
+country data, so they show no flag until the station is spotted live
+again. Click a spot or a pin and the receiver jumps there with the
+right mode set.
 
 The BCN chip puts the 18 NCDXF/IARU beacons on the map as diamonds,
 click one to listen to it in CW; when the beacon radar is running they
