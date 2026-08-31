@@ -2,7 +2,7 @@
 
 ## 0.10.5 (2026-08-31)
 
-- Fix: the rig comes back where you left it (issue #8, thanks ea7cl).
+- Fix: the rig comes back where you left it (issue #9, thanks ea7cl).
   Hiding the panel with the Receiver button and showing it again could
   leave it almost entirely off the bottom of the screen if it had been
   dragged before. The show animation flips the panel in 3D, and the
