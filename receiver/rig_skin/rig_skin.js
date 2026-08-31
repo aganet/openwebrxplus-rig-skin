@@ -26,6 +26,12 @@ Plugins.rig_skin._base = (function () {
 Plugins.rig_skin.no_css = true;
 
 Plugins.rig_skin.init = function () {
+    // operator settings come from a plain global in init.js, because
+    // creating Plugins.rig_skin there would make the loader think the
+    // plugin is already loaded and skip it
+    var cfg = window.rig_skin_config;
+    if (cfg && cfg.smeter) Plugins.rig_skin.smeter = cfg.smeter;
+
     $('<link>', {
         rel: 'stylesheet',
         href: Plugins.rig_skin._base + 'rig_skin.css?v=' + Plugins.rig_skin._version

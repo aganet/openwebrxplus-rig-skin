@@ -94,10 +94,12 @@ file that loads the plugin (the Install section below shows where it
 lives on your server), before the `Plugins.load` line:
 
 ```js
-Plugins.rig_skin.smeter = {
-    offset_hf: -55,    // dB offset below 30 MHz
-    offset_vhf: -72,   // dB offset above 30 MHz
-    iaru_vhf: true     // S9 = -93 dBm above 30 MHz (IARU standard)
+window.rig_skin_config = {
+    smeter: {
+        offset_hf: -55,    // dB offset below 30 MHz
+        offset_vhf: -72,   // dB offset above 30 MHz
+        iaru_vhf: true     // S9 = -93 dBm above 30 MHz (IARU standard)
+    }
 };
 ```
 
