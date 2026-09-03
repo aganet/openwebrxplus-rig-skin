@@ -69,6 +69,7 @@ Plugins.rig_skin.init = function () {
     Plugins.rig_skin.createVfoLine();
     Plugins.rig_skin.createDxWindow();
     Plugins.rig_skin.createSatWindow();
+    Plugins.rig_skin.createWatch();
     Plugins.rig_skin.createSpotRibbon();
     try { Plugins.rig_skin.createPwa(); } catch (e) {}
     return true;
@@ -1579,6 +1580,338 @@ Plugins.rig_skin._dxccFlag = {
     502:'🇲🇰',503:'🇨🇿',504:'🇸🇰',505:'🇹🇼',506:'🇨🇳',507:'🇸🇧',508:'🇵🇫',509:'🇵🇫',
     510:'🇵🇸',511:'🇹🇱',512:'🇳🇨',513:'🇵🇳',514:'🇲🇪',515:'🇦🇸',516:'🇫🇷',517:'🇨🇼',
     518:'🇸🇽',519:'🇧🇶',520:'🇧🇶',521:'🇸🇸',522:'🇽🇰'
+};
+
+// Watch windows: small floating receivers-for-the-eyes. Each one shows
+// a live waterfall slice of one frequency inside the current band, fed
+// from the FFT the page already receives, so any number of them costs
+// nothing on the server. They are muted monitors: press the speaker on
+// one and the main receiver tunes there and plays. Lettered C, D, E...
+// after the two VFOs.
+Plugins.rig_skin.createWatch = function () {
+    var W = 220, TR_H = 22, WF_H = 30;
+    var MAX = 8;
+    var watches = [];
+
+    // the channel each mode occupies around the dial, in Hz; LSB and
+    // USB are one-sided like the real passband
+    function modeWidth(mode) {
+        switch (mode) {
+            case 'cw': return [-250, 250];
+            case 'lsb': return [-3000, -300];
+            case 'usb': return [300, 3000];
+            case 'am':
+            case 'sam': return [-4500, 4500];
+            case 'nfm':
+            case 'dmr':
+            case 'ysf':
+            case 'dstar':
+            case 'nxdn':
+            case 'm17': return [-6000, 6000];
+            case 'wfm': return [-80000, 80000];
+            default: return [-1500, 1500];
+        }
+    }
+
+    // the waterfall span follows the channel: wide enough for context,
+    // never so wide the channel becomes a sliver
+    function spanFor(mode) {
+        var pb = modeWidth(mode);
+        var need = 2 * Math.max(Math.abs(pb[0]), Math.abs(pb[1]));
+        return Math.max(12000, need * 2.5);
+    }
+
+    function load() {
+        try {
+            if (typeof LS !== 'undefined' && LS.has('rig_watch')) {
+                return JSON.parse(LS.loadStr('rig_watch')) || [];
+            }
+        } catch (e) {}
+        return [];
+    }
+
+    function save() {
+        if (typeof LS === 'undefined') return;
+        LS.save('rig_watch', JSON.stringify(watches.map(function (w) {
+            return { f: w.f, mode: w.mode, left: w.left, top: w.top };
+        })));
+    }
+
+    function letter(i) {
+        return String.fromCharCode(67 + i);   // C, D, E...
+    }
+
+    function playing(w) {
+        return typeof UI !== 'undefined' && UI.getFrequency &&
+            Math.abs(UI.getFrequency() - w.f) < 50;
+    }
+
+    // where the main receiver was before a watch took the audio; muting
+    // the playing watch returns there. Hopping between watches keeps the
+    // original spot, so mute always goes home.
+    var home = null;
+
+    function anyPlaying() {
+        return watches.some(playing);
+    }
+
+    function toggleSpeaker(w) {
+        if (playing(w)) {
+            if (home) Plugins.rig_skin.tuneTo(home.f, home.mode || null);
+        } else {
+            if (!anyPlaying() && typeof UI !== 'undefined' && UI.getFrequency) {
+                home = { f: UI.getFrequency(),
+                    mode: (UI.getModulation && UI.getModulation()) || '' };
+            }
+            Plugins.rig_skin.tuneTo(w.f, w.mode || null);
+        }
+    }
+
+    function relabel() {
+        watches.forEach(function (w, i) {
+            w.$tag.text(letter(i));
+        });
+    }
+
+    function makeWindow(w, idx) {
+        w.$tag = $('<span>').addClass('owrx-rig-watch-tag').text(letter(idx));
+        var $freq = $('<span>').addClass('owrx-rig-watch-freq')
+            .attr('title', 'Click to type a frequency, scroll to step')
+            .text((w.f / 1000000).toFixed(4));
+
+        function setFreq(f) {
+            if (!isFinite(f) || f <= 0) return;
+            var was = playing(w);
+            w.f = Math.round(f);
+            $freq.text((w.f / 1000000).toFixed(4));
+            // a playing watch keeps playing on its new frequency
+            if (was) Plugins.rig_skin.tuneTo(w.f, w.mode || null);
+            save();
+        }
+
+        function listen() {
+            if (!playing(w)) toggleSpeaker(w);
+        }
+
+        // click listens here; double-click types a frequency
+        $freq.attr('title', 'Click to listen, double-click to type, scroll to step');
+        $freq.on('click', function () {
+            if ($freq.find('input').length) return;
+            listen();
+        });
+        $freq.on('dblclick', function () {
+            if ($freq.find('input').length) return;
+            var $in = $('<input>').attr('type', 'text')
+                .addClass('owrx-rig-watch-input')
+                .val((w.f / 1000000).toFixed(4));
+            $freq.empty().append($in);
+            $in.focus().select();
+            function done(commit) {
+                var v = parseFloat($in.val());
+                $freq.empty().text((w.f / 1000000).toFixed(4));
+                if (commit && isFinite(v) && v > 0) setFreq(v * 1000000);
+            }
+            $in.on('keydown', function (e) {
+                if (e.key === 'Enter') done(true);
+                else if (e.key === 'Escape') done(false);
+                e.stopPropagation();
+            });
+            $in.on('blur', function () { done(false); });
+        });
+
+        // scroll to step by the rig's current tuning step
+        $freq.on('wheel', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var steps = Plugins.rig_skin.wheelSteps(e.originalEvent);
+            if (!steps) return;
+            var ts = parseInt($('#openwebrx-tuning-step-listbox').val()) || 100;
+            setFreq(w.f + steps * ts);
+        });
+        var $mode = $('<span>').addClass('owrx-rig-watch-mode')
+            .text((w.mode || '').toUpperCase());
+        w.$spk = $('<span>').addClass('owrx-rig-watch-spk')
+            .attr('title', 'Listen here; press again to go back')
+            .html('&#x1F507;')
+            .on('click', function () { toggleSpeaker(w); });
+        var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
+            .on('click', function () {
+                watches.splice(watches.indexOf(w), 1);
+                w.$win.remove();
+                relabel();
+                save();
+            });
+        var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
+            .append(w.$tag).append($freq).append($mode).append(w.$spk).append($close);
+        w.canvas = document.createElement('canvas');
+        var dpr = window.devicePixelRatio || 1;
+        w.canvas.width = W * dpr;
+        w.canvas.height = (TR_H + WF_H) * dpr;
+        w.ctx = w.canvas.getContext('2d');
+        w.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // the scope is the biggest target: clicking it listens here
+        $(w.canvas).attr('title', 'Click to listen here')
+            .css('cursor', 'pointer')
+            .on('click', listen);
+
+        var $lcd = $('<div>').addClass('owrx-rig-dx-lcd').append(w.canvas);
+        w.$win = $('<div>').addClass('owrx-rig-watch')
+            .css({ left: w.left + 'px', top: w.top + 'px' })
+            .append($hdr).append($lcd).appendTo('body');
+
+        // drag by the header, position remembered
+        (function () {
+            var sx, sy, ox, oy, moving = false;
+            function point(e) {
+                var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+                return [t.clientX, t.clientY];
+            }
+            $hdr.on('mousedown touchstart', function (e) {
+                if ($(e.target).is('.owrx-rig-dx-close, .owrx-rig-watch-spk')) return;
+                var pt = point(e), off = w.$win.offset();
+                sx = pt[0]; sy = pt[1];
+                ox = off.left - $(window).scrollLeft();
+                oy = off.top - $(window).scrollTop();
+                moving = true;
+                e.preventDefault();
+            });
+            $(document).on('mousemove touchmove', function (e) {
+                if (!moving) return;
+                var pt = point(e);
+                w.left = Math.round(ox + pt[0] - sx);
+                w.top = Math.round(oy + pt[1] - sy);
+                w.$win.css({ left: w.left + 'px', top: w.top + 'px' });
+            });
+            $(document).on('mouseup touchend', function () {
+                if (moving) { moving = false; save(); }
+            });
+        })();
+    }
+
+    // one waterfall slice per window, cut from the whole-band FFT the
+    // page already has; same bin math as the band scope
+    function drawWatch(w, data) {
+        var ctx = w.ctx;
+        ctx.clearRect(0, 0, W, TR_H + WF_H);
+        var inBand = Math.abs(w.f - center_freq) < bandwidth / 2;
+        var on = playing(w);
+        w.$win.toggleClass('playing', on);
+        w.$spk.html(on ? '&#x1F50A;' : '&#x1F507;');
+        if (!inBand) {
+            ctx.font = '10px roboto-mono, monospace';
+            ctx.fillStyle = '#5c6670';
+            ctx.textAlign = 'center';
+            ctx.fillText('out of band', W / 2, TR_H + 8);
+            return;
+        }
+        var range = typeof Waterfall !== 'undefined' && Waterfall.getRange
+            ? Waterfall.getRange() : { min: -100, max: 0 };
+        var off = w.f - center_freq;
+        var SPAN = spanFor(w.mode);
+        var pb = modeWidth(w.mode);
+        var pb0 = Math.round((pb[0] / SPAN + 0.5) * W);
+        var pb1 = Math.round((pb[1] / SPAN + 0.5) * W);
+        function level(x) {
+            var f0 = off + ((x - 0.5) / W - 0.5) * SPAN;
+            var f1 = off + ((x + 0.5) / W - 0.5) * SPAN;
+            var b0 = Math.floor((f0 / bandwidth + 0.5) * data.length);
+            var b1 = Math.max(b0 + 1, Math.ceil((f1 / bandwidth + 0.5) * data.length));
+            if (b1 <= 0 || b0 >= data.length) return null;
+            var v = -1000;
+            for (var b = Math.max(0, b0); b < Math.min(data.length, b1); b++) {
+                if (data[b] > v) v = data[b];
+            }
+            return v;
+        }
+        // the channel the mode occupies, shaded like the band scope
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.fillRect(pb0, 0, pb1 - pb0, TR_H);
+
+        // scroll the little waterfall, paint the new line, then the trace
+        w.wfCtx.drawImage(w.wf, 0, 1);
+        for (var x = 0; x < W; x++) {
+            var v = level(x);
+            var c = Waterfall.makeColor(v === null ? range.min : v);
+            w.wfCtx.fillStyle = 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
+            w.wfCtx.fillRect(x, 0, 1, 1);
+        }
+        ctx.strokeStyle = on ? '#3adb4a' : '#3fa9f5';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        var levels = [];
+        for (var tx = 0; tx < W; tx++) {
+            var tv = level(tx);
+            levels.push(tv);
+            var t = tv === null ? 0 :
+                Math.max(0, Math.min(1, (tv - range.min) / (range.max - range.min)));
+            var y = TR_H - 1 - t * (TR_H - 2);
+            tx ? ctx.lineTo(tx, y) : ctx.moveTo(tx, y);
+        }
+        ctx.stroke();
+        // activity LED: the channel's peak against the peak of the rest
+        // of the slice. Both are maxima over noise bins, so the bias
+        // cancels; only a real signal in the channel tips the balance.
+        // Smoothed over a few lines, with a two second hold.
+        var inPk = -1000, outPk = -1000;
+        for (var px = 0; px < W; px++) {
+            var lv = levels[px];
+            if (lv === null) continue;
+            if (px >= pb0 && px < pb1) { if (lv > inPk) inPk = lv; }
+            else if (lv > outPk) outPk = lv;
+        }
+        if (inPk > -1000 && outPk > -1000) {
+            var d = inPk - outPk;
+            w.emaD = w.emaD === undefined ? d : w.emaD * 0.7 + d * 0.3;
+            var now = Date.now();
+            if (w.emaD > 6) w.actUntil = now + 2000;
+            // activity blinks the letter red; the playing window keeps
+            // its green, you can already hear that one
+            w.$win.toggleClass('act', !!(w.actUntil && now < w.actUntil));
+        }
+        // center line marks the watched frequency
+        ctx.fillStyle = 'rgba(255, 65, 48, 0.7)';
+        ctx.fillRect(W / 2, 0, 1, TR_H);
+        ctx.drawImage(w.wf, 0, TR_H);
+    }
+
+    Plugins.rig_skin._watchFeed = function (data) {
+        watches.forEach(function (w) { drawWatch(w, data); });
+    };
+
+    function addWatch(f, mode, left, top) {
+        if (watches.length >= MAX) return;
+        var idx = watches.length;
+        var w = {
+            f: f, mode: mode || '',
+            left: typeof left === 'number' ? left : 12 + (idx % 4) * 26,
+            top: typeof top === 'number' ? top : 90 + idx * 118
+        };
+        w.wf = document.createElement('canvas');
+        w.wf.width = W;
+        w.wf.height = WF_H;
+        w.wfCtx = w.wf.getContext('2d');
+        makeWindow(w, idx);
+        watches.push(w);
+        save();
+    }
+
+    load().slice(0, MAX).forEach(function (s) {
+        if (s && s.f) addWatch(s.f, s.mode, s.left, s.top);
+    });
+
+    var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-watch-button')
+        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+            '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>' +
+            '<circle cx="12" cy="12" r="2.8"/>' +
+            '</svg><br/>WATCH')
+        .attr('title', 'Add a watch window on the tuned frequency: a small live waterfall, press its speaker to listen there')
+        .on('click', function () {
+            if (typeof UI === 'undefined' || !UI.getFrequency) return;
+            addWatch(UI.getFrequency(), (UI.getModulation && UI.getModulation()) || '');
+        });
+    var $satBtn = $('#owrx-rig-sat-button');
+    if ($satBtn.length) $satBtn.after($btn);
+    else $('.openwebrx-main-buttons').append($btn);
 };
 
 // mode for a clicked DX spot; set it only when it is unambiguous
@@ -3697,9 +4030,15 @@ Plugins.rig_skin.createBandScope = function ($freq) {
             Plugins.rig_skin._lastFft = data;
             // the canvas is display:none on the stock themes; drawing
             // there would burn CPU for pixels nobody can see
-            if (visible() && document.body.classList.contains('theme-rig') &&
+            if (document.body.classList.contains('theme-rig') &&
                 typeof bandwidth !== 'undefined') {
-                try { draw(data); } catch (e) {}
+                if (visible()) {
+                    try { draw(data); } catch (e) {}
+                }
+                // the watch windows render their slices from the same line
+                if (Plugins.rig_skin._watchFeed) {
+                    try { Plugins.rig_skin._watchFeed(data); } catch (e) {}
+                }
             }
         }
         return res;

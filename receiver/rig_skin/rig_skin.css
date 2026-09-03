@@ -1329,17 +1329,20 @@ body.theme-rig #owrx-rig-version:hover {
 /* DX cluster and SAT tracking windows; their banner buttons and the
    windows themselves only show while the rig theme is active */
 #owrx-rig-dx-button,
-#owrx-rig-sat-button {
+#owrx-rig-sat-button,
+#owrx-rig-watch-button {
     display: none;
 }
 
 body.theme-rig #owrx-rig-dx-button,
-body.theme-rig #owrx-rig-sat-button {
+body.theme-rig #owrx-rig-sat-button,
+body.theme-rig #owrx-rig-watch-button {
     display: block;
 }
 
 #owrx-rig-dx,
-#owrx-rig-satwin {
+#owrx-rig-satwin,
+.owrx-rig-watch {
     display: none;
     position: fixed;
     left: 10px;
@@ -1361,7 +1364,8 @@ body.theme-rig #owrx-rig-sat-button {
 }
 
 body.theme-rig #owrx-rig-dx.visible,
-body.theme-rig #owrx-rig-satwin.visible {
+body.theme-rig #owrx-rig-satwin.visible,
+body.theme-rig .owrx-rig-watch {
     display: block;
 }
 
@@ -1450,7 +1454,8 @@ body.theme-rig #owrx-rig-satwin.visible {
 }
 
 #owrx-rig-dx canvas,
-#owrx-rig-satwin canvas {
+#owrx-rig-satwin canvas,
+.owrx-rig-watch canvas {
     display: block;
     width: 100%;
     border-radius: 3px;
@@ -1731,4 +1736,79 @@ body.theme-rig #owrx-rig-dx-button.highlighted,
 body.theme-rig #owrx-rig-sat-button.highlighted {
     background: rgba(29, 95, 174, 0.35);
     color: #ffffff;
+}
+
+/* watch windows: pocket receivers for the eyes */
+.owrx-rig-watch {
+    width: 236px;
+    padding: 6px;
+}
+
+.owrx-rig-watch .owrx-rig-dx-hdr {
+    gap: 6px;
+    padding: 0 2px 5px 2px;
+    cursor: move;
+    align-items: center;
+}
+
+.owrx-rig-watch-tag {
+    background: #1d5fae;
+    color: #ffffff;
+    border-radius: 3px;
+    padding: 0 5px;
+    font-size: 9pt;
+    font-weight: bold;
+}
+
+.owrx-rig-watch-freq {
+    font-size: 11pt;
+    font-weight: bold;
+    color: var(--rig-lcd);
+    text-shadow: 0 0 6px var(--rig-lcd-glow);
+}
+
+.owrx-rig-watch-mode {
+    font-size: 8pt;
+    color: #5aa8ff;
+}
+
+.owrx-rig-watch-spk {
+    margin-left: auto;
+    cursor: pointer;
+    font-size: 11pt;
+    filter: grayscale(1) brightness(0.8);
+}
+
+.owrx-rig-watch.playing .owrx-rig-watch-spk {
+    filter: none;
+}
+
+.owrx-rig-watch.playing .owrx-rig-watch-tag {
+    background: #1d8a2e;
+    box-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
+}
+
+.owrx-rig-watch-freq {
+    cursor: pointer;
+}
+
+.owrx-rig-watch-input {
+    width: 74px;
+    background: #0a0f13;
+    color: var(--rig-lcd);
+    border: 1px solid #2e4a57;
+    border-radius: 3px;
+    font: bold 10pt 'roboto-mono', monospace;
+    padding: 0 3px;
+}
+
+/* activity: the letter blinks red while there is a signal in the
+   channel; the playing window keeps its steady green instead */
+@keyframes owrx-rig-watch-act {
+    0%, 100% { background: #b02a1e; box-shadow: 0 0 7px rgba(255, 65, 48, 0.8); }
+    50% { background: #5a1812; box-shadow: none; }
+}
+
+.owrx-rig-watch.act:not(.playing) .owrx-rig-watch-tag {
+    animation: owrx-rig-watch-act 1s step-end infinite;
 }
