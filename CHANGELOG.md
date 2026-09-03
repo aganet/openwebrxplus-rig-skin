@@ -15,8 +15,11 @@
   scopes scroll without reading pixels back, draw nothing while a
   stock theme is up, and the panel does less idle work. Roughly a
   fifth less busy on the rig theme, a third less on the stock themes.
-  This also clears the faint scanning band some saw over the panel
-  (issue #13).
+- The LCD screen is flat black now, crisp, no gradient. It also sits on
+  its own compositor layer, so the meter and scopes repainting cannot
+  drag the panel behind them into a redraw. This is aimed at the faint
+  scanning band a few reported over the screen (issue #13), strongest
+  on zoomed panels running other spectrum plugins.
 
 ## 0.10.5 (2026-08-31)
 
