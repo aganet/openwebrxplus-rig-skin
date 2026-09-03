@@ -1295,9 +1295,18 @@ body.theme-rig {
     overflow: hidden;
 }
 
-/* Every live canvas paints on its own compositor layer, the same
-   isolation the stock waterfall enjoys: its redraws then cannot force
-   the panel around it to re-rasterize. Three small layers, cheap. */
+/* The whole LCD screen paints on its own compositor layer. The meter
+   and scopes redraw many times a second; without an isolating layer
+   the browser recomposites the textured panel behind them, and on some
+   GPUs that recomposite sweeps top to bottom as a faint moving glare
+   (issue #13). Promoting the screen keeps those repaints self
+   contained. The inner canvases get their own layers too. */
+body.theme-rig #openwebrx-panel-receiver .frequencies-container {
+    transform: translateZ(0);
+    isolation: isolate;
+    contain: paint;
+}
+
 body.theme-rig #owrx-rig-meter canvas,
 body.theme-rig #owrx-rig-bscope canvas,
 body.theme-rig #owrx-rig-scope canvas {
