@@ -256,6 +256,27 @@ service involved.
 
 ![DX cluster](docs/screenshot-dx.png)
 
+## Watch windows
+
+The WATCH button adds a small window on the frequency you are on: a
+live waterfall of just that spot, lettered C, D, E after the two VFOs.
+Add as many as you like. They watch different frequencies on the band
+you are on, all at once, so you can keep an eye on a net, a repeater
+and a calling frequency together.
+
+Each window shades the channel for its mode, and its letter blinks red
+when a signal is there, so you see activity without listening. Click a
+window to listen to it: the receiver tunes over and the window turns
+green. Click the speaker to go back where you were. Type or scroll the
+frequency to move a watch. Drag them anywhere; they stay where you put
+them.
+
+They only cost the small waterfall, nothing on the server, and only the
+one you are listening to uses the receiver. On the stock themes they
+are not there at all.
+
+![watch windows](docs/screenshot-watch.png)
+
 ## Waterfall
 
 There is a "Rig" palette in the waterfall theme selector, a jet style ramp

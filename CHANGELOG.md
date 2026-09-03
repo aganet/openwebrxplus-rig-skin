@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.6 (2026-09-03)
+
+- Watch windows. A WATCH button in the top banner adds a small floating
+  receiver on the tuned frequency: a live waterfall of that spot,
+  lettered C, D, E after the two VFOs. Add as many as you like, they
+  cost nothing on the server. Each one shades the channel for its mode
+  and its letter blinks red when a signal is there. Click the window
+  to listen (the receiver tunes over), click the speaker to go back
+  where you were. Type or scroll the frequency to move a watch. They
+  drag anywhere and are remembered. The dial and the keys are
+  unchanged.
+- Lighter on the CPU across the board (from the previous work): the
+  scopes scroll without reading pixels back, draw nothing while a
+  stock theme is up, and the panel does less idle work. Roughly a
+  fifth less busy on the rig theme, a third less on the stock themes.
+  This also clears the faint scanning band some saw over the panel
+  (issue #13).
+
 ## 0.10.5 (2026-08-31)
 
 - Fix: the rig comes back where you left it (issue #9, thanks ea7cl).
