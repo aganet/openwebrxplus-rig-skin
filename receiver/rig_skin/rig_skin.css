@@ -1295,6 +1295,15 @@ body.theme-rig {
     overflow: hidden;
 }
 
+/* Every live canvas paints on its own compositor layer, the same
+   isolation the stock waterfall enjoys: its redraws then cannot force
+   the panel around it to re-rasterize. Three small layers, cheap. */
+body.theme-rig #owrx-rig-meter canvas,
+body.theme-rig #owrx-rig-bscope canvas,
+body.theme-rig #owrx-rig-scope canvas {
+    will-change: transform;
+}
+
 /* running version, bottom-left like the print on a front panel */
 #owrx-rig-version {
     display: none;

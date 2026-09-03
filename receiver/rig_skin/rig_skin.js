@@ -1019,8 +1019,13 @@ Plugins.rig_skin.createDxWindow = function () {
     // endpoint sends no CORS headers at all, so a browser can never read
     // it and asking only fills the console with errors; live spots
     // stream from its websocket either way, which CORS does not gate.
+    var backlogAt = 0;
     function backlog() {
         if (location.protocol !== 'http:') return;
+        // the live feed keeps the cache warm; re-downloading the whole
+        // history on every window toggle would fetch what we have
+        if (Date.now() - backlogAt < 15 * 60 * 1000) return;
+        backlogAt = Date.now();
         $.getJSON('http://www.dxsummit.fi/api/v1/spots?limit=150')
             .done(function (d) {
                 $win.find('.owrx-rig-dx-src').text('HolyCluster + DXSummit');
@@ -1598,15 +1603,26 @@ Plugins.rig_skin.createSpotRibbon = function () {
         return $('body').hasClass('theme-rig');
     }
 
+    var lastSig = '';
     function render() {
         if (!rigActive() || typeof get_visible_freq_range !== 'function' ||
             typeof scale_px_from_freq !== 'function' || !Plugins.rig_skin._dxSpots) {
-            $strip.empty();
+            if (lastSig !== 'off') {
+                lastSig = 'off';
+                $strip.empty();
+            }
             return;
         }
         var range = get_visible_freq_range();
         if (!range) return;
         var width = $strip.width() || $host.width();
+        // the host repositions bookmarks on every zoom or pan step;
+        // rebuilding dozens of chips each time is wasted unless the
+        // view or the spots actually changed
+        var sig = range.start + '|' + range.end + '|' + width + '|' +
+            Plugins.rig_skin._dxSpots().map(function (s) { return s.call + s.freq; }).join(',');
+        if (sig === lastSig) return;
+        lastSig = sig;
         $strip.empty();
         var used = [];   // occupied [x0, x1] intervals; newest spot wins
         Plugins.rig_skin._dxSpots().forEach(function (s) {
@@ -2127,8 +2143,19 @@ Plugins.rig_skin.createVfoKeys = function () {
         };
     }
 
+    // the interval is a safety net for state changed behind our hooks;
+    // redraw and write localStorage only when something really moved,
+    // an idle page then does no work at all
+    var lastState = '';
     setInterval(function () {
         if (!rigActive()) return;
+        // the live dial belongs in the fingerprint: redraw() is what
+        // pulls it into the vfo slots, so it must run when it moves
+        var f = (typeof UI !== 'undefined' && UI.getFrequency) ? UI.getFrequency() : 0;
+        var m = (typeof UI !== 'undefined' && UI.getModulation) ? UI.getModulation() : '';
+        var state = f + '|' + m + '|' + active + '|' + JSON.stringify([vfoA, vfoB]);
+        if (state === lastState) return;
+        lastState = state;
         redraw();
         save();
     }, 1000);
@@ -3425,10 +3452,11 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
                 }
             }
         }
-        var stepText = $('#openwebrx-tuning-step-listbox option:selected').text();
-        $mode.text(mode);
-        $filter.text(filter);
-        $step.text(stepText ? 'TS ' + stepText : '');
+        var stepEl = $tsBox[0] && $tsBox[0].selectedOptions[0];
+        var stepText = stepEl ? stepEl.text : '';
+        setText($mode, mode);
+        setText($filter, filter);
+        setText($step, stepText ? 'TS ' + stepText : '');
 
         var rit = Plugins.rig_skin._rit;
         if (rit && rit.isOn()) {
@@ -3438,21 +3466,35 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
             $rit.hide();
         }
 
-        var $sql = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
-        var sqlOn = $sql.length && Number($sql.val()) > Number($sql.attr('min'));
+        var sqlOn = $sqlBox.length && Number($sqlBox.val()) > Number($sqlMin);
         var parts = [];
         var band = typeof UI !== 'undefined' && UI.getFrequency ? bandName(UI.getFrequency()) : '';
         if (band) parts.push(band);
         var s = sUnits();
         if (s) parts.push(s);
-        parts.push(sqlOn ? 'SQL ' + $sql.val() : 'SQL off');
+        parts.push(sqlOn ? 'SQL ' + $sqlBox.val() : 'SQL off');
         if (typeof UI !== 'undefined' && UI.volumeMuted >= 0) parts.push('MUTE');
-        var clock = $('#openwebrx-clock-utc').text();
+        var clock = $clockBox.text();
         if (clock) parts.push(clock);
         var txt = parts.join('   ');
         if ($extra._shown !== txt) {
             $extra._shown = txt;
             $extra.text(txt);
+        }
+    }
+
+    // the elements the half second tick reads, found once instead of
+    // querying the document twice a second; text writes are guarded so
+    // an idle tick touches no DOM at all
+    var $tsBox = $('#openwebrx-tuning-step-listbox');
+    var $sqlBox = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+    var $sqlMin = $sqlBox.attr('min');
+    var $clockBox = $('#openwebrx-clock-utc');
+
+    function setText($el, txt) {
+        if ($el._shown !== txt) {
+            $el._shown = txt;
+            $el.text(txt);
         }
     }
 
@@ -3512,11 +3554,9 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     var wf = document.createElement('canvas');
     wf.width = W - 2;
     wf.height = WF_H;
-    // waterfall is scrolled with getImageData each frame; flag it for
-    // readback to quiet the console. (Only the waterfalls are flagged;
-    // the audio waveform canvas is deliberately left on the default
-    // context, flagging it corrupted its scroll on some browsers.)
-    var wfCtx = wf.getContext('2d', { willReadFrequently: true });
+    // scrolled by drawing the canvas onto itself, one row down: the
+    // spec snapshots the source first, so no pixel readback happens
+    var wfCtx = wf.getContext('2d');
 
     function visible() {
         return $bs.hasClass('visible');
@@ -3549,9 +3589,11 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     }
 
     // level at x, taking the strongest FFT bin covered by that pixel
-    function levelAt(data, off, x) {
-        var f0 = off + ((x - 0.5) / W - 0.5) * span();
-        var f1 = off + ((x + 0.5) / W - 0.5) * span();
+    // span() re-reads the demodulator, so the per-frame span is computed
+    // once in draw() and passed in, not ~1300 times per frame
+    function levelAt(data, off, x, sp) {
+        var f0 = off + ((x - 0.5) / W - 0.5) * sp;
+        var f1 = off + ((x + 0.5) / W - 0.5) * sp;
         var b0 = Math.floor((f0 / bandwidth + 0.5) * data.length);
         var b1 = Math.max(b0 + 1, Math.ceil((f1 / bandwidth + 0.5) * data.length));
         if (b1 <= 0 || b0 >= data.length) return null;
@@ -3568,16 +3610,17 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     function draw(data) {
         Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
         var off = tunedOffset();
+        var sp = span();
         // exact same level range as the main waterfall, so signals look
         // just as strong here, only magnified
         var range = typeof Waterfall !== 'undefined' && Waterfall.getRange ? Waterfall.getRange() : { min: -100, max: 0 };
         var lo = range.min, hi = range.max;
 
         // reset the average when the view moves
-        if (!avg || avgOff !== off || avgSpan !== span()) {
+        if (!avg || avgOff !== off || avgSpan !== sp) {
             avg = null;
             avgOff = off;
-            avgSpan = span();
+            avgSpan = sp;
         }
 
         ctx.clearRect(0, 0, W, H);
@@ -3586,8 +3629,8 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         var demod = typeof UI !== 'undefined' && UI.getDemodulator ? UI.getDemodulator() : null;
         if (demod && typeof demod.low_cut === 'number' && typeof demod.high_cut === 'number') {
             var cwOff = UI.getFrequency() - center_freq - demod.get_offset_frequency();
-            var px0 = ((demod.low_cut - cwOff) / span() + 0.5) * W;
-            var px1 = ((demod.high_cut - cwOff) / span() + 0.5) * W;
+            var px0 = ((demod.low_cut - cwOff) / sp + 0.5) * W;
+            var px1 = ((demod.high_cut - cwOff) / sp + 0.5) * W;
             ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
             ctx.fillRect(px0, 0, Math.max(1, px1 - px0), TRACE_H + WF_H);
         }
@@ -3599,7 +3642,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         ctx.beginPath();
         ctx.moveTo(0, TRACE_H);
         for (var x = 0; x < W; x++) {
-            var v = levelAt(data, off, x);
+            var v = levelAt(data, off, x, sp);
             if (v === null) v = lo;
             avg[x] = fresh ? v : avg[x] * 0.7 + v * 0.3;
             var t = Math.max(0, Math.min(1, (avg[x] - lo) / (hi - lo)));
@@ -3615,12 +3658,11 @@ Plugins.rig_skin.createBandScope = function ($freq) {
 
         // waterfall: scroll down, paint the new line on top
         if (wf.height > 1) {
-            var img = wfCtx.getImageData(0, 0, wf.width, wf.height - 1);
-            wfCtx.putImageData(img, 0, 1);
+            wfCtx.drawImage(wf, 0, 1);
         }
         // colors come straight from the main waterfall's theme and levels
         for (var wx = 0; wx < wf.width; wx++) {
-            var wv = levelAt(data, off, wx + 1);
+            var wv = levelAt(data, off, wx + 1, sp);
             var c = Waterfall.makeColor(wv === null ? lo : wv);
             wfCtx.fillStyle = 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
             wfCtx.fillRect(wx, 0, 1, 1);
@@ -3632,12 +3674,12 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         ctx.fillRect(W / 2 - 0.5, 0, 1, TRACE_H + WF_H);
 
         // axis: span control and edge labels
-        var k = span() / 2000;
+        var k = sp / 2000;
         ctx.font = '8px roboto-mono, monospace';
         ctx.textBaseline = 'top';
         ctx.fillStyle = '#5db8ff';
         ctx.textAlign = 'left';
-        ctx.fillText('SPAN ' + (span() / 1000) + 'k', 2, TRACE_H + WF_H + 3);
+        ctx.fillText('SPAN ' + (sp / 1000) + 'k', 2, TRACE_H + WF_H + 3);
         ctx.textAlign = 'center';
         ctx.fillText('-' + k + 'k', W * 0.25, TRACE_H + WF_H + 3);
         ctx.fillText('+' + k + 'k', W * 0.75, TRACE_H + WF_H + 3);
@@ -3653,7 +3695,10 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         var res = origWaterfallAdd.apply(this, arguments);
         if (data && data.length) {
             Plugins.rig_skin._lastFft = data;
-            if (visible() && typeof bandwidth !== 'undefined') {
+            // the canvas is display:none on the stock themes; drawing
+            // there would burn CPU for pixels nobody can see
+            if (visible() && document.body.classList.contains('theme-rig') &&
+                typeof bandwidth !== 'undefined') {
                 try { draw(data); } catch (e) {}
             }
         }
@@ -3731,8 +3776,8 @@ Plugins.rig_skin.createScope = function ($freq) {
     var wf = document.createElement('canvas');
     wf.width = FFT_W - 2;
     wf.height = PLOT_H - SPEC_H - 2;
-    // waterfall scrolled with getImageData; flag for readback
-    var wfCtx = wf.getContext('2d', { willReadFrequently: true });
+    // scrolled by drawing the canvas onto itself, like the band scope
+    var wfCtx = wf.getContext('2d');
 
     // Audio waveform, like a rig's AF scope. The timebase is click-selectable
     // on the ms/Div label. Fast sweeps (<= 30 ms/div) draw a zero-crossing
@@ -3832,6 +3877,12 @@ Plugins.rig_skin.createScope = function ($freq) {
     var wavePeak = 0.3;
 
     function draw() {
+        // hidden on the stock themes: keep the loop alive but skip the
+        // rendering work until the rig face is back
+        if (!document.body.classList.contains('theme-rig')) {
+            timer = setTimeout(draw, 500);
+            return;
+        }
         Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
         ctx.clearRect(0, 0, W, H);
         updateSpan();
@@ -3865,8 +3916,7 @@ Plugins.rig_skin.createScope = function ($freq) {
 
             // audio waterfall scrolling below the spectrum
             if (wf.height > 1) {
-                var shifted = wfCtx.getImageData(0, 0, wf.width, wf.height - 1);
-                wfCtx.putImageData(shifted, 0, 1);
+                wfCtx.drawImage(wf, 0, 1);
             }
             for (var wx = 0; wx < wf.width; wx++) {
                 wfCtx.fillStyle = wfPalette[binAt(wx, wf.width)];
@@ -3967,7 +4017,9 @@ Plugins.rig_skin.createScope = function ($freq) {
             ctx.lineTo(W - 1, PLOT_H / 2);
             ctx.stroke();
         }
-        timer = setTimeout(draw, 33);
+        // 25 fps: indistinguishable on a spectrum bar display and a
+        // meaningful battery saving on phones over the old 30
+        timer = setTimeout(draw, 40);
     }
 
     function setVisible(on) {
@@ -4881,6 +4933,14 @@ Plugins.rig_skin.createMeter = function ($freq) {
         // the calibration too
         Plugins.rig_skin._sLevel = t;
         target = t;
+        // the meter is invisible on the stock themes; skip the 30 fps
+        // ballistics there and land on the value directly, so the face
+        // is correct the moment the rig theme returns
+        if (!document.body.classList.contains('theme-rig')) {
+            current = t;
+            peak = t;
+            return;
+        }
         if (!anim) {
             lastT = null;
             anim = setTimeout(tick, 0);
