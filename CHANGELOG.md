@@ -7,9 +7,6 @@
   or ENTER. It drags by its header, closes on the X or a tap outside,
   and does not zoom the page on a fast phone tap. Made for touch, works
   with a mouse and the keyboard too.
-- Band stacking. Tap the band name in the status line to step to the
-  next band and return to the last frequency and mode you used there;
-  right-click steps back. It remembers each band as you tune.
 - A local clock next to UTC in the status line, from the browser's own
   time zone.
 - Out of range: entering a frequency the receiver cannot reach now
@@ -17,7 +14,8 @@
 - Flatter, more modern keys, matte with a light top edge, and the panel
   grain texture is gone. Cleaner and lighter to draw.
 - The bottom status bars (audio, network, CPU, clients) match the rig
-  look now: dark tracks, green fill, rig font.
+  look now: dark tracks, green fill, rig font. The band shows as a
+  small badge in the status line.
 
 ## 0.10.6 (2026-09-03)
 

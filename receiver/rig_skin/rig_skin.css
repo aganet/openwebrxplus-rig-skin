@@ -1946,23 +1946,15 @@ body.theme-rig #owrx-rig-sat-button.highlighted {
     background: linear-gradient(180deg, #23a83c 0%, #178029 100%);
 }
 
-/* the band name in the status line is a tappable chip: it steps bands
-   and returns to the last spot used there */
+/* band name as a badge in the status line, matching the mode badge */
 body.theme-rig .owrx-rig-extra-band {
     display: inline-block;
     margin-right: 10px;
-    padding: 0 7px;
+    padding: 0 6px;
     border-radius: 3px;
-    background: #123f8f;
-    box-shadow: inset 0 0 0 1px #2a6adf;
+    background: #1d5fae;
     color: #ffffff;
     font-weight: bold;
-    cursor: pointer;
-    touch-action: manipulation;
-}
-
-body.theme-rig .owrx-rig-extra-band:hover {
-    background: #1a4fb0;
 }
 
 body.theme-rig .owrx-rig-extra-band:empty {

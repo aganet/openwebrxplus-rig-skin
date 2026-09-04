@@ -1915,75 +1915,6 @@ Plugins.rig_skin.createWatch = function () {
     else $('.openwebrx-main-buttons').append($btn);
 };
 
-// Band stacking, like a real rig: remember the last frequency and mode
-// used on each band, and jump back to it. Tapping the band name in the
-// status line steps to the next band and restores where you were on it.
-Plugins.rig_skin._bandStack = (function () {
-    var mem = {};
-    try {
-        if (typeof LS !== 'undefined' && LS.has('rig_bandstack')) {
-            mem = JSON.parse(LS.loadStr('rig_bandstack')) || {};
-        }
-    } catch (e) {}
-
-    function bandAt(f) {
-        if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands) return null;
-        for (var i = 0; i < bandplan.bands.length; i++) {
-            var b = bandplan.bands[i];
-            if (f >= b.low_bound && f <= b.high_bound) return b;
-        }
-        return null;
-    }
-
-    // record the current freq+mode against the band it falls in
-    function remember() {
-        if (typeof UI === 'undefined' || !UI.getFrequency) return;
-        var f = UI.getFrequency();
-        var b = bandAt(f);
-        if (!b || !b.name) return;
-        mem[b.name] = { f: f, mode: (UI.getModulation && UI.getModulation()) || '' };
-        try { if (typeof LS !== 'undefined') LS.save('rig_bandstack', JSON.stringify(mem)); } catch (e) {}
-    }
-
-    // hamradio bands, low to high, for stepping
-    function bands() {
-        if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands) return [];
-        return bandplan.bands.filter(function (b) {
-            return b.name && (!b.tags || b.tags.indexOf('hamradio') >= 0);
-        }).sort(function (a, b) { return a.low_bound - b.low_bound; });
-    }
-
-    // step to the next (or previous) band and restore its stored spot,
-    // or land at the band's start if never visited
-    function step(dir) {
-        var list = bands();
-        if (!list.length || typeof UI === 'undefined') return;
-        remember();
-        var f = UI.getFrequency();
-        // index of the band we are in, else the nearest one by low edge
-        var idx = -1, nearest = 0, bestGap = Infinity;
-        for (var i = 0; i < list.length; i++) {
-            if (f >= list[i].low_bound && f <= list[i].high_bound) { idx = i; break; }
-            var gap = Math.min(Math.abs(f - list[i].low_bound), Math.abs(f - list[i].high_bound));
-            if (gap < bestGap) { bestGap = gap; nearest = i; }
-        }
-        if (idx < 0) {
-            // between bands: step from the nearest, toward the direction
-            idx = nearest;
-            if (dir > 0 && list[idx].high_bound < f) idx = Math.min(list.length - 1, idx + 1);
-            else if (dir < 0 && list[idx].low_bound > f) idx = Math.max(0, idx - 1);
-        } else {
-            idx = (idx + dir + list.length) % list.length;
-        }
-        var b = list[idx];
-        var saved = mem[b.name];
-        var target = saved ? saved.f : Math.round((b.low_bound + b.high_bound) / 2);
-        Plugins.rig_skin.tuneTo(target, saved ? saved.mode : null);
-    }
-
-    return { remember: remember, step: step };
-})();
-
 // Numeric keypad for entering a frequency, made for touch screens.
 // Opens over the LCD when the active VFO frequency is tapped. Type the
 // number, then kHz or MHz to tune there. Built once, reused.
@@ -2686,8 +2617,6 @@ Plugins.rig_skin.createVfoKeys = function () {
         lastState = state;
         redraw();
         save();
-        // record freq+mode per band as it changes, for band stacking
-        if (Plugins.rig_skin._bandStack) Plugins.rig_skin._bandStack.remember();
     }, 1000);
 };
 
@@ -3964,13 +3893,9 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
             .append($mode).append($filter).append($step).append($rit)
     );
 
-    // extra readouts under the S-meter: band (tap to change band and
-    // return to where you were on it), then S units, squelch, UTC and
+    // extra readouts under the S-meter: band, S units, squelch, UTC and
     // local clocks
-    var $band = $('<span>').addClass('owrx-rig-extra-band')
-        .attr('title', 'Tap to step to the next band; right-click for the previous')
-        .on('click', function () { Plugins.rig_skin._bandStack.step(1); })
-        .on('contextmenu', function (e) { e.preventDefault(); Plugins.rig_skin._bandStack.step(-1); });
+    var $band = $('<span>').addClass('owrx-rig-extra-band');
     var $rest = $('<span>').addClass('owrx-rig-extra-rest');
     var $extra = $('<div>').attr('id', 'owrx-rig-extra').append($band).append($rest);
     $container.find('.frequencies').append($extra);
