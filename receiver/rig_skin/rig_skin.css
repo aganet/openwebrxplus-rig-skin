@@ -23,10 +23,8 @@ body.theme-rig .openwebrx-dialog {
     /* prevent mobile browsers from inflating text out of the layout */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    /* fine powder-coat grain over the metal gradient */
-    background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
-        linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
+    /* flat panel metal, a plain gradient, no grain texture image */
+    background: linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
     border-radius: 8px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
                 inset 0 -1px 0 rgba(0, 0, 0, 0.55),
@@ -82,34 +80,22 @@ body.theme-rig #openwebrx-panel-receiver::after { right: 4px; }
 
 /* Flat-top rectangular keys with bright legends, like an Icom front
    panel: near-square corners, a matte face and a crisp edge light */
+/* Matte rig keys: a gentle top-to-bottom shade with a thin top
+   highlight, one soft shadow. Flat and modern, but with enough
+   dimension to read like a real key. Lighter to paint than the old
+   multi-layer shadow stack and sheen overlay. */
 body.theme-rig .openwebrx-button {
     position: relative;
-    background: linear-gradient(180deg, #33373c 0%, #24272b 45%, #17191c 100%);
-    border-radius: 2px;
-    box-shadow: 0 0 0 1px #050607,
-                inset 0 1px 0 rgba(255, 255, 255, 0.16),
-                inset 0 -1px 2px rgba(0, 0, 0, 0.5),
-                0 2px 3px rgba(0, 0, 0, 0.6);
-    /* matte printed legends, not glowing white: only lit elements pop */
+    background: linear-gradient(180deg, #31363c 0%, #262a2f 100%);
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10),
+                0 1px 2px rgba(0, 0, 0, 0.5);
     color: var(--rig-legend);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
-}
-
-/* faint sheen along the top edge of each key */
-body.theme-rig .openwebrx-button::after {
-    content: '';
-    position: absolute;
-    left: 1px;
-    right: 1px;
-    top: 1px;
-    height: 38%;
-    border-radius: 1px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
-    pointer-events: none;
+    text-shadow: none;
 }
 
 body.theme-rig .openwebrx-button:hover {
-    background: linear-gradient(180deg, #3e434a 0%, #2c3035 45%, #1d2024 100%);
+    background: linear-gradient(180deg, #3a4046 0%, #2d3238 100%);
     color: #e8ecef;
     filter: none;
 }
@@ -132,23 +118,17 @@ body.theme-rig .openwebrx-button:active {
     transform: translateY(1px);
 }
 
-/* Pressed / engaged: sunken key with backlit amber legend */
+/* Pressed / engaged: lit blue key with a crisp edge, like a backlit
+   rig button */
 body.theme-rig .openwebrx-button:active,
 body.theme-rig .openwebrx-button.highlighted,
 body.theme-rig .openwebrx-demodulator-button.highlighted {
-    background: linear-gradient(180deg, #17191c 0%, #1d2024 55%, #212428 100%);
-    box-shadow: 0 0 0 1px #050607,
-                inset 0 2px 4px rgba(0, 0, 0, 0.7),
-                inset 0 0 6px rgba(0, 0, 0, 0.5);
-    color: var(--rig-lcd);
-    text-shadow: 0 0 6px var(--rig-lcd-glow);
+    background: linear-gradient(180deg, #1a4fb0 0%, #123f8f 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                inset 0 0 0 1px #2a6adf;
+    color: #ffffff;
+    text-shadow: none;
     filter: none;
-}
-
-body.theme-rig .openwebrx-button:active::after,
-body.theme-rig .openwebrx-button.highlighted::after,
-body.theme-rig .openwebrx-demodulator-button.highlighted::after {
-    opacity: 0.3;
 }
 
 /* mode keys use the same legend size as the keys around the dial */
@@ -1823,4 +1803,206 @@ body.theme-rig #owrx-rig-sat-button.highlighted {
 
 .owrx-rig-watch.act:not(.playing) .owrx-rig-watch-tag {
     animation: owrx-rig-watch-act 1s step-end infinite;
+}
+
+/* Numeric keypad for touch frequency entry, over the LCD */
+.owrx-rig-kp-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1002;
+    background: rgba(0, 0, 0, 0.25);
+    align-items: center;
+    justify-content: center;
+}
+
+.owrx-rig-kp-overlay.visible {
+    display: flex;
+}
+
+.owrx-rig-kp {
+    position: relative;
+    width: 260px;
+    padding: 10px;
+    background: linear-gradient(180deg, #3a4046 0%, #2a2f34 100%);
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px #0a0c0e, 0 12px 34px rgba(0, 0, 0, 0.6);
+    font-family: 'roboto-mono', monospace;
+    color: #e8ecef;
+}
+
+/* header doubles as the drag handle */
+.owrx-rig-kp-head {
+    cursor: move;
+    touch-action: none;
+}
+
+.owrx-rig-kp-head {
+    display: flex;
+    align-items: baseline;
+    padding: 0 2px 8px 2px;
+}
+
+.owrx-rig-kp-title {
+    font-size: 8.5pt;
+    letter-spacing: 2px;
+    color: #93a0ab;
+}
+
+.owrx-rig-kp-head .owrx-rig-dx-close {
+    margin-left: auto;
+}
+
+.owrx-rig-kp-dispwrap {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 6px;
+    background: #000000;
+    border-radius: 5px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    box-shadow: inset 0 0 0 1px #000;
+}
+
+.owrx-rig-kp-disp {
+    font-size: 20pt;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--rig-lcd);
+}
+
+.owrx-rig-kp-disp.placeholder {
+    color: #3d474f;
+}
+
+.owrx-rig-kp-unit {
+    font-size: 9pt;
+    color: #5aa8ff;
+}
+
+.owrx-rig-kp-keys {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.owrx-rig-kp-foot {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.owrx-rig-kp-key {
+    text-align: center;
+    padding: 12px 0;
+    font-size: 13pt;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #454b52 0%, #363b41 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.4);
+    color: #eef2f5;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    /* fast taps must not be read as a double-tap zoom on iOS */
+    touch-action: manipulation;
+}
+
+.owrx-rig-kp-key:active {
+    background: linear-gradient(180deg, #1a4fb0 0%, #123f8f 100%);
+    color: #ffffff;
+}
+
+.owrx-rig-kp-go {
+    color: #5aa8ff;
+    font-size: 10.5pt;
+}
+
+.owrx-rig-kp-ce {
+    color: #f0a0a0;
+    font-size: 9.5pt;
+    letter-spacing: 1px;
+}
+
+/* big Enter button under the pad */
+.owrx-rig-kp-enter {
+    margin-top: 8px;
+    text-align: center;
+    padding: 13px 0;
+    font-size: 12pt;
+    letter-spacing: 2px;
+    font-weight: bold;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #1a8a2e 0%, #126522 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.owrx-rig-kp-enter:active {
+    background: linear-gradient(180deg, #23a83c 0%, #178029 100%);
+}
+
+/* the band name in the status line is tappable: it steps bands and
+   returns to the last spot used there */
+body.theme-rig .owrx-rig-extra-band {
+    color: #5aa8ff;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+body.theme-rig .owrx-rig-extra-band:empty {
+    display: none;
+}
+
+body.theme-rig .owrx-rig-extra-band::after {
+    content: '   ';
+}
+
+/* brief centered message over the LCD, e.g. "out of range" */
+#owrx-rig-flash {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    z-index: 6;
+    padding: 6px 14px;
+    background: rgba(176, 42, 30, 0.92);
+    color: #ffffff;
+    border-radius: 5px;
+    font-family: 'roboto-mono', monospace;
+    font-size: 10pt;
+    letter-spacing: 1px;
+    pointer-events: none;
+}
+
+body.theme-rig #owrx-rig-flash.show {
+    display: block;
+}
+
+
+
+/* bottom status bars (audio buffer/output, network, CPU, clients) styled
+   to match the rig: flat dark tracks with a green fill, rig mono font */
+body.theme-rig #openwebrx-panel-status .openwebrx-progressbar {
+    background-color: #0c1216;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px #05080a;
+    font-family: 'roboto-mono', monospace;
+    font-size: 7.5pt;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9);
+    color: #cfd4d9;
+}
+
+body.theme-rig #openwebrx-panel-status .openwebrx-progressbar-bar {
+    background: linear-gradient(180deg, #1d8a2e, #14611f);
+    border-radius: 4px;
+}
+
+body.theme-rig #openwebrx-panel-status .openwebrx-progressbar--over .openwebrx-progressbar-bar {
+    background: linear-gradient(180deg, #ff5148, #b02a1e);
 }

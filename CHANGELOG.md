@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.10.7 (2026-09-04)
+
+- Touch keypad for direct frequency entry. Tap the active VFO frequency
+  and a numeric pad opens over the LCD: type the number, then kHz, MHz
+  or ENTER. It drags by its header, closes on the X or a tap outside,
+  and does not zoom the page on a fast phone tap. Made for touch, works
+  with a mouse and the keyboard too.
+- Band stacking. Tap the band name in the status line to step to the
+  next band and return to the last frequency and mode you used there;
+  right-click steps back. It remembers each band as you tune.
+- A local clock next to UTC in the status line, from the browser's own
+  time zone.
+- Out of range: entering a frequency the receiver cannot reach now
+  shows a short "out of range" note instead of doing nothing.
+- Flatter, more modern keys, matte with a light top edge, and the panel
+  grain texture is gone. Cleaner and lighter to draw.
+- The bottom status bars (audio, network, CPU, clients) match the rig
+  look now: dark tracks, green fill, rig font.
+
 ## 0.10.6 (2026-09-03)
 
 - Watch windows. A WATCH button in the top banner adds a small floating

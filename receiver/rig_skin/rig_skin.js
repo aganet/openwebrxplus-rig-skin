@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.6';
+Plugins.rig_skin._version = '0.10.7';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -36,6 +36,7 @@ Plugins.rig_skin.init = function () {
         rel: 'stylesheet',
         href: Plugins.rig_skin._base + 'rig_skin.css?v=' + Plugins.rig_skin._version
     }).appendTo('head');
+
 
     // the loader fetches rig_skin.js with a plain URL that browsers
     // (phones especially) cache across releases; revalidate it in the
@@ -1914,6 +1915,202 @@ Plugins.rig_skin.createWatch = function () {
     else $('.openwebrx-main-buttons').append($btn);
 };
 
+// Band stacking, like a real rig: remember the last frequency and mode
+// used on each band, and jump back to it. Tapping the band name in the
+// status line steps to the next band and restores where you were on it.
+Plugins.rig_skin._bandStack = (function () {
+    var mem = {};
+    try {
+        if (typeof LS !== 'undefined' && LS.has('rig_bandstack')) {
+            mem = JSON.parse(LS.loadStr('rig_bandstack')) || {};
+        }
+    } catch (e) {}
+
+    function bandAt(f) {
+        if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands) return null;
+        for (var i = 0; i < bandplan.bands.length; i++) {
+            var b = bandplan.bands[i];
+            if (f >= b.low_bound && f <= b.high_bound) return b;
+        }
+        return null;
+    }
+
+    // record the current freq+mode against the band it falls in
+    function remember() {
+        if (typeof UI === 'undefined' || !UI.getFrequency) return;
+        var f = UI.getFrequency();
+        var b = bandAt(f);
+        if (!b || !b.name) return;
+        mem[b.name] = { f: f, mode: (UI.getModulation && UI.getModulation()) || '' };
+        try { if (typeof LS !== 'undefined') LS.save('rig_bandstack', JSON.stringify(mem)); } catch (e) {}
+    }
+
+    // hamradio bands, low to high, for stepping
+    function bands() {
+        if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands) return [];
+        return bandplan.bands.filter(function (b) {
+            return b.name && (!b.tags || b.tags.indexOf('hamradio') >= 0);
+        }).sort(function (a, b) { return a.low_bound - b.low_bound; });
+    }
+
+    // step to the next (or previous) band and restore its stored spot,
+    // or land at the band's start if never visited
+    function step(dir) {
+        var list = bands();
+        if (!list.length || typeof UI === 'undefined') return;
+        remember();
+        var f = UI.getFrequency();
+        // index of the band we are in, else the nearest one by low edge
+        var idx = -1, nearest = 0, bestGap = Infinity;
+        for (var i = 0; i < list.length; i++) {
+            if (f >= list[i].low_bound && f <= list[i].high_bound) { idx = i; break; }
+            var gap = Math.min(Math.abs(f - list[i].low_bound), Math.abs(f - list[i].high_bound));
+            if (gap < bestGap) { bestGap = gap; nearest = i; }
+        }
+        if (idx < 0) {
+            // between bands: step from the nearest, toward the direction
+            idx = nearest;
+            if (dir > 0 && list[idx].high_bound < f) idx = Math.min(list.length - 1, idx + 1);
+            else if (dir < 0 && list[idx].low_bound > f) idx = Math.max(0, idx - 1);
+        } else {
+            idx = (idx + dir + list.length) % list.length;
+        }
+        var b = list[idx];
+        var saved = mem[b.name];
+        var target = saved ? saved.f : Math.round((b.low_bound + b.high_bound) / 2);
+        Plugins.rig_skin.tuneTo(target, saved ? saved.mode : null);
+    }
+
+    return { remember: remember, step: step };
+})();
+
+// Numeric keypad for entering a frequency, made for touch screens.
+// Opens over the LCD when the active VFO frequency is tapped. Type the
+// number, then kHz or MHz to tune there. Built once, reused.
+Plugins.rig_skin.openKeypad = function () {
+    var kp = Plugins.rig_skin._keypad;
+    if (!kp) {
+        kp = Plugins.rig_skin._keypad = build();
+        $('body').append(kp.el);
+    }
+    // start from the current frequency, shown dim until the first key,
+    // and preselect the current mode
+    var f = (typeof UI !== 'undefined' && UI.getFrequency) ? UI.getFrequency() : 0;
+    kp.entry = '';
+    kp.placeholder = f ? (f / 1000000).toFixed(4) : '';
+    kp.render();
+    kp.el.classList.add('visible');
+
+    function build() {
+        var entry = '', placeholder = '';
+        var $disp = $('<div>').addClass('owrx-rig-kp-disp');
+        var $unit = $('<div>').addClass('owrx-rig-kp-unit').text('MHz');
+
+        function render() {
+            entry = api.entry; placeholder = api.placeholder;
+            $disp.text(entry || placeholder || '0');
+            $disp.toggleClass('placeholder', !entry);
+        }
+        function press(ch) {
+            if (ch === '.' && entry.indexOf('.') >= 0) return;
+            if (entry.length < 12) { api.entry = entry + ch; render(); }
+        }
+        function back() { api.entry = entry.slice(0, -1); render(); }
+        function clear() { api.entry = ''; render(); }
+        function close() { el.classList.remove('visible'); }
+        function commit(mult) {
+            var v = parseFloat(entry || placeholder);
+            if (isFinite(v) && v > 0) {
+                // keep the current mode, entry sets the frequency only
+                Plugins.rig_skin.tuneTo(Math.round(v * mult), null);
+            }
+            close();
+        }
+        // Enter without a unit: MHz if it has a dot or is small, else kHz
+        function enter() {
+            var s = entry || placeholder;
+            if (!s) { close(); return; }
+            commit((s.indexOf('.') >= 0 || parseFloat(s) < 1000) ? 1000000 : 1000);
+        }
+
+        var $keys = $('<div>').addClass('owrx-rig-kp-keys');
+        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'back'].forEach(function (k) {
+            var $b = $('<div>').addClass('owrx-rig-kp-key');
+            if (k === 'back') $b.addClass('owrx-rig-kp-back').html('&#x232B;')
+                .on('click', function (e) { e.stopPropagation(); back(); });
+            else $b.text(k).on('click', function (e) { e.stopPropagation(); press(k); });
+            $keys.append($b);
+        });
+
+        var $ce = $('<div>').addClass('owrx-rig-kp-key owrx-rig-kp-ce').text('CLEAR')
+            .on('click', function (e) { e.stopPropagation(); clear(); });
+        var $khz = $('<div>').addClass('owrx-rig-kp-key owrx-rig-kp-go').text('kHz')
+            .on('click', function (e) { e.stopPropagation(); commit(1000); });
+        var $mhz = $('<div>').addClass('owrx-rig-kp-key owrx-rig-kp-go').text('MHz')
+            .on('click', function (e) { e.stopPropagation(); commit(1000000); });
+        var $foot = $('<div>').addClass('owrx-rig-kp-foot').append($ce).append($khz).append($mhz);
+
+        var $enter = $('<div>').addClass('owrx-rig-kp-enter').text('ENTER')
+            .on('click', function (e) { e.stopPropagation(); enter(); });
+
+        var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
+            .attr('title', 'Close')
+            .on('click', function (e) { e.stopPropagation(); close(); });
+        var $head = $('<div>').addClass('owrx-rig-kp-head')
+            .append($('<span>').addClass('owrx-rig-kp-title').text('ENTER FREQUENCY'))
+            .append($close);
+
+        var $pad = $('<div>').addClass('owrx-rig-kp')
+            .append($head)
+            .append($('<div>').addClass('owrx-rig-kp-dispwrap').append($disp).append($unit))
+            .append($keys).append($foot).append($enter)
+            .on('click', function (e) { e.stopPropagation(); });
+
+        var el = $('<div>').addClass('owrx-rig-kp-overlay').append($pad)[0];
+        el.addEventListener('click', close);
+        el.addEventListener('keydown', function (e) {
+            if (e.key >= '0' && e.key <= '9') press(e.key);
+            else if (e.key === '.') press('.');
+            else if (e.key === 'Backspace') back();
+            else if (e.key === 'Enter') enter();
+            else if (e.key === 'Escape') close();
+        });
+
+        // drag the pad by its header (mouse and touch)
+        (function () {
+            var sx, sy, ox, oy, moving = false;
+            function point(e) {
+                var t = e.touches ? e.touches[0] : e;
+                return [t.clientX, t.clientY];
+            }
+            $head[0].addEventListener('mousedown', down);
+            $head[0].addEventListener('touchstart', down, { passive: false });
+            function down(e) {
+                if (e.target.closest('.owrx-rig-dx-close')) return;
+                var pt = point(e), r = $pad[0].getBoundingClientRect();
+                sx = pt[0]; sy = pt[1]; ox = r.left; oy = r.top;
+                // switch from centered flex to absolute so it can move
+                $pad.css({ position: 'fixed', margin: 0, left: ox + 'px', top: oy + 'px' });
+                moving = true;
+                e.preventDefault();
+            }
+            function move(e) {
+                if (!moving) return;
+                var pt = point(e);
+                $pad.css({ left: (ox + pt[0] - sx) + 'px', top: (oy + pt[1] - sy) + 'px' });
+                e.preventDefault();
+            }
+            document.addEventListener('mousemove', move);
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('mouseup', function () { moving = false; });
+            document.addEventListener('touchend', function () { moving = false; });
+        })();
+
+        var api = { el: el, entry: '', placeholder: '', render: render };
+        return api;
+    }
+};
+
 // mode for a clicked DX spot; set it only when it is unambiguous
 Plugins.rig_skin.spotMode = function (s) {
     if (s.mode === 'CW') return 'cw';
@@ -2108,12 +2305,10 @@ Plugins.rig_skin.createVfoKeys = function () {
             .append($labels)
             .append($freq);
         $box.on('click', function (e) {
-            // clicking the active box opens the stock frequency entry;
-            // clicking the other box just selects it. Stop propagation so
-            // the stock body-level click handler does not immediately submit
-            // and close the input we are opening.
+            // clicking the active box opens the numeric keypad (touch
+            // friendly); clicking the other box just selects it
             e.stopPropagation();
-            if (id === active) $stockFreq.trigger('click');
+            if (id === active) Plugins.rig_skin.openKeypad();
             else setActive(id);
         });
         return { $box: $box, $freq: $freq };
@@ -2491,6 +2686,8 @@ Plugins.rig_skin.createVfoKeys = function () {
         lastState = state;
         redraw();
         save();
+        // record freq+mode per band as it changes, for band stacking
+        if (Plugins.rig_skin._bandStack) Plugins.rig_skin._bandStack.remember();
     }, 1000);
 };
 
@@ -2523,9 +2720,25 @@ Plugins.rig_skin.tuneTo = function (f, mode) {
             // give the demodulator a moment to restart on the new window
             setTimeout(land, 500);
         } else if (++tries > 20) {
+            // the server never moved the window there: the SDR cannot
+            // reach this frequency
             clearInterval(iv);
+            Plugins.rig_skin.flash('out of range');
         }
     }, 250);
+};
+
+// brief message on the LCD, e.g. when a frequency cannot be reached
+Plugins.rig_skin.flash = function (text) {
+    var $f = Plugins.rig_skin._flashEl;
+    if (!$f) {
+        $f = Plugins.rig_skin._flashEl = $('<div>').attr('id', 'owrx-rig-flash');
+        var host = document.querySelector('#openwebrx-panel-receiver .frequencies-container');
+        if (host) host.appendChild($f[0]); else return;
+    }
+    $f.text(text).addClass('show');
+    clearTimeout(Plugins.rig_skin._flashT);
+    Plugins.rig_skin._flashT = setTimeout(function () { $f.removeClass('show'); }, 2000);
 };
 
 // Satellite passes over the receiver location. TLEs come from
@@ -3751,8 +3964,15 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
             .append($mode).append($filter).append($step).append($rit)
     );
 
-    // extra readouts under the S-meter: band, S units, squelch, UTC clock
-    var $extra = $('<div>').attr('id', 'owrx-rig-extra');
+    // extra readouts under the S-meter: band (tap to change band and
+    // return to where you were on it), then S units, squelch, UTC and
+    // local clocks
+    var $band = $('<span>').addClass('owrx-rig-extra-band')
+        .attr('title', 'Tap to step to the next band; right-click for the previous')
+        .on('click', function () { Plugins.rig_skin._bandStack.step(1); })
+        .on('contextmenu', function (e) { e.preventDefault(); Plugins.rig_skin._bandStack.step(-1); });
+    var $rest = $('<span>').addClass('owrx-rig-extra-rest');
+    var $extra = $('<div>').attr('id', 'owrx-rig-extra').append($band).append($rest);
     $container.find('.frequencies').append($extra);
 
     function sUnits() {
@@ -3800,20 +4020,21 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
         }
 
         var sqlOn = $sqlBox.length && Number($sqlBox.val()) > Number($sqlMin);
-        var parts = [];
         var band = typeof UI !== 'undefined' && UI.getFrequency ? bandName(UI.getFrequency()) : '';
-        if (band) parts.push(band);
+        var parts = [];
         var s = sUnits();
         if (s) parts.push(s);
         parts.push(sqlOn ? 'SQL ' + $sqlBox.val() : 'SQL off');
         if (typeof UI !== 'undefined' && UI.volumeMuted >= 0) parts.push('MUTE');
-        var clock = $clockBox.text();
-        if (clock) parts.push(clock);
-        var txt = parts.join('   ');
-        if ($extra._shown !== txt) {
-            $extra._shown = txt;
-            $extra.text(txt);
-        }
+        var utc = $clockBox.text();
+        // local time beside UTC, both HH:MM
+        var now = new Date();
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        var local = p(now.getHours()) + ':' + p(now.getMinutes()) + ' LOC';
+
+        setText($band, band || '');
+        var rest = parts.join('   ') + (utc ? '   ' + utc : '') + '   ' + local;
+        setText($rest, rest);
     }
 
     // the elements the half second tick reads, found once instead of
