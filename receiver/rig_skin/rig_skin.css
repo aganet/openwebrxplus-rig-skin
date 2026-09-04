@@ -1581,11 +1581,6 @@ body.theme-rig .owrx-rig-watch {
     margin-left: auto;
 }
 
-#owrx-rig-dx-button.highlighted,
-#owrx-rig-sat-button.highlighted {
-    color: #ffffff;
-}
-
 /* corner grip for resizing the DX window */
 .owrx-rig-dx-grip {
     position: absolute;
@@ -1757,6 +1752,7 @@ body.theme-rig #owrx-rig-sat-button.highlighted {
     font-weight: bold;
     color: var(--rig-lcd);
     text-shadow: 0 0 6px var(--rig-lcd-glow);
+    cursor: pointer;
 }
 
 .owrx-rig-watch-mode {
@@ -1780,10 +1776,6 @@ body.theme-rig #owrx-rig-sat-button.highlighted {
     box-shadow: 0 0 6px rgba(60, 220, 80, 0.6);
 }
 
-.owrx-rig-watch-freq {
-    cursor: pointer;
-}
-
 .owrx-rig-watch-input {
     width: 74px;
     background: #0a0f13;
@@ -1792,6 +1784,40 @@ body.theme-rig #owrx-rig-sat-button.highlighted {
     border-radius: 3px;
     font: bold 10pt 'roboto-mono', monospace;
     padding: 0 3px;
+}
+
+/* a short note, captioned along the bottom of the watch's little LCD */
+.owrx-rig-watch-note {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 1px 4px;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--rig-lcd);
+    font: 9pt 'roboto-mono', monospace;
+    line-height: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.owrx-rig-watch-note-input {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: calc(100% - 16px);
+    box-sizing: border-box;
+    background: #0a0f13;
+    color: var(--rig-lcd);
+    border: 1px solid #2e4a57;
+    border-radius: 3px;
+    font: 9pt 'roboto-mono', monospace;
+    padding: 0 4px;
+    outline: none;
 }
 
 /* activity: the letter blinks red while there is a signal in the
@@ -1833,14 +1859,15 @@ body.theme-rig #owrx-rig-sat-button.highlighted {
 
 /* header doubles as the drag handle */
 .owrx-rig-kp-head {
+    display: flex;
+    align-items: baseline;
+    padding: 0 2px 8px 2px;
     cursor: move;
     touch-action: none;
 }
 
-.owrx-rig-kp-head {
-    display: flex;
-    align-items: baseline;
-    padding: 0 2px 8px 2px;
+.owrx-rig-kp-overlay:focus {
+    outline: none;
 }
 
 .owrx-rig-kp-title {

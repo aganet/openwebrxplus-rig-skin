@@ -48,7 +48,7 @@ Plugins.rig_skin.init = function () {
         var reval = parseInt(localStorage.getItem('rig_skin_revalidate') || '0', 10);
         if (Date.now() - reval > 3600000) {
             localStorage.setItem('rig_skin_revalidate', '' + Date.now());
-            ['rig_skin.js', 'rig_skin_map.js'].forEach(function (f) {
+            ['rig_skin.js'].forEach(function (f) {
                 fetch(Plugins.rig_skin._base + f, { cache: 'no-cache', mode: 'no-cors' })
                     .catch(function () {});
             });
@@ -67,12 +67,16 @@ Plugins.rig_skin.init = function () {
     }
 
     Plugins.rig_skin.registerWfTheme();
+    Plugins.rig_skin.hookFft();
     Plugins.rig_skin.createVfoLine();
     Plugins.rig_skin.createDxWindow();
     Plugins.rig_skin.createSatWindow();
     Plugins.rig_skin.createWatch();
     Plugins.rig_skin.createSpotRibbon();
-    try { Plugins.rig_skin.createPwa(); } catch (e) {}
+    // the install icons are drawn off the load path
+    (window.requestIdleCallback || function (fn) { setTimeout(fn, 1500); })(function () {
+        try { Plugins.rig_skin.createPwa(); } catch (e) {}
+    });
     return true;
 };
 
@@ -264,6 +268,7 @@ Plugins.rig_skin.createDxWindow = function () {
         listH = Math.min(Math.max(listH, 120), 800);
         $win.css('width', winW + 'px');
         $list.css('max-height', listH + 'px');
+        if (!open) return;            // the canvases are allocated on first open
         sizeCanvas(winW - 32);        // panel + lcd padding
         // the activity chart fills the same box as the map + a slice of
         // the list area, so the whole window becomes the chart
@@ -271,35 +276,23 @@ Plugins.rig_skin.createDxWindow = function () {
     }
     applySize();
 
-    (function () {
-        var sx, sy, w0, h0, sizing = false;
-        function point(e) {
-            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
-            return [t.clientX, t.clientY];
-        }
-        $grip.on('mousedown touchstart', function (e) {
-            var pt = point(e);
-            sx = pt[0]; sy = pt[1]; w0 = winW; h0 = listH;
-            sizing = true;
-            e.preventDefault();
-            e.stopPropagation();
-        });
-        $(document).on('mousemove touchmove', function (e) {
-            if (!sizing) return;
-            var pt = point(e);
-            winW = w0 + pt[0] - sx;
-            listH = h0 + pt[1] - sy;
+    // corner grip resizes the window
+    var sizeW0, sizeH0;
+    Plugins.rig_skin.drag($grip, {
+        stop: true,
+        start: function () { sizeW0 = winW; sizeH0 = listH; },
+        move: function (dx, dy) {
+            winW = sizeW0 + dx;
+            listH = sizeH0 + dy;
             applySize();
             render();
-        });
-        $(document).on('mouseup touchend', function () {
-            if (!sizing) return;
-            sizing = false;
+        },
+        end: function () {
             if (typeof LS !== 'undefined') {
                 LS.save('rig_dx_size', JSON.stringify({ w: winW, h: listH }));
             }
-        });
-    })();
+        }
+    });
 
     // restore position, kept inside the viewport
     try {
@@ -313,35 +306,24 @@ Plugins.rig_skin.createDxWindow = function () {
     } catch (e) {}
 
     // drag by the header
-    (function () {
-        var sx, sy, ox, oy, moving = false;
-        function point(e) {
-            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
-            return [t.clientX, t.clientY];
-        }
-        $hdr.on('mousedown touchstart', function (e) {
-            if ($(e.target).is('.owrx-rig-dx-chip, .owrx-rig-dx-close')) return;
-            var pt = point(e), off = $win.offset();
-            sx = pt[0]; sy = pt[1];
-            ox = off.left - $(window).scrollLeft();
-            oy = off.top - $(window).scrollTop();
-            moving = true;
-            e.preventDefault();
-        });
-        $(document).on('mousemove touchmove', function (e) {
-            if (!moving) return;
-            var pt = point(e);
-            $win.css({ left: (ox + pt[0] - sx) + 'px', top: (oy + pt[1] - sy) + 'px' });
-        });
-        $(document).on('mouseup touchend', function () {
-            if (!moving) return;
-            moving = false;
+    var dragOx, dragOy;
+    Plugins.rig_skin.drag($hdr, {
+        skip: '.owrx-rig-dx-chip, .owrx-rig-dx-close',
+        start: function () {
+            var off = $win.offset();
+            dragOx = off.left - $(window).scrollLeft();
+            dragOy = off.top - $(window).scrollTop();
+        },
+        move: function (dx, dy) {
+            $win.css({ left: (dragOx + dx) + 'px', top: (dragOy + dy) + 'px' });
+        },
+        end: function () {
             if (typeof LS !== 'undefined') {
                 var o = $win.position();
                 LS.save('rig_dx_pos', JSON.stringify({ left: o.left, top: o.top }));
             }
-        });
-    })();
+        }
+    });
 
     // --- header button, after Status ---
 
@@ -390,6 +372,7 @@ Plugins.rig_skin.createDxWindow = function () {
             var k = normKey(s);
             if (!spots[k] || spots[k].time < s.time) {
                 spots[k] = s;
+                sortedCache = null;
                 added = true;
             }
         });
@@ -399,7 +382,10 @@ Plugins.rig_skin.createDxWindow = function () {
     function prune() {
         var now = Date.now();
         Object.keys(spots).forEach(function (k) {
-            if (now - spots[k].time > MAX_AGE) delete spots[k];
+            if (now - spots[k].time > MAX_AGE) {
+                delete spots[k];
+                sortedCache = null;
+            }
         });
     }
 
@@ -422,24 +408,24 @@ Plugins.rig_skin.createDxWindow = function () {
                     if (d !== null && d > 2000) return;
                 }
                 spots[normKey(s)] = s;
+                sortedCache = null;
             });
         } catch (e) {}
     }
 
+    // spots newest first, rebuilt only after the store changed; callers
+    // read it, never mutate it
+    var sortedCache = null;
     function sorted() {
-        return Object.keys(spots).map(function (k) { return spots[k]; })
-            .sort(function (a, b) { return b.time - a.time; });
+        if (!sortedCache) {
+            sortedCache = Object.keys(spots).map(function (k) { return spots[k]; })
+                .sort(function (a, b) { return b.time - a.time; });
+        }
+        return sortedCache;
     }
 
     function currentBand() {
-        if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands ||
-            typeof UI === 'undefined') return null;
-        var f = UI.getFrequency();
-        for (var i = 0; i < bandplan.bands.length; i++) {
-            var b = bandplan.bands[i];
-            if (f >= b.low_bound && f <= b.high_bound) return b;
-        }
-        return null;
+        return typeof UI !== 'undefined' ? Plugins.rig_skin.bandAt(UI.getFrequency()) : null;
     }
 
     function filtered() {
@@ -463,21 +449,8 @@ Plugins.rig_skin.createDxWindow = function () {
         });
     }
 
-    // demodulator to use for a spot
-    function spotMode(s) {
-        switch (s.mode) {
-            case 'CW': return 'cw';
-            case 'FM': return 'nfm';
-            case 'SSB': case '':
-                // LSB below 10 MHz except 60 m, USB above
-                return (s.freq < 10000000 && !(s.freq > 5200000 && s.freq < 5500000))
-                    ? 'lsb' : 'usb';
-            default: return 'usb';   // FT8/FT4/RTTY/DIGI
-        }
-    }
-
     function tuneSpot(s) {
-        Plugins.rig_skin.tuneTo(s.freq, spotMode(s));
+        Plugins.rig_skin.tuneTo(s.freq, Plugins.rig_skin.spotMode(s));
         // refresh highlights once the retune has settled
         setTimeout(render, 800);
         setTimeout(render, 3000);
@@ -611,50 +584,18 @@ Plugins.rig_skin.createDxWindow = function () {
             mctx.stroke();
         }
 
-        if (Plugins.rig_skin._land) {
+        // the land is a set of prebuilt paths in base map pixels; the
+        // zoom and pan go into the transform, so a redraw is a few fills
+        var land = Plugins.rig_skin.landPaths(MW, MH);
+        if (land) {
             mctx.fillStyle = '#2c4658';
-            Plugins.rig_skin._land.forEach(function (poly) {
-                // a polygon segment that jumps more than half the map
-                // width is an antimeridian wrap: lift the pen so it does
-                // not draw a streak straight across the map. Fill only,
-                // no stroke (the stroke was what streaked).
-                mctx.beginPath();
-                var prevX = null;
-                poly.forEach(function (pt) {
-                    var p = px(pt[1], pt[0]);
-                    if (prevX !== null && Math.abs(p[0] - prevX) > MW * mapZoom / 2) {
-                        mctx.moveTo(p[0], p[1]);
-                    } else {
-                        prevX === null ? mctx.moveTo(p[0], p[1]) : mctx.lineTo(p[0], p[1]);
-                    }
-                    prevX = p[0];
-                });
-                mctx.fill();
-            });
+            mctx.save();
+            mctx.transform(mapZoom, 0, 0, mapZoom, mapPanX, mapPanY);
+            for (var li = 0; li < land.length; li++) mctx.fill(land[li]);
+            mctx.restore();
         }
 
-        // day/night terminator from the current sun position
-        var now = new Date();
-        var doy = (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
-            Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000;
-        var decl = -23.44 * Math.cos(2 * Math.PI / 365 * (doy + 10)) * Math.PI / 180;
-        var utcH = now.getUTCHours() + now.getUTCMinutes() / 60;
-        var sunLon = (12 - utcH) * 15;
-        mctx.fillStyle = 'rgba(0,0,12,0.30)';
-        mctx.beginPath();
-        var north = decl > 0;
-        for (var x = 0; x <= MW; x += 4) {
-            lon = x / MW * 360 - 180;
-            var H0 = (lon - sunLon) * Math.PI / 180;
-            lat = Math.atan(-Math.cos(H0) / Math.tan(decl)) * 180 / Math.PI;
-            var p = px(lat, lon);
-            x ? mctx.lineTo(p[0], p[1]) : mctx.moveTo(p[0], p[1]);
-        }
-        // the dark cap is on the winter side
-        mctx.lineTo(MW, north ? MH : 0);
-        mctx.lineTo(0, north ? MH : 0);
-        mctx.closePath();
-        mctx.fill();
+        Plugins.rig_skin.drawNight(mctx, px, MW, MH);
 
         var p0 = qth();
         var mapped = list.filter(function (s) { return s.loc; }).slice(0, 60);
@@ -795,36 +736,37 @@ Plugins.rig_skin.createDxWindow = function () {
         render();
     });
 
-    // drag to pan; suppress the click that follows a real drag
+    // drag to pan; suppress the click that follows a real drag. The
+    // document handlers live only for the duration of the drag.
     var dragging = false, dragStart = null, dragged = false;
     $(canvas).on('mousedown', function (e) {
         dragging = true; dragged = false;
         dragStart = [e.clientX, e.clientY, mapPanX, mapPanY];
-    });
-    $(document).on('mousemove.dxmap', function (e) {
-        if (dragging) {
-            var scale = MW / canvas.getBoundingClientRect().width;
-            var nx = dragStart[2] + (e.clientX - dragStart[0]) * scale;
-            var ny = dragStart[3] + (e.clientY - dragStart[1]) * scale;
-            if (Math.abs(e.clientX - dragStart[0]) + Math.abs(e.clientY - dragStart[1]) > 3) dragged = true;
+        var scale = MW / canvas.getBoundingClientRect().width;
+        $(document).on('mousemove.dxmap', function (ev) {
+            var nx = dragStart[2] + (ev.clientX - dragStart[0]) * scale;
+            var ny = dragStart[3] + (ev.clientY - dragStart[1]) * scale;
+            if (Math.abs(ev.clientX - dragStart[0]) + Math.abs(ev.clientY - dragStart[1]) > 3) dragged = true;
             mapPanX = nx; mapPanY = ny;
             clampPan();
             render();
-            return;
-        }
-        // hover tooltip (only when the map view is showing)
-        if (!open || showActivity) return;
+        }).on('mouseup.dxmap', function () {
+            $(document).off('.dxmap');
+            dragging = false;
+        });
+    });
+
+    // hover tooltip, bound to the map itself rather than the document
+    var cursorNow = '';
+    $(canvas).on('mousemove', function (e) {
+        if (dragging || showActivity) return;
         var xy = canvasXY(e);
-        var lr = canvas.getBoundingClientRect();
-        if (e.clientX < lr.left || e.clientX > lr.right || e.clientY < lr.top || e.clientY > lr.bottom) {
-            $tip.removeClass('show');
-            return;
-        }
         var spot = pinAt(xy[0], xy[1]);
-        $(canvas).css('cursor', spot ? 'pointer' : (mapZoom > 1 ? 'grab' : 'crosshair'));
+        var cur = spot ? 'pointer' : (mapZoom > 1 ? 'grab' : 'crosshair');
+        if (cur !== cursorNow) { cursorNow = cur; canvas.style.cursor = cur; }
         showTip(spot, e.clientX, e.clientY);
     });
-    $(document).on('mouseup.dxmap', function () { dragging = false; });
+    $(canvas).on('mouseleave', function () { $tip.removeClass('show'); });
 
     $(canvas).on('click', function (e) {
         if (dragged) return;    // a pan, not a click
@@ -922,7 +864,7 @@ Plugins.rig_skin.createDxWindow = function () {
             if (hist[i].length > HIST_MAX) hist[i].shift();
         }
     }
-    var actTimer = setInterval(sampleActivity, 30000);
+    setInterval(sampleActivity, 30000);
     sampleActivity();
 
     function drawActivity() {
@@ -994,7 +936,19 @@ Plugins.rig_skin.createDxWindow = function () {
         render();
     });
 
+    // a burst of spots, a drag or the radar tick all ask for a render;
+    // one paint per frame serves them all
+    var renderQueued = false;
     function render() {
+        if (renderQueued) return;
+        renderQueued = true;
+        requestAnimationFrame(function () {
+            renderQueued = false;
+            renderNow();
+        });
+    }
+
+    function renderNow() {
         if (!open) return;
         var list = filtered();
         $count.text(list.length + ' spots  ' + utc());
@@ -1011,7 +965,9 @@ Plugins.rig_skin.createDxWindow = function () {
     function ensureLand() {
         if (Plugins.rig_skin._land || landLoading) return;
         landLoading = true;
-        $.getScript(Plugins.rig_skin._base + 'rig_skin_map.js')
+        // getScript disables caching; a versioned URL is cached until the next build
+        $.ajax({ url: Plugins.rig_skin._base + 'rig_skin_map.js?v=' + Plugins.rig_skin._version,
+            dataType: 'script', cache: true })
             .done(render)
             .fail(function () { landLoading = false; });
     }
@@ -1077,11 +1033,13 @@ Plugins.rig_skin.createDxWindow = function () {
         }
     }
 
+    var ticks = 0;
     function setOpen(on) {
         open = on;
         $win.toggleClass('visible', on);
         $btn.toggleClass('highlighted', on);
         if (on) {
+            applySize();
             ensureLand();
             loadCache();
             backlog();
@@ -1091,7 +1049,9 @@ Plugins.rig_skin.createDxWindow = function () {
             if (!tickTimer) tickTimer = setInterval(function () {
                 syncChips();
                 render();
-                saveCache();
+                // the cache goes to storage every 5 minutes, on close
+                // and when the tab goes away
+                if (++ticks % 20 === 0) saveCache();
             }, 15000);
         } else {
             if (!scopeFeed) disconnect();
@@ -1121,6 +1081,16 @@ Plugins.rig_skin.createDxWindow = function () {
             saveCache();
         }
     };
+
+    // only a live feed has spots worth keeping; an idle session must
+    // not overwrite the cache with an empty list
+    function saveIfLive() {
+        if (open || scopeFeed) saveCache();
+    }
+    $(window).on('pagehide', saveIfLive);
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) saveIfLive();
+    });
 
 };
 
@@ -1200,39 +1170,28 @@ Plugins.rig_skin.createSatWindow = function () {
         listH = Math.min(Math.max(listH, 60), 600);
         $win.css('width', winW + 'px');
         $plist.css('max-height', listH + 'px');
+        if (!open) return;       // the canvas is allocated on first open
         sizeCanvas(winW - 32);   // panel + lcd padding
     }
     applySize();
 
-    (function () {
-        var sx, sy, w0, h0, sizing = false;
-        function point(e) {
-            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
-            return [t.clientX, t.clientY];
-        }
-        $grip.on('mousedown touchstart', function (e) {
-            var pt = point(e);
-            sx = pt[0]; sy = pt[1]; w0 = winW; h0 = listH;
-            sizing = true;
-            e.preventDefault();
-            e.stopPropagation();
-        });
-        $(document).on('mousemove touchmove', function (e) {
-            if (!sizing) return;
-            var pt = point(e);
-            winW = w0 + pt[0] - sx;
-            listH = h0 + pt[1] - sy;
+    // corner grip resizes the window
+    var sizeW0, sizeH0;
+    Plugins.rig_skin.drag($grip, {
+        stop: true,
+        start: function () { sizeW0 = winW; sizeH0 = listH; },
+        move: function (dx, dy) {
+            winW = sizeW0 + dx;
+            listH = sizeH0 + dy;
             applySize();
             render();
-        });
-        $(document).on('mouseup touchend', function () {
-            if (!sizing) return;
-            sizing = false;
+        },
+        end: function () {
             if (typeof LS !== 'undefined') {
                 LS.save('rig_satwin_size', JSON.stringify({ w: winW, h: listH }));
             }
-        });
-    })();
+        }
+    });
 
     function px(lat, lon) {
         return [(lon + 180) / 360 * MW, (90 - lat) / 180 * MH];
@@ -1247,41 +1206,12 @@ Plugins.rig_skin.createSatWindow = function () {
         if (!open) return;
         ctx.clearRect(0, 0, MW, MH);
         pins = [];
-        if (Plugins.rig_skin._land) {
+        var land = Plugins.rig_skin.landPaths(MW, MH);
+        if (land) {
             ctx.fillStyle = '#2c4658';
-            Plugins.rig_skin._land.forEach(function (poly) {
-                ctx.beginPath();
-                var prevX = null;
-                poly.forEach(function (pt) {
-                    var p = px(pt[1], pt[0]);
-                    // antimeridian wrap: lift the pen, no streaks
-                    if (prevX !== null && Math.abs(p[0] - prevX) > MW / 2) ctx.moveTo(p[0], p[1]);
-                    else prevX === null ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]);
-                    prevX = p[0];
-                });
-                ctx.fill();
-            });
+            for (var li = 0; li < land.length; li++) ctx.fill(land[li]);
         }
-        // day/night terminator, same math as the DX map
-        var now = new Date();
-        var doy = (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
-            Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000;
-        var decl = -23.44 * Math.cos(2 * Math.PI / 365 * (doy + 10)) * Math.PI / 180;
-        var sunLon = (12 - (now.getUTCHours() + now.getUTCMinutes() / 60)) * 15;
-        ctx.fillStyle = 'rgba(0,0,12,0.30)';
-        ctx.beginPath();
-        for (var x = 0; x <= MW; x += 4) {
-            var lon = x / MW * 360 - 180;
-            var H0 = (lon - sunLon) * Math.PI / 180;
-            var lat = Math.atan(-Math.cos(H0) / Math.tan(decl)) * 180 / Math.PI;
-            var p = px(lat, lon);
-            x ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]);
-        }
-        var north = decl > 0;
-        ctx.lineTo(MW, north ? MH : 0);
-        ctx.lineTo(0, north ? MH : 0);
-        ctx.closePath();
-        ctx.fill();
+        Plugins.rig_skin.drawNight(ctx, px, MW, MH);
 
         var pos = qth();
         if (pos) {
@@ -1359,7 +1289,9 @@ Plugins.rig_skin.createSatWindow = function () {
     function ensureLand() {
         if (Plugins.rig_skin._land || landLoading) return;
         landLoading = true;
-        $.getScript(Plugins.rig_skin._base + 'rig_skin_map.js')
+        // getScript disables caching; a versioned URL is cached until the next build
+        $.ajax({ url: Plugins.rig_skin._base + 'rig_skin_map.js?v=' + Plugins.rig_skin._version,
+            dataType: 'script', cache: true })
             .done(render)
             .fail(function () { landLoading = false; });
     }
@@ -1417,35 +1349,24 @@ Plugins.rig_skin.createSatWindow = function () {
     } catch (e) {}
 
     // drag by the header
-    (function () {
-        var sx, sy, ox, oy, moving = false;
-        function point(e) {
-            var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
-            return [t.clientX, t.clientY];
-        }
-        $hdr.on('mousedown touchstart', function (e) {
-            if ($(e.target).is('.owrx-rig-dx-close')) return;
-            var pt = point(e), off = $win.offset();
-            sx = pt[0]; sy = pt[1];
-            ox = off.left - $(window).scrollLeft();
-            oy = off.top - $(window).scrollTop();
-            moving = true;
-            e.preventDefault();
-        });
-        $(document).on('mousemove touchmove', function (e) {
-            if (!moving) return;
-            var pt = point(e);
-            $win.css({ left: (ox + pt[0] - sx) + 'px', top: (oy + pt[1] - sy) + 'px' });
-        });
-        $(document).on('mouseup touchend', function () {
-            if (!moving) return;
-            moving = false;
+    var dragOx, dragOy;
+    Plugins.rig_skin.drag($hdr, {
+        skip: '.owrx-rig-dx-close',
+        start: function () {
+            var off = $win.offset();
+            dragOx = off.left - $(window).scrollLeft();
+            dragOy = off.top - $(window).scrollTop();
+        },
+        move: function (dx, dy) {
+            $win.css({ left: (dragOx + dx) + 'px', top: (dragOy + dy) + 'px' });
+        },
+        end: function () {
             if (typeof LS !== 'undefined') {
                 var o = $win.position();
                 LS.save('rig_satwin_pos', JSON.stringify({ left: o.left, top: o.top }));
             }
-        });
-    })();
+        }
+    });
 
     function fmtUtc(d) {
         function p(n) { return (n < 10 ? '0' : '') + n; }
@@ -1513,6 +1434,7 @@ Plugins.rig_skin.createSatWindow = function () {
         $win.toggleClass('visible', on);
         $btn.toggleClass('highlighted', on);
         if (on) {
+            applySize();
             ensureLand();
             ensureOrbits();
             refresh();
@@ -1634,7 +1556,7 @@ Plugins.rig_skin.createWatch = function () {
     function save() {
         if (typeof LS === 'undefined') return;
         LS.save('rig_watch', JSON.stringify(watches.map(function (w) {
-            return { f: w.f, mode: w.mode, left: w.left, top: w.top };
+            return { f: w.f, mode: w.mode, left: w.left, top: w.top, note: w.note || '' };
         })));
     }
 
@@ -1677,7 +1599,6 @@ Plugins.rig_skin.createWatch = function () {
     function makeWindow(w, idx) {
         w.$tag = $('<span>').addClass('owrx-rig-watch-tag').text(letter(idx));
         var $freq = $('<span>').addClass('owrx-rig-watch-freq')
-            .attr('title', 'Click to type a frequency, scroll to step')
             .text((w.f / 1000000).toFixed(4));
 
         function setFreq(f) {
@@ -1750,43 +1671,63 @@ Plugins.rig_skin.createWatch = function () {
         w.canvas.height = (TR_H + WF_H) * dpr;
         w.ctx = w.canvas.getContext('2d');
         w.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        // the scope is the biggest target: clicking it listens here
-        $(w.canvas).attr('title', 'Click to listen here')
+        // the scope is the biggest target: click listens, double-click notes
+        $(w.canvas).attr('title', 'Click to listen, double-click to add a note')
             .css('cursor', 'pointer')
             .on('click', listen);
 
-        var $lcd = $('<div>').addClass('owrx-rig-dx-lcd').append(w.canvas);
+        var $note = $('<div>').addClass('owrx-rig-watch-note');
+        function renderNote() {
+            $note.text(w.note || '').toggle(!!(w.note && w.note.length));
+        }
+        renderNote();
+
+        var $lcd = $('<div>').addClass('owrx-rig-dx-lcd').append(w.canvas).append($note);
+
+        // double-click the scope to type a short note for this watch
+        function editNote() {
+            if ($lcd.find('.owrx-rig-watch-note-input').length) return;
+            var $in = $('<input>').attr('type', 'text').attr('maxlength', 40)
+                .attr('placeholder', 'note')
+                .addClass('owrx-rig-watch-note-input')
+                .val(w.note || '');
+            $note.hide();
+            $lcd.append($in);
+            $in.focus().select();
+            function done(commit) {
+                if (commit) { w.note = $in.val().trim(); save(); }
+                $in.remove();
+                renderNote();
+            }
+            $in.on('keydown', function (e) {
+                if (e.key === 'Enter') done(true);
+                else if (e.key === 'Escape') done(false);
+                e.stopPropagation();
+            });
+            $in.on('blur', function () { done(true); });
+        }
+        $(w.canvas).on('dblclick', editNote);
+        $note.on('click', listen).on('dblclick', editNote);
         w.$win = $('<div>').addClass('owrx-rig-watch')
             .css({ left: w.left + 'px', top: w.top + 'px' })
             .append($hdr).append($lcd).appendTo('body');
 
         // drag by the header, position remembered
-        (function () {
-            var sx, sy, ox, oy, moving = false;
-            function point(e) {
-                var t = e.originalEvent.touches ? e.originalEvent.touches[0] : e;
-                return [t.clientX, t.clientY];
-            }
-            $hdr.on('mousedown touchstart', function (e) {
-                if ($(e.target).is('.owrx-rig-dx-close, .owrx-rig-watch-spk')) return;
-                var pt = point(e), off = w.$win.offset();
-                sx = pt[0]; sy = pt[1];
-                ox = off.left - $(window).scrollLeft();
-                oy = off.top - $(window).scrollTop();
-                moving = true;
-                e.preventDefault();
-            });
-            $(document).on('mousemove touchmove', function (e) {
-                if (!moving) return;
-                var pt = point(e);
-                w.left = Math.round(ox + pt[0] - sx);
-                w.top = Math.round(oy + pt[1] - sy);
+        var dragOx, dragOy;
+        Plugins.rig_skin.drag($hdr, {
+            skip: '.owrx-rig-dx-close, .owrx-rig-watch-spk',
+            start: function () {
+                var off = w.$win.offset();
+                dragOx = off.left - $(window).scrollLeft();
+                dragOy = off.top - $(window).scrollTop();
+            },
+            move: function (dx, dy) {
+                w.left = Math.round(dragOx + dx);
+                w.top = Math.round(dragOy + dy);
                 w.$win.css({ left: w.left + 'px', top: w.top + 'px' });
-            });
-            $(document).on('mouseup touchend', function () {
-                if (moving) { moving = false; save(); }
-            });
-        })();
+            },
+            end: save
+        });
     }
 
     // one waterfall slice per window, cut from the whole-band FFT the
@@ -1796,8 +1737,11 @@ Plugins.rig_skin.createWatch = function () {
         ctx.clearRect(0, 0, W, TR_H + WF_H);
         var inBand = Math.abs(w.f - center_freq) < bandwidth / 2;
         var on = playing(w);
-        w.$win.toggleClass('playing', on);
-        w.$spk.html(on ? '&#x1F50A;' : '&#x1F507;');
+        if (w.wasOn !== on) {
+            w.wasOn = on;
+            w.$win.toggleClass('playing', on);
+            w.$spk.html(on ? '&#x1F50A;' : '&#x1F507;');
+        }
         if (!inBand) {
             ctx.font = '10px roboto-mono, monospace';
             ctx.fillStyle = '#5c6670';
@@ -1828,21 +1772,24 @@ Plugins.rig_skin.createWatch = function () {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
         ctx.fillRect(pb0, 0, pb1 - pb0, TR_H);
 
-        // scroll the little waterfall, paint the new line, then the trace
+        // levels once per line, shared by the waterfall and the trace
+        var levels = new Array(W);
+        for (var x = 0; x < W; x++) levels[x] = level(x);
+
+        // scroll the little waterfall, then paint the new line as one
+        // buffer write instead of a fillRect per pixel
         w.wfCtx.drawImage(w.wf, 0, 1);
-        for (var x = 0; x < W; x++) {
-            var v = level(x);
-            var c = Waterfall.makeColor(v === null ? range.min : v);
-            w.wfCtx.fillStyle = 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
-            w.wfCtx.fillRect(x, 0, 1, 1);
+        for (var wx = 0; wx < W; wx++) {
+            var v = levels[wx];
+            w.lineLv[wx] = v === null ? range.min : v;
         }
+        Waterfall.drawLine(w.line.data, w.lineLv);
+        w.wfCtx.putImageData(w.line, 0, 0);
         ctx.strokeStyle = on ? '#3adb4a' : '#3fa9f5';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        var levels = [];
         for (var tx = 0; tx < W; tx++) {
-            var tv = level(tx);
-            levels.push(tv);
+            var tv = levels[tx];
             var t = tv === null ? 0 :
                 Math.max(0, Math.min(1, (tv - range.min) / (range.max - range.min)));
             var y = TR_H - 1 - t * (TR_H - 2);
@@ -1879,11 +1826,11 @@ Plugins.rig_skin.createWatch = function () {
         watches.forEach(function (w) { drawWatch(w, data); });
     };
 
-    function addWatch(f, mode, left, top) {
+    function addWatch(f, mode, left, top, note) {
         if (watches.length >= MAX) return;
         var idx = watches.length;
         var w = {
-            f: f, mode: mode || '',
+            f: f, mode: mode || '', note: note || '',
             left: typeof left === 'number' ? left : 12 + (idx % 4) * 26,
             top: typeof top === 'number' ? top : 90 + idx * 118
         };
@@ -1891,13 +1838,15 @@ Plugins.rig_skin.createWatch = function () {
         w.wf.width = W;
         w.wf.height = WF_H;
         w.wfCtx = w.wf.getContext('2d');
+        w.line = w.wfCtx.createImageData(W, 1);
+        w.lineLv = new Float32Array(W);
         makeWindow(w, idx);
         watches.push(w);
         save();
     }
 
     load().slice(0, MAX).forEach(function (s) {
-        if (s && s.f) addWatch(s.f, s.mode, s.left, s.top);
+        if (s && s.f) addWatch(s.f, s.mode, s.left, s.top, s.note);
     });
 
     var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-watch-button')
@@ -1922,6 +1871,7 @@ Plugins.rig_skin.openKeypad = function () {
     var kp = Plugins.rig_skin._keypad;
     if (!kp) {
         kp = Plugins.rig_skin._keypad = build();
+        kp.el.tabIndex = -1;
         $('body').append(kp.el);
     }
     // start from the current frequency, shown dim until the first key,
@@ -1931,6 +1881,9 @@ Plugins.rig_skin.openKeypad = function () {
     kp.placeholder = f ? (f / 1000000).toFixed(4) : '';
     kp.render();
     kp.el.classList.add('visible');
+    // focus once shown (a hidden element cannot take it), so the
+    // keyboard reaches the pad
+    kp.el.focus();
 
     function build() {
         var entry = '', placeholder = '';
@@ -2008,47 +1961,36 @@ Plugins.rig_skin.openKeypad = function () {
         });
 
         // drag the pad by its header (mouse and touch)
-        (function () {
-            var sx, sy, ox, oy, moving = false;
-            function point(e) {
-                var t = e.touches ? e.touches[0] : e;
-                return [t.clientX, t.clientY];
+        var padX, padY;
+        Plugins.rig_skin.drag($head, {
+            skip: '.owrx-rig-dx-close',
+            start: function () {
+                var r = $pad[0].getBoundingClientRect();
+                padX = r.left; padY = r.top;
+                // switch from centered flex to fixed so it can move
+                $pad.css({ position: 'fixed', margin: 0, left: padX + 'px', top: padY + 'px' });
+            },
+            move: function (dx, dy) {
+                $pad.css({ left: (padX + dx) + 'px', top: (padY + dy) + 'px' });
             }
-            $head[0].addEventListener('mousedown', down);
-            $head[0].addEventListener('touchstart', down, { passive: false });
-            function down(e) {
-                if (e.target.closest('.owrx-rig-dx-close')) return;
-                var pt = point(e), r = $pad[0].getBoundingClientRect();
-                sx = pt[0]; sy = pt[1]; ox = r.left; oy = r.top;
-                // switch from centered flex to absolute so it can move
-                $pad.css({ position: 'fixed', margin: 0, left: ox + 'px', top: oy + 'px' });
-                moving = true;
-                e.preventDefault();
-            }
-            function move(e) {
-                if (!moving) return;
-                var pt = point(e);
-                $pad.css({ left: (ox + pt[0] - sx) + 'px', top: (oy + pt[1] - sy) + 'px' });
-                e.preventDefault();
-            }
-            document.addEventListener('mousemove', move);
-            document.addEventListener('touchmove', move, { passive: false });
-            document.addEventListener('mouseup', function () { moving = false; });
-            document.addEventListener('touchend', function () { moving = false; });
-        })();
+        });
 
         var api = { el: el, entry: '', placeholder: '', render: render };
         return api;
     }
 };
 
-// mode for a clicked DX spot; set it only when it is unambiguous
+// demodulator for a DX spot: LSB below 10 MHz except 60 m, USB above;
+// the digital modes ride USB
 Plugins.rig_skin.spotMode = function (s) {
-    if (s.mode === 'CW') return 'cw';
-    if (s.mode === 'SSB') return s.freq < 10000000 ? 'lsb' : 'usb';
-    if (s.mode === 'FT8' || s.mode === 'FT4' || s.mode === 'RTTY' ||
-        s.mode === 'DIGITAL') return 'usb';
-    return null;
+    switch (s.mode) {
+        case 'CW': return 'cw';
+        case 'FM': return 'nfm';
+        case 'SSB': case '':
+            return (s.freq < 10000000 && !(s.freq > 5200000 && s.freq < 5500000))
+                ? 'lsb' : 'usb';
+        default: return 'usb';
+    }
 };
 
 // DX cluster callsigns on the top ribbon: spots inside the visible
@@ -2080,13 +2022,14 @@ Plugins.rig_skin.createSpotRibbon = function () {
         // the host repositions bookmarks on every zoom or pan step;
         // rebuilding dozens of chips each time is wasted unless the
         // view or the spots actually changed
+        var spots = Plugins.rig_skin._dxSpots();
         var sig = range.start + '|' + range.end + '|' + width + '|' +
-            Plugins.rig_skin._dxSpots().map(function (s) { return s.call + s.freq; }).join(',');
+            spots.map(function (s) { return s.call + s.freq; }).join(',');
         if (sig === lastSig) return;
         lastSig = sig;
         $strip.empty();
         var used = [];   // occupied [x0, x1] intervals; newest spot wins
-        Plugins.rig_skin._dxSpots().forEach(function (s) {
+        spots.forEach(function (s) {
             if (s.freq <= range.start || s.freq >= range.end) return;
             var x = scale_px_from_freq(s.freq, range);
             var w = s.call.length * 5.5 + 10;
@@ -2108,8 +2051,6 @@ Plugins.rig_skin.createSpotRibbon = function () {
                 .appendTo($strip);
         });
     }
-
-    Plugins.rig_skin._spotsRibbon = render;
 
     // the feed follows the theme: live spots while the rig face is up
     Plugins.rig_skin._syncDxFeed = function () {
@@ -2299,17 +2240,25 @@ Plugins.rig_skin.createVfoKeys = function () {
         if (box._shown === t) return;
         box._shown = t;
         // each digit is a span carrying its place value, so the wheel
-        // can spin an individual digit like on an SDR console
-        box.$freq.empty();
-        var place = 100;   // the last shown decimal is the 100 Hz digit
-        for (var i = t.length - 1; i >= 0; i--) {
-            var ch = t[i];
-            var $d = $('<span>').text(ch);
-            if (ch >= '0' && ch <= '9') {
-                $d.attr('data-place', place).addClass('owrx-rig-digit');
-                place *= 10;
+        // can spin an individual digit like on an SDR console. The spans
+        // are built once per string length; a dial step only changes text.
+        var spans = box.$freq.children();
+        if (spans.length !== t.length) {
+            box.$freq.empty();
+            var place = 100;   // the last shown decimal is the 100 Hz digit
+            for (var i = t.length - 1; i >= 0; i--) {
+                var ch = t[i];
+                var $d = $('<span>').text(ch);
+                if (ch >= '0' && ch <= '9') {
+                    $d.attr('data-place', place).addClass('owrx-rig-digit');
+                    place *= 10;
+                }
+                box.$freq.prepend($d);
             }
-            box.$freq.prepend($d);
+            return;
+        }
+        for (var j = 0; j < t.length; j++) {
+            if (spans[j].textContent !== t[j]) spans[j].textContent = t[j];
         }
     }
 
@@ -2420,46 +2369,10 @@ Plugins.rig_skin.createVfoKeys = function () {
             Math.abs(v.freq - center_freq) < bandwidth / 2 - 5000;
     }
 
-    // peak FFT level in a +/-1.5 kHz window around freq
-    function watchLevel(freq) {
-        var data = Plugins.rig_skin._lastFft;
-        if (!data || typeof center_freq === 'undefined') return null;
-        var hzPerBin = bandwidth / data.length;
-        var c = (freq - center_freq) / hzPerBin + data.length / 2;
-        var b0 = Math.max(0, Math.floor(c - 1500 / hzPerBin));
-        var b1 = Math.min(data.length - 1, Math.ceil(c + 1500 / hzPerBin));
-        if (b1 < b0) return null;
-        var v = -1000;
-        for (var b = b0; b <= b1; b++) {
-            if (data[b] > v) v = data[b];
-        }
-        return v;
-    }
-
-    // local noise floor near freq: the median of a +/-8 kHz guard band,
-    // excluding the +/-2 kHz signal window, so it tracks live conditions
-    function noiseFloor(freq) {
-        var data = Plugins.rig_skin._lastFft;
-        if (!data || typeof center_freq === 'undefined') return null;
-        var hzPerBin = bandwidth / data.length;
-        var c = (freq - center_freq) / hzPerBin + data.length / 2;
-        var g0 = Math.max(0, Math.floor(c - 8000 / hzPerBin));
-        var g1 = Math.min(data.length - 1, Math.ceil(c + 8000 / hzPerBin));
-        var sig = 2000 / hzPerBin;
-        var vals = [];
-        for (var b = g0; b <= g1; b++) {
-            if (Math.abs(b - c) > sig) vals.push(data[b]);
-        }
-        if (vals.length < 4) return null;
-        vals.sort(function (a, b) { return a - b; });
-        return vals[Math.floor(vals.length / 2)];
-    }
-
-    // signal-to-noise margin at freq, in dB, or null if no data
+    // signal-to-noise margin at freq in dB: the +/-1.5 kHz peak against
+    // the median floor of +/-8 kHz outside the +/-2 kHz signal window
     function watchSnr(freq) {
-        var pk = watchLevel(freq), nf = noiseFloor(freq);
-        if (pk === null || nf === null) return null;
-        return pk - nf;
+        return Plugins.rig_skin.snrAt(freq, 1500, 2000, 8000);
     }
 
     function goTo(vfo) {
@@ -2962,48 +2875,6 @@ Plugins.rig_skin.createSatScreen = function () {
         }
     };
 
-    function computePasses(tles) {
-        var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;
-        if (!pos || typeof pos.lat !== 'number') {
-            $head.text('receiver position not configured');
-            return;
-        }
-        var obs = {
-            latitude: satellite.degreesToRadians(pos.lat),
-            longitude: satellite.degreesToRadians(pos.lon),
-            height: 0.1
-        };
-        var out = [];
-        SATS.forEach(function (s) {
-            var tle = tles[s.id];
-            if (!tle) return;
-            var rec = satellite.twoline2satrec(tle.line1, tle.line2);
-            var inPass = false, aos = null, maxEl = 0, found = 0;
-            for (var t = 0; t <= 24 * 3600 && found < 3; t += 30) {
-                var d = new Date(Date.now() + t * 1000);
-                var pv = satellite.propagate(rec, d);
-                if (!pv || !pv.position) continue;
-                var la = satellite.ecfToLookAngles(obs, satellite.eciToEcf(pv.position, satellite.gstime(d)));
-                var el = la.elevation * 180 / Math.PI;
-                if (el > 0) {
-                    if (!inPass) {
-                        inPass = true;
-                        aos = d;
-                        maxEl = el;
-                    } else if (el > maxEl) {
-                        maxEl = el;
-                    }
-                } else if (inPass) {
-                    inPass = false;
-                    found++;
-                    out.push({ sat: s, aos: aos, los: d, maxEl: maxEl });
-                }
-            }
-        });
-        out.sort(function (a, b) { return a.aos - b.aos; });
-        passes = out;
-        render();
-    }
 
     function fmtUtc(d) {
         function p(n) { return (n < 10 ? '0' : '') + n; }
@@ -3046,9 +2917,19 @@ Plugins.rig_skin.createSatScreen = function () {
         });
     }
 
+    // the pass list comes from the tracker's cache, so opening the
+    // window does not propagate every orbit a second time
     function refresh() {
-        ensureLib(function () {
-            ensureTles(computePasses);
+        var pos = typeof Utils !== 'undefined' && Utils.getReceiverPos ? Utils.getReceiverPos() : null;
+        if (!pos || typeof pos.lat !== 'number') {
+            $head.text('receiver position not configured');
+            return;
+        }
+        var st = Plugins.rig_skin._satTrack;
+        st.ensure(function () {
+            var now = Date.now();
+            passes = st.passes().filter(function (p) { return p.los.getTime() >= now; });
+            render();
         });
     }
 
@@ -3182,17 +3063,22 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         var tuned = typeof UI !== 'undefined' && UI.getFrequency ? UI.getFrequency() : 0;
         beaconRows.forEach(function (r, b) {
             var i = ((tenIdx - b) % 18 + 18) % 18;
-            r.$call.text(BEACONS[i][0]);
-            r.$where.text(BEACONS[i][1]);
-            r.$slot.text((10 - (sec % 10)) + 's');
-            var listening = Math.abs(tuned - r.f) < 3000;
-            r.$row.toggleClass('listening', listening);
-            if (listening && typeof Plugins.rig_skin._sLevel === 'number') {
-                var v = Plugins.rig_skin._sLevel;
-                var s = v <= 0 ? 'S0' : v <= 0.65 ? 'S' + Math.round(v / 0.65 * 9)
-                    : 'S9+' + (Math.round((v - 0.65) / 0.35 * 12) * 5);
-                r.$slot.text((10 - (sec % 10)) + 's ' + s);
+            // the beacon on the row changes every 10 s, the countdown every second
+            if (r.i !== i) {
+                r.i = i;
+                r.$call.text(BEACONS[i][0]);
+                r.$where.text(BEACONS[i][1]);
             }
+            var listening = Math.abs(tuned - r.f) < 3000;
+            if (r.listening !== listening) {
+                r.listening = listening;
+                r.$row.toggleClass('listening', listening);
+            }
+            var slot = (10 - (sec % 10)) + 's';
+            if (listening && typeof Plugins.rig_skin._sLevel === 'number') {
+                slot += ' ' + Plugins.rig_skin.sUnits(Plugins.rig_skin._sLevel);
+            }
+            r.$slot.text(slot);
         });
         radarTick(sec, tenIdx);
     }
@@ -3259,23 +3145,10 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
     };
 
     // peak in a narrow window around f against the local median floor
+    // a beacon is a narrow carrier: +/-300 Hz peak against the floor
+    // outside +/-1 kHz within +/-6 kHz, clear of the window edges
     function beaconSnr(f) {
-        var data = Plugins.rig_skin._lastFft;
-        if (!data || typeof center_freq === 'undefined') return null;
-        var hzPerBin = bandwidth / data.length;
-        var c = (f - center_freq) / hzPerBin + data.length / 2;
-        if (c < 10 || c > data.length - 10) return null;
-        var b0 = Math.max(0, Math.floor(c - 300 / hzPerBin));
-        var b1 = Math.min(data.length - 1, Math.ceil(c + 300 / hzPerBin));
-        var pk = -1000, b;
-        for (b = b0; b <= b1; b++) if (data[b] > pk) pk = data[b];
-        var g0 = Math.max(0, Math.floor(c - 6000 / hzPerBin));
-        var g1 = Math.min(data.length - 1, Math.ceil(c + 6000 / hzPerBin));
-        var guard = 1000 / hzPerBin, vals = [];
-        for (b = g0; b <= g1; b++) if (Math.abs(b - c) > guard) vals.push(data[b]);
-        if (vals.length < 4) return null;
-        vals.sort(function (x, y) { return x - y; });
-        return pk - vals[Math.floor(vals.length / 2)];
+        return Plugins.rig_skin.snrAt(f, 300, 1000, 6000, 10);
     }
 
     function setRadar(b) {
@@ -3285,7 +3158,10 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         beaconRows.forEach(function (r) { r.$row.toggle(b < 0); });
         if (b >= 0) {
             radarData = {};
-            radarRows.forEach(function (r) { r.$snr.text('').attr('class', 'bsnr'); });
+            radarRows.forEach(function (r) {
+                r.txt = r.cls = null;
+                r.$snr.text('').attr('class', 'bsnr');
+            });
             Plugins.rig_skin.tuneTo(BFREQ[b], 'cw');
         }
     }
@@ -3323,16 +3199,25 @@ Plugins.rig_skin.createPropScreen = function ($knobLine) {
         renderRadar(i);
     }
 
+    // runs every second; only a changed grade or slot touches the DOM
+    // and the map
+    var lastRadarSlot = -1;
     function renderRadar(i) {
+        var changed = i !== lastRadarSlot;
+        lastRadarSlot = i;
         radarRows.forEach(function (r, n) {
-            r.$row.toggleClass('listening', n === i);
+            var lit = n === i;
+            if (r.lit !== lit) { r.lit = lit; r.$row.toggleClass('listening', lit); }
             var d = radarData[n];
             if (!d) return;
             var cls = d.snr >= 14 ? 'good' : d.snr >= 8 ? 'fair' : 'none';
-            r.$snr.text(d.snr >= 8 ? '+' + Math.round(d.snr) + ' dB' : '-')
-                .attr('class', 'bsnr ' + cls);
+            var txt = d.snr >= 8 ? '+' + Math.round(d.snr) + ' dB' : '-';
+            if (r.txt === txt && r.cls === cls) return;
+            r.txt = txt; r.cls = cls;
+            changed = true;
+            r.$snr.text(txt).attr('class', 'bsnr ' + cls);
         });
-        if (Plugins.rig_skin._dxRender) Plugins.rig_skin._dxRender();
+        if (changed && Plugins.rig_skin._dxRender) Plugins.rig_skin._dxRender();
     }
 
     var views = [
@@ -3496,6 +3381,16 @@ Plugins.rig_skin.createPanelFit = function () {
         }
     }
 
+    // the DX feed follows the theme, not the size: sync it when the theme
+    // flips, a plain resize must not re-render the spot ribbon
+    var fitTheme = null;
+    function syncTheme() {
+        var rig = document.body.classList.contains('theme-rig');
+        if (rig === fitTheme) return;
+        fitTheme = rig;
+        syncTheme();
+    }
+
     function fit() {
         if (!$('body').hasClass('theme-rig')) {
             setStyle('zoom', '');
@@ -3503,7 +3398,7 @@ Plugins.rig_skin.createPanelFit = function () {
             setStyle('width', stockWidth);
             panel.classList.remove('rig-overflow');
             if (Plugins.rig_skin._applyPanelPos) Plugins.rig_skin._applyPanelPos();
-            if (Plugins.rig_skin._syncDxFeed) Plugins.rig_skin._syncDxFeed();
+            syncTheme();
             return;
         }
 
@@ -3607,7 +3502,7 @@ Plugins.rig_skin.createPanelFit = function () {
         Plugins.rig_skin._lcdEpoch++;
 
         if (Plugins.rig_skin._applyPanelPos) Plugins.rig_skin._applyPanelPos();
-        if (Plugins.rig_skin._syncDxFeed) Plugins.rig_skin._syncDxFeed();
+        syncTheme();
     }
 
     var queued = false;
@@ -3671,15 +3566,22 @@ Plugins.rig_skin.createPanelDrag = function () {
     // The top limit is the bottom of the top stack, not the viewport:
     // the banner and frequency scale paint above the panel and would
     // bury the grip and the layout chip (issue #7)
-    function clamp(pos) {
+    // the panel's size and the top stack it must clear; measured once
+    // per drag, not on every pointer move
+    function bounds() {
         var s = panelSize();
         var topEdge = 4;
         $('.webrx-top-container, #openwebrx-frequency-container').each(function () {
             topEdge = Math.max(topEdge, this.getBoundingClientRect().bottom + 4);
         });
+        return { s: s, topEdge: topEdge };
+    }
+
+    function clamp(pos, b) {
+        b = b || bounds();
         return {
-            left: Math.min(Math.max(pos.left, 4), Math.max(4, window.innerWidth - s.w - 4)),
-            top: Math.min(Math.max(pos.top, topEdge), Math.max(topEdge, window.innerHeight - s.h - 4))
+            left: Math.min(Math.max(pos.left, 4), Math.max(4, window.innerWidth - b.s.w - 4)),
+            top: Math.min(Math.max(pos.top, b.topEdge), Math.max(b.topEdge, window.innerHeight - b.s.h - 4))
         };
     }
 
@@ -3727,12 +3629,12 @@ Plugins.rig_skin.createPanelDrag = function () {
         e.preventDefault();
         try { grip.setPointerCapture(e.pointerId); } catch (err) {}
         var r = panel.getBoundingClientRect();
-        start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
+        start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top, b: bounds() };
     });
     grip.addEventListener('pointermove', function (e) {
         if (!start) return;
         place(clamp({ left: start.left + e.clientX - start.x,
-                      top: start.top + e.clientY - start.y }));
+                      top: start.top + e.clientY - start.y }, start.b));
     });
     // pointerdown's preventDefault suppresses synthesized dblclick, so
     // the snap-back double-tap is detected from the pointerups directly
@@ -3901,21 +3803,12 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
     $container.find('.frequencies').append($extra);
 
     function sUnits() {
-        var v = Plugins.rig_skin._sLevel;
-        if (typeof v !== 'number') return '';
-        if (v <= 0) return 'S0';
-        if (v <= 0.65) return 'S' + Math.round(v / 0.65 * 9);
-        return 'S9+' + (Math.round((v - 0.65) / 0.35 * 12) * 5);
+        return Plugins.rig_skin.sUnits(Plugins.rig_skin._sLevel);
     }
 
     function bandName(freq) {
-        if (typeof bandplan === 'undefined' || !bandplan ||
-            !bandplan.bands || !bandplan.bands.length) return '';
-        for (var i = 0; i < bandplan.bands.length; i++) {
-            var b = bandplan.bands[i];
-            if (freq >= b.low_bound && freq <= b.high_bound && b.name) return b.name;
-        }
-        return '';
+        var b = Plugins.rig_skin.bandAt(freq);
+        return b && b.name ? b.name : '';
     }
 
     function update() {
@@ -3979,7 +3872,10 @@ Plugins.rig_skin.createSignalInfo = function ($container) {
 
     Plugins.rig_skin._updateInfo = update;
     update();
-    setInterval(update, 500);
+    // the status line only exists on the rig face
+    setInterval(function () {
+        if (document.body.classList.contains('theme-rig')) update();
+    }, 500);
 };
 
 // Render an LCD canvas at its displayed resolution: the fluid layout
@@ -4085,6 +3981,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
 
     // trace averaging: smooths the noise so steady weak signals stand out
     var avg = null, avgOff = null, avgSpan = null;
+    var wfLine = null, wfLv = null;
 
     function draw(data) {
         Plugins.rig_skin.fitCanvas(canvas, ctx, W, H);
@@ -4120,9 +4017,11 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         if (fresh) avg = new Float32Array(W);
         ctx.beginPath();
         ctx.moveTo(0, TRACE_H);
+        var raw = new Float32Array(W);
         for (var x = 0; x < W; x++) {
             var v = levelAt(data, off, x, sp);
             if (v === null) v = lo;
+            raw[x] = v;
             avg[x] = fresh ? v : avg[x] * 0.7 + v * 0.3;
             var t = Math.max(0, Math.min(1, (avg[x] - lo) / (hi - lo)));
             ctx.lineTo(x, TRACE_H - Math.pow(t, 0.7) * (TRACE_H - 2));
@@ -4139,13 +4038,17 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         if (wf.height > 1) {
             wfCtx.drawImage(wf, 0, 1);
         }
-        // colors come straight from the main waterfall's theme and levels
-        for (var wx = 0; wx < wf.width; wx++) {
-            var wv = levelAt(data, off, wx + 1, sp);
-            var c = Waterfall.makeColor(wv === null ? lo : wv);
-            wfCtx.fillStyle = 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
-            wfCtx.fillRect(wx, 0, 1, 1);
+        // colors come straight from the main waterfall's theme and levels,
+        // written as one row buffer instead of a fillRect per pixel
+        if (!wfLine || wfLine.width !== wf.width) {
+            wfLine = wfCtx.createImageData(wf.width, 1);
+            wfLv = new Float32Array(wf.width);
         }
+        for (var wx = 0; wx < wf.width; wx++) {
+            wfLv[wx] = wx + 1 < W ? raw[wx + 1] : lo;
+        }
+        Waterfall.drawLine(wfLine.data, wfLv);
+        wfCtx.putImageData(wfLine, 0, 0);
         ctx.drawImage(wf, 1, TRACE_H);
 
         // fixed center marker
@@ -4169,25 +4072,9 @@ Plugins.rig_skin.createBandScope = function ($freq) {
 
     // feed from the waterfall FFT stream; keep the latest line around
     // for the auto tune key as well
-    var origWaterfallAdd = waterfall_add;
-    waterfall_add = function (data) {
-        var res = origWaterfallAdd.apply(this, arguments);
-        if (data && data.length) {
-            Plugins.rig_skin._lastFft = data;
-            // the canvas is display:none on the stock themes; drawing
-            // there would burn CPU for pixels nobody can see
-            if (document.body.classList.contains('theme-rig') &&
-                typeof bandwidth !== 'undefined') {
-                if (visible()) {
-                    try { draw(data); } catch (e) {}
-                }
-                // the watch windows render their slices from the same line
-                if (Plugins.rig_skin._watchFeed) {
-                    try { Plugins.rig_skin._watchFeed(data); } catch (e) {}
-                }
-            }
-        }
-        return res;
+    // the scope draws from the skin's single FFT hook
+    Plugins.rig_skin._scopeFeed = function (data) {
+        if (visible()) draw(data);
     };
 
     canvas.addEventListener('click', function (e) {
@@ -4254,7 +4141,6 @@ Plugins.rig_skin.createScope = function ($freq) {
             }
         }
         span = hb <= 4000 ? 4000 : (hb <= 8000 ? 8000 : 16000);
-        canvas.dataset.span = span;
     }
 
     // offscreen canvas holding the scrolling audio waterfall
@@ -4263,6 +4149,7 @@ Plugins.rig_skin.createScope = function ($freq) {
     wf.height = PLOT_H - SPEC_H - 2;
     // scrolled by drawing the canvas onto itself, like the band scope
     var wfCtx = wf.getContext('2d');
+    var wfLine = wfCtx.createImageData(wf.width, 1);
 
     // Audio waveform, like a rig's AF scope. The timebase is click-selectable
     // on the ms/Div label. Fast sweeps (<= 30 ms/div) draw a zero-crossing
@@ -4287,7 +4174,7 @@ Plugins.rig_skin.createScope = function ($freq) {
     var envCarry = 0;                // fractional column not yet advanced
     var envLastT = null;             // timestamp of the previous env frame
 
-    // dark blue to white colormap for waterfall intensity
+    // dark blue to white colormap for waterfall intensity, as [r, g, b]
     var wfPalette = [];
     (function () {
         var stops = [[4, 7, 10], [10, 58, 102], [63, 169, 245], [234, 246, 255]];
@@ -4298,11 +4185,28 @@ Plugins.rig_skin.createScope = function ($freq) {
             var c = [0, 1, 2].map(function (j) {
                 return Math.round(stops[s][j] + (stops[s + 1][j] - stops[s][j]) * f);
             });
-            wfPalette.push('rgb(' + c.join(',') + ')');
+            wfPalette.push(c);
         }
     })();
 
+    // the frame, graticule and labels only change with the span or the
+    // timebase, so they are painted once to an offscreen canvas
+    var frameCv = document.createElement('canvas'), frameKey = '';
     function drawFrame() {
+        var dpr = window.devicePixelRatio || 1;
+        var key = [W, H, dpr, span, waveMsPerDiv].join('|');
+        if (key !== frameKey) {
+            frameKey = key;
+            frameCv.width = Math.round(W * dpr);
+            frameCv.height = Math.round(H * dpr);
+            var fc = frameCv.getContext('2d');
+            fc.setTransform(dpr, 0, 0, dpr, 0, 0);
+            paintFrame(fc);
+        }
+        ctx.drawImage(frameCv, 0, 0, W, H);
+    }
+
+    function paintFrame(ctx) {
         // framed plot areas with graticule, oscilloscope style
         ctx.strokeStyle = '#1a2026';
         ctx.lineWidth = 1;
@@ -4403,10 +4307,12 @@ Plugins.rig_skin.createScope = function ($freq) {
             if (wf.height > 1) {
                 wfCtx.drawImage(wf, 0, 1);
             }
-            for (var wx = 0; wx < wf.width; wx++) {
-                wfCtx.fillStyle = wfPalette[binAt(wx, wf.width)];
-                wfCtx.fillRect(wx, 0, 1, 1);
+            var px = wfLine.data;
+            for (var wx = 0, pi = 0; wx < wf.width; wx++) {
+                var c = wfPalette[binAt(wx, wf.width)];
+                px[pi++] = c[0]; px[pi++] = c[1]; px[pi++] = c[2]; px[pi++] = 255;
             }
+            wfCtx.putImageData(wfLine, 0, 0);
             ctx.drawImage(wf, 1, SPEC_H + 1);
 
             // track the recent peak deviation for auto-scaling either mode
@@ -4574,17 +4480,163 @@ Plugins.rig_skin.pulseKey = function ($key) {
 // trackpads fire many small deltas per notch, accumulate to 100 units
 // (one classic mouse notch) per step
 Plugins.rig_skin.wheelSteps = (function () {
-    var acc = 0;
+    // leftover per control, so a partial notch on one does not spill
+    // onto the next control the wheel touches
+    var accs = new WeakMap();
     return function (e) {
+        var key = e.currentTarget || e.target || document;
+        var acc = accs.get(key) || 0;
         var d = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1);
         // direction change drops the leftover so the first notch back counts
         if (acc !== 0 && (d > 0) !== (acc > 0)) acc = 0;
         acc += d;
         var n = Math.trunc(acc / 100);
         if (n) acc -= n * 100;
+        accs.set(key, acc);
         return -n;
     };
 })();
+
+// S units from the meter deflection (S9 sits at 0.65 of the scale)
+Plugins.rig_skin.sUnits = function (v) {
+    if (typeof v !== 'number') return '';
+    if (v <= 0) return 'S0';
+    if (v <= 0.65) return 'S' + Math.round(v / 0.65 * 9);
+    return 'S9+' + (Math.round((v - 0.65) / 0.35 * 12) * 5);
+};
+
+// the bandplan entry containing a frequency, or null
+Plugins.rig_skin.bandAt = function (freq) {
+    if (typeof bandplan === 'undefined' || !bandplan || !bandplan.bands) return null;
+    for (var i = 0; i < bandplan.bands.length; i++) {
+        var b = bandplan.bands[i];
+        if (freq >= b.low_bound && freq <= b.high_bound) return b;
+    }
+    return null;
+};
+
+// peak level within +/-peakHz of f against the median of the +/-floorHz
+// neighbourhood outside +/-guardHz, in dB; null without FFT data. The
+// edge margin, in bins, rejects readings at the window edges.
+Plugins.rig_skin.snrAt = function (f, peakHz, guardHz, floorHz, edgeBins) {
+    var data = Plugins.rig_skin._lastFft;
+    if (!data || typeof center_freq === 'undefined' || typeof bandwidth === 'undefined') return null;
+    var hzPerBin = bandwidth / data.length;
+    var c = (f - center_freq) / hzPerBin + data.length / 2;
+    var edge = edgeBins || 0;
+    if (c < edge || c > data.length - edge) return null;
+    var b0 = Math.max(0, Math.floor(c - peakHz / hzPerBin));
+    var b1 = Math.min(data.length - 1, Math.ceil(c + peakHz / hzPerBin));
+    var pk = -1000, b;
+    for (b = b0; b <= b1; b++) if (data[b] > pk) pk = data[b];
+    var g0 = Math.max(0, Math.floor(c - floorHz / hzPerBin));
+    var g1 = Math.min(data.length - 1, Math.ceil(c + floorHz / hzPerBin));
+    var guard = guardHz / hzPerBin, vals = [];
+    for (b = g0; b <= g1; b++) if (Math.abs(b - c) > guard) vals.push(data[b]);
+    if (vals.length < 4) return null;
+    vals.sort(function (x, y) { return x - y; });
+    return pk - vals[Math.floor(vals.length / 2)];
+};
+
+// one hook on the FFT feed for the whole skin: the last line is kept
+// for the meters, and the band scope and watch windows draw from it
+Plugins.rig_skin.hookFft = function () {
+    if (typeof waterfall_add !== 'function' || Plugins.rig_skin._fftHooked) return;
+    Plugins.rig_skin._fftHooked = true;
+    var orig = waterfall_add;
+    waterfall_add = function (data) {
+        var res = orig.apply(this, arguments);
+        if (data && data.length) {
+            Plugins.rig_skin._lastFft = data;
+            // the canvases are display:none on the stock themes; drawing
+            // there would burn CPU for pixels nobody can see
+            if (document.body.classList.contains('theme-rig') &&
+                typeof bandwidth !== 'undefined') {
+                if (Plugins.rig_skin._scopeFeed) {
+                    try { Plugins.rig_skin._scopeFeed(data); } catch (e) {}
+                }
+                if (Plugins.rig_skin._watchFeed) {
+                    try { Plugins.rig_skin._watchFeed(data); } catch (e) {}
+                }
+            }
+        }
+        return res;
+    };
+};
+
+// Drag helper for the floating windows, the keypad and the watch
+// windows: the document handlers exist only between press and release,
+// so an idle page dispatches no pointer events through the skin
+Plugins.rig_skin._dragSeq = 0;
+Plugins.rig_skin.drag = function ($handle, o) {
+    var ns = '.rigdrag' + (++Plugins.rig_skin._dragSeq);
+    function point(e) {
+        var t = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+        return [t.clientX, t.clientY];
+    }
+    $handle.on('mousedown touchstart', function (e) {
+        if (o.skip && $(e.target).is(o.skip)) return;
+        var p0 = point(e);
+        if (o.start) o.start(e);
+        e.preventDefault();
+        if (o.stop) e.stopPropagation();
+        $(document).on('mousemove' + ns + ' touchmove' + ns, function (ev) {
+            var p = point(ev);
+            o.move(p[0] - p0[0], p[1] - p0[1]);
+        }).on('mouseup' + ns + ' touchend' + ns, function () {
+            $(document).off(ns);
+            if (o.end) o.end();
+        });
+    });
+};
+
+// land polygons as Path2D objects in map pixel space, built once per
+// map size; the maps fill them instead of re-projecting every point
+Plugins.rig_skin.landPaths = function (MW, MH) {
+    var land = Plugins.rig_skin._land;
+    if (!land) return null;
+    var c = Plugins.rig_skin._landPaths || (Plugins.rig_skin._landPaths = {});
+    var key = MW + 'x' + MH;
+    if (c[key]) return c[key];
+    if (Object.keys(c).length > 3) c = Plugins.rig_skin._landPaths = {};
+    c[key] = land.map(function (poly) {
+        var p = new Path2D(), prevX = null;
+        poly.forEach(function (pt) {
+            var x = (pt[0] + 180) / 360 * MW, y = (90 - pt[1]) / 180 * MH;
+            // an antimeridian wrap lifts the pen, no streak across the map
+            if (prevX === null || Math.abs(x - prevX) > MW / 2) p.moveTo(x, y);
+            else p.lineTo(x, y);
+            prevX = x;
+        });
+        return p;
+    });
+    return c[key];
+};
+
+// day/night shading from the sun's current position; px maps lat/lon
+// to canvas pixels, so both maps share it
+Plugins.rig_skin.drawNight = function (ctx, px, MW, MH) {
+    var now = new Date();
+    var doy = (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+        Date.UTC(now.getUTCFullYear(), 0, 0)) / 86400000;
+    var decl = -23.44 * Math.cos(2 * Math.PI / 365 * (doy + 10)) * Math.PI / 180;
+    var sunLon = (12 - (now.getUTCHours() + now.getUTCMinutes() / 60)) * 15;
+    ctx.fillStyle = 'rgba(0,0,12,0.30)';
+    ctx.beginPath();
+    for (var x = 0; x <= MW; x += 4) {
+        var lon = x / MW * 360 - 180;
+        var H0 = (lon - sunLon) * Math.PI / 180;
+        var lat = Math.atan(-Math.cos(H0) / Math.tan(decl)) * 180 / Math.PI;
+        var p = px(lat, lon);
+        x ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]);
+    }
+    // the dark cap is on the winter side
+    var north = decl > 0;
+    ctx.lineTo(MW, north ? MH : 0);
+    ctx.lineTo(0, north ? MH : 0);
+    ctx.closePath();
+    ctx.fill();
+};
 
 // NR and LOCK keys with status LEDs, left of the dial. NR mirrors the
 // stock noise reduction toggle; LOCK freezes the dial against accidental
@@ -4769,8 +4821,12 @@ Plugins.rig_skin.createScanKeys = function ($line) {
 
     // SQL is a toggle: ON auto-sets the squelch level from the current
     // signal, OFF drops the slider to minimum (squelch fully open)
+    var $sqlSlider = null;
     function getSquelchSlider() {
-        return $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+        if (!$sqlSlider || !$sqlSlider.length) {
+            $sqlSlider = $('#openwebrx-panel-receiver .openwebrx-squelch-slider');
+        }
+        return $sqlSlider;
     }
 
     function squelchEngaged() {
@@ -5007,6 +5063,9 @@ Plugins.rig_skin.createMeter = function ($freq) {
             pressed = true;
             toggleStyle();
         }, 550);
+        // .one() with two event types only drops the type that fired,
+        // so bind plainly and unbind the whole set on release
+        $meter.off('pointermove.press pointerup.press pointercancel.press');
         $meter.on('pointermove.press', function (ev) {
             if (pressTimer && Math.abs(ev.originalEvent.clientX - sx) +
                 Math.abs(ev.originalEvent.clientY - sy) > 10) {
@@ -5014,9 +5073,9 @@ Plugins.rig_skin.createMeter = function ($freq) {
                 pressTimer = null;
             }
         });
-        $meter.one('pointerup.press pointercancel.press', function () {
+        $meter.on('pointerup.press pointercancel.press', function () {
             if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-            $meter.off('pointermove.press');
+            $meter.off('pointermove.press pointerup.press pointercancel.press');
         });
     });
 
@@ -5034,10 +5093,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
         return t > S9 ? '#ff4130' : '#2ea3ff';
     }
 
-    function sText(v) {
-        return v <= 0 ? 'S0' : v <= S9 ? 'S' + Math.round(v / S9 * 9)
-            : 'S9+' + (Math.round((v - S9) / (1 - S9) * 12) * 5);
-    }
+    var sText = Plugins.rig_skin.sUnits;
 
     // Calibrated mode: an operator who knows the hardware sets, in
     // init.js before the plugin loads,
@@ -5163,7 +5219,13 @@ Plugins.rig_skin.createMeter = function ($freq) {
     function drawScale() {
         // the bar face is taller than the original H; clear all of it or
         // the squelch marker leaves droppings below the rail
-        ctx.clearRect(0, 0, W, meterH());
+        var h = meterH();
+        ctx.clearRect(0, 0, W, h);
+        layer(scaleCv, h, paintScale);
+    }
+
+    // the bar face labels never change: painted once per resolution
+    function paintScale(ctx) {
         ctx.font = 'bold 11px roboto-mono, monospace';
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
@@ -5220,18 +5282,36 @@ Plugins.rig_skin.createMeter = function ($freq) {
         return [W / 2 + Math.sin(a) * r, PIVOT_Y - Math.cos(a) * r];
     }
 
-    function arc(t0, t1, r, color, width) {
-        var a0 = (-A_MAX + 2 * A_MAX * t0 - 90) * Math.PI / 180;
-        var a1 = (-A_MAX + 2 * A_MAX * t1 - 90) * Math.PI / 180;
-        ctx.beginPath();
-        ctx.arc(W / 2, PIVOT_Y, r, a0, a1);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.stroke();
+    // the printed face (arcs, ticks, numbers) never changes: painted once
+    // per canvas resolution and blitted under the needle every frame
+    var faceCv = document.createElement('canvas');
+    var scaleCv = document.createElement('canvas');
+    function layer(cv, h, paint) {
+        var m = ctx.getTransform ? ctx.getTransform() : null;
+        var sx = m ? m.a : (window.devicePixelRatio || 1);
+        var sy = m ? m.d : sx;
+        var key = sx + '|' + sy + '|' + h;
+        if (cv._key !== key) {
+            cv._key = key;
+            cv.width = Math.max(1, Math.round(W * sx));
+            cv.height = Math.max(1, Math.round(h * sy));
+            var c = cv.getContext('2d');
+            c.setTransform(sx, 0, 0, sy, 0, 0);
+            paint(c);
+        }
+        ctx.drawImage(cv, 0, 0, W, h);
     }
 
-    function drawNeedle() {
-        ctx.clearRect(0, 0, W, NH);
+    function paintFace(ctx) {
+        function arc(t0, t1, r, color, width) {
+            var a0 = (-A_MAX + 2 * A_MAX * t0 - 90) * Math.PI / 180;
+            var a1 = (-A_MAX + 2 * A_MAX * t1 - 90) * Math.PI / 180;
+            ctx.beginPath();
+            ctx.arc(W / 2, PIVOT_Y, r, a0, a1);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
         // Icom style face: one continuous shallow arc, white then red
         // past S9, fine ticks, the numbers with clear air above them
         arc(0, S9, R_ARC, '#e8ecef', 2);
@@ -5269,6 +5349,11 @@ Plugins.rig_skin.createMeter = function ($freq) {
                 ctx.fillText('+' + d + (d === 60 ? 'dB' : ''), ql[0], ql[1] + 3);
             }
         }
+    }
+
+    function drawNeedle() {
+        ctx.clearRect(0, 0, W, NH);
+        layer(faceCv, NH, paintFace);
         // the corner readouts live at the top, clear of the arc ends
         ctx.textBaseline = 'top';
         // live dB readout, derived from the same mapping as the needle;
@@ -5336,12 +5421,15 @@ Plugins.rig_skin.createMeter = function ($freq) {
             ctx.beginPath(); ctx.moveTo(g0[0], g0[1]); ctx.lineTo(g1[0], g1[1]); ctx.stroke();
         }
         var n0 = needleXY(current, needleBase(current)), n1 = needleXY(current, R_ARC + 3);
+        // a wide faint stroke under the needle stands in for the blur
+        // glow, which cost a filter pass over the face every frame
+        ctx.beginPath(); ctx.moveTo(n0[0], n0[1]); ctx.lineTo(n1[0], n1[1]);
+        ctx.strokeStyle = 'rgba(215, 232, 255, 0.25)';
+        ctx.lineWidth = 6;
+        ctx.stroke();
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
-        ctx.shadowColor = 'rgba(215, 232, 255, 0.6)';
-        ctx.shadowBlur = 5;
-        ctx.beginPath(); ctx.moveTo(n0[0], n0[1]); ctx.lineTo(n1[0], n1[1]); ctx.stroke();
-        ctx.shadowBlur = 0;
+        ctx.stroke();
     }
 
     var target = 0, current = 0, peak = 0, peakT = 0, lastT = null, anim = null;

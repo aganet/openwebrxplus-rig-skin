@@ -16,6 +16,21 @@
 - The bottom status bars (audio, network, CPU, clients) match the rig
   look now: dark tracks, green fill, rig font. The band shows as a
   small badge in the status line.
+- Watch notes. Double-click the little waterfall in a watch window to
+  type a short note, like the repeater name or who is on there. It
+  shows along the bottom of that window and is remembered. A single
+  click still listens there.
+- Lighter under the hood. The small waterfalls (band scope, watch
+  windows, audio scope) paint each line as one row instead of a pixel
+  at a time. The DX and SAT maps keep the land as prebuilt paths, so
+  panning and zooming no longer re-project every coastline point. The
+  meter faces and the scope frame are drawn once and reused. Windows
+  that were never opened no longer allocate their canvases. Two
+  handler leaks are fixed (watch windows, meter long press), the world
+  map is cached between visits instead of downloaded again, and the
+  satellite passes come from the tracker's cache instead of a second
+  orbit run at page load. Typing into the keypad from the keyboard
+  works now.
 
 ## 0.10.6 (2026-09-03)
 
