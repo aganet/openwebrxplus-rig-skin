@@ -2032,3 +2032,72 @@ body.theme-rig #openwebrx-panel-status .openwebrx-progressbar-bar {
 body.theme-rig #openwebrx-panel-status .openwebrx-progressbar--over .openwebrx-progressbar-bar {
     background: linear-gradient(180deg, #ff5148, #b02a1e);
 }
+
+/* Windows on the host's plugin window API (OpenWebRX+ ext-windows): the
+   skin's content sits inside a host window, so its own frame rules step
+   aside, and the host window takes the rig look under this theme. Host
+   windows and buttons of the skin stay hidden on the stock themes. */
+body.theme-rig #owrx-rig-dx.owrx-rig-hosted,
+body.theme-rig #owrx-rig-satwin.owrx-rig-hosted,
+body.theme-rig .owrx-rig-watch.owrx-rig-hosted {
+    display: block;
+    position: static;
+    width: auto;
+    max-width: none;
+    padding: 6px 8px 8px 8px;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.owrx-rig-hosted > .owrx-rig-dx-hdr {
+    cursor: default;
+}
+
+/* the host header already carries the title and the close */
+.owrx-rig-hosted > .owrx-rig-dx-hdr > .owrx-rig-dx-title,
+.owrx-rig-hosted > .owrx-rig-dx-hdr > .owrx-rig-dx-close,
+.owrx-rig-hosted > .owrx-rig-dx-grip {
+    display: none;
+}
+
+body:not(.theme-rig) .owrx-rig-hostwin {
+    display: none !important;
+}
+
+body:not(.theme-rig) .owrx-rig-hostbtn {
+    display: none;
+}
+
+body.theme-rig .openwebrx-plugin-window {
+    background: linear-gradient(165deg, #24282d 0%, #17191d 45%, #0f1114 100%);
+    border: 1px solid #060708;
+    border-radius: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07),
+                0 6px 18px rgba(0, 0, 0, 0.65);
+    color: #cfd4d9;
+}
+
+body.theme-rig .openwebrx-plugin-header {
+    background: #10161b;
+    color: #93a0ab;
+    font-family: 'roboto-mono', monospace;
+    font-size: 8.5pt;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #060708;
+}
+
+body.theme-rig .openwebrx-plugin-header .openwebrx-plugin-close {
+    background: none;
+    color: #93a0ab;
+}
+
+body.theme-rig .openwebrx-plugin-body {
+    padding: 0;
+    overflow: hidden;
+}
+
+body.theme-rig .openwebrx-plugin-button {
+    font-family: 'roboto-mono', monospace;
+    letter-spacing: 1px;
+}

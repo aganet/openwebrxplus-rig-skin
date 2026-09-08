@@ -248,8 +248,10 @@ Plugins.rig_skin.createDxWindow = function () {
         .append($('<span>').text('scroll to zoom, drag to pan, click to tune'))
         .append($('<span>').addClass('owrx-rig-dx-src').text('HolyCluster'));
     var $grip = $('<div>').addClass('owrx-rig-dx-grip');
-    var $win = $('<div>').attr('id', 'owrx-rig-dx')
-        .append($hdr).append($lcd).append($foot).append($grip).appendTo('body');
+    var frame = Plugins.rig_skin.frame({ id: 'rig-dx', title: 'DX CLUSTER', elId: 'owrx-rig-dx', width: 440, height: 560 });
+    var $win = frame.$el.append($hdr).append($lcd).append($foot).append($grip);
+    frame.onClose(function () { setOpen(false); });
+    frame.onResize(function () { applySize(); render(); });
 
     // window size: persisted, resizable by the corner grip; the map
     // canvas is re-rendered at the new resolution
@@ -264,9 +266,15 @@ Plugins.rig_skin.createDxWindow = function () {
     } catch (e) {}
 
     function applySize() {
-        winW = Math.min(Math.max(winW, 340), 1100);
-        listH = Math.min(Math.max(listH, 120), 800);
-        $win.css('width', winW + 'px');
+        if (frame.hosted) {
+            // the host window sets the size; the list takes what the map leaves
+            winW = frame.width() || winW;
+            listH = Math.max(120, frame.height() - Math.round((winW - 32) / 2) - 96);
+        } else {
+            winW = Math.min(Math.max(winW, 340), 1100);
+            listH = Math.min(Math.max(listH, 120), 800);
+            $win.css('width', winW + 'px');
+        }
         $list.css('max-height', listH + 'px');
         if (!open) return;            // the canvases are allocated on first open
         sizeCanvas(winW - 32);        // panel + lcd padding
@@ -276,9 +284,9 @@ Plugins.rig_skin.createDxWindow = function () {
     }
     applySize();
 
-    // corner grip resizes the window
+    // corner grip resizes the window (a host window resizes itself)
     var sizeW0, sizeH0;
-    Plugins.rig_skin.drag($grip, {
+    if (!frame.hosted) Plugins.rig_skin.drag($grip, {
         stop: true,
         start: function () { sizeW0 = winW; sizeH0 = listH; },
         move: function (dx, dy) {
@@ -305,9 +313,9 @@ Plugins.rig_skin.createDxWindow = function () {
         }
     } catch (e) {}
 
-    // drag by the header
+    // drag by the header (a host window drags itself)
     var dragOx, dragOy;
-    Plugins.rig_skin.drag($hdr, {
+    if (!frame.hosted) Plugins.rig_skin.drag($hdr, {
         skip: '.owrx-rig-dx-chip, .owrx-rig-dx-close',
         start: function () {
             var off = $win.offset();
@@ -327,16 +335,15 @@ Plugins.rig_skin.createDxWindow = function () {
 
     // --- header button, after Status ---
 
-    var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-dx-button')
-        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+    var $btn = Plugins.rig_skin.windowButton({
+        id: 'rig-dx', elId: 'owrx-rig-dx-button', label: 'DX', title: 'DX cluster spots',
+        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<circle cx="12" cy="12" r="9"/>' +
             '<path d="M3 12h18M12 3c-2.5 2.5-3.8 5.6-3.8 9s1.3 6.5 3.8 9m0-18c2.5 2.5 3.8 5.6 3.8 9s-1.3 6.5-3.8 9"/>' +
-            '</svg><br/>DX')
-        .attr('title', 'DX cluster spots')
-        .on('click', function () { setOpen(!open); });
-    var $status = $('.openwebrx-main-buttons [data-toggle-panel="openwebrx-panel-status"]');
-    if ($status.length) $status.after($btn);
-    else $('.openwebrx-main-buttons').append($btn);
+            '</svg>',
+        after: '.openwebrx-main-buttons [data-toggle-panel="openwebrx-panel-status"]',
+        onClick: function () { setOpen(!open); }
+    });
 
     // --- spot handling ---
 
@@ -1036,7 +1043,7 @@ Plugins.rig_skin.createDxWindow = function () {
     var ticks = 0;
     function setOpen(on) {
         open = on;
-        $win.toggleClass('visible', on);
+        frame.setOpen(on);
         $btn.toggleClass('highlighted', on);
         if (on) {
             applySize();
@@ -1151,8 +1158,10 @@ Plugins.rig_skin.createSatWindow = function () {
         .append($('<span>').text('click a bird for its path, click again to tune'))
         .append($('<span>').text('TLE: celestrak.org'));
     var $grip = $('<div>').addClass('owrx-rig-dx-grip');
-    var $win = $('<div>').attr('id', 'owrx-rig-satwin')
-        .append($hdr).append($lcd).append($foot).append($grip).appendTo('body');
+    var frame = Plugins.rig_skin.frame({ id: 'rig-sat', title: 'SAT TRACKING', elId: 'owrx-rig-satwin', width: 500, height: 460 });
+    var $win = frame.$el.append($hdr).append($lcd).append($foot).append($grip);
+    frame.onClose(function () { setOpen(false); });
+    frame.onResize(function () { applySize(); render(); });
 
     // window size: persisted, resizable by the corner grip; the map
     // canvas is re-rendered at the new resolution
@@ -1166,18 +1175,23 @@ Plugins.rig_skin.createSatWindow = function () {
     } catch (e) {}
 
     function applySize() {
-        winW = Math.min(Math.max(winW, 340), 1100);
-        listH = Math.min(Math.max(listH, 60), 600);
-        $win.css('width', winW + 'px');
+        if (frame.hosted) {
+            winW = frame.width() || winW;
+            listH = Math.max(60, frame.height() - Math.round((winW - 32) / 2) - 96);
+        } else {
+            winW = Math.min(Math.max(winW, 340), 1100);
+            listH = Math.min(Math.max(listH, 60), 600);
+            $win.css('width', winW + 'px');
+        }
         $plist.css('max-height', listH + 'px');
         if (!open) return;       // the canvas is allocated on first open
         sizeCanvas(winW - 32);   // panel + lcd padding
     }
     applySize();
 
-    // corner grip resizes the window
+    // corner grip resizes the window (a host window resizes itself)
     var sizeW0, sizeH0;
-    Plugins.rig_skin.drag($grip, {
+    if (!frame.hosted) Plugins.rig_skin.drag($grip, {
         stop: true,
         start: function () { sizeW0 = winW; sizeH0 = listH; },
         move: function (dx, dy) {
@@ -1348,9 +1362,9 @@ Plugins.rig_skin.createSatWindow = function () {
         }
     } catch (e) {}
 
-    // drag by the header
+    // drag by the header (a host window drags itself)
     var dragOx, dragOy;
-    Plugins.rig_skin.drag($hdr, {
+    if (!frame.hosted) Plugins.rig_skin.drag($hdr, {
         skip: '.owrx-rig-dx-close',
         start: function () {
             var off = $win.offset();
@@ -1431,7 +1445,7 @@ Plugins.rig_skin.createSatWindow = function () {
 
     function setOpen(on) {
         open = on;
-        $win.toggleClass('visible', on);
+        frame.setOpen(on);
         $btn.toggleClass('highlighted', on);
         if (on) {
             applySize();
@@ -1445,17 +1459,16 @@ Plugins.rig_skin.createSatWindow = function () {
         }
     }
 
-    var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-sat-button')
-        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+    var $btn = Plugins.rig_skin.windowButton({
+        id: 'rig-sat', elId: 'owrx-rig-sat-button', label: 'SAT', title: 'Live satellite tracking map',
+        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<rect x="9.4" y="9.4" width="5.2" height="5.2" transform="rotate(45 12 12)"/>' +
             '<path d="M3.5 7l4 4M16.5 13l4 4M5.5 5l6 6M12.5 12l6 6"/>' +
             '<path d="M14 3.5a6.5 6.5 0 0 1 6.5 6.5"/>' +
-            '</svg><br/>SAT')
-        .attr('title', 'Live satellite tracking map')
-        .on('click', function () { setOpen(!open); });
-    var $dxBtn = $('#owrx-rig-dx-button');
-    if ($dxBtn.length) $dxBtn.after($btn);
-    else $('.openwebrx-main-buttons').append($btn);
+            '</svg>',
+        after: '#owrx-rig-dx-button',
+        onClick: function () { setOpen(!open); }
+    });
 };
 
 // DXCC entity number to flag, from the ARRL entity list
@@ -1593,6 +1606,7 @@ Plugins.rig_skin.createWatch = function () {
     function relabel() {
         watches.forEach(function (w, i) {
             w.$tag.text(letter(i));
+            w.frame.setTitle('WATCH ' + letter(i));
         });
     }
 
@@ -1656,13 +1670,14 @@ Plugins.rig_skin.createWatch = function () {
             .attr('title', 'Listen here; press again to go back')
             .html('&#x1F507;')
             .on('click', function () { toggleSpeaker(w); });
+        function closeWatch() {
+            watches.splice(watches.indexOf(w), 1);
+            w.frame.remove();
+            relabel();
+            save();
+        }
         var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
-            .on('click', function () {
-                watches.splice(watches.indexOf(w), 1);
-                w.$win.remove();
-                relabel();
-                save();
-            });
+            .on('click', closeWatch);
         var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
             .append(w.$tag).append($freq).append($mode).append(w.$spk).append($close);
         w.canvas = document.createElement('canvas');
@@ -1708,13 +1723,14 @@ Plugins.rig_skin.createWatch = function () {
         }
         $(w.canvas).on('dblclick', editNote);
         $note.on('click', listen).on('dblclick', editNote);
-        w.$win = $('<div>').addClass('owrx-rig-watch')
-            .css({ left: w.left + 'px', top: w.top + 'px' })
-            .append($hdr).append($lcd).appendTo('body');
+        w.frame = Plugins.rig_skin.frame({ id: 'rig-watch-' + w.slot, title: 'WATCH ' + letter(idx), cls: 'owrx-rig-watch', width: 256, height: 150 });
+        w.$win = w.frame.$el.css({ left: w.left + 'px', top: w.top + 'px' }).append($hdr).append($lcd);
+        w.frame.onClose(closeWatch);
+        w.frame.setOpen(true);
 
-        // drag by the header, position remembered
+        // drag by the header, position remembered (a host window drags itself)
         var dragOx, dragOy;
-        Plugins.rig_skin.drag($hdr, {
+        if (!w.frame.hosted) Plugins.rig_skin.drag($hdr, {
             skip: '.owrx-rig-dx-close, .owrx-rig-watch-spk',
             start: function () {
                 var off = w.$win.offset();
@@ -1826,11 +1842,20 @@ Plugins.rig_skin.createWatch = function () {
         watches.forEach(function (w) { drawWatch(w, data); });
     };
 
+    // a host window is addressed by id and remembers its place, so each
+    // watch takes the lowest free slot number for life
+    function freeSlot() {
+        for (var n = 1; n <= MAX; n++) {
+            if (!watches.some(function (x) { return x.slot === n; })) return n;
+        }
+        return MAX;
+    }
+
     function addWatch(f, mode, left, top, note) {
         if (watches.length >= MAX) return;
         var idx = watches.length;
         var w = {
-            f: f, mode: mode || '', note: note || '',
+            f: f, mode: mode || '', note: note || '', slot: freeSlot(),
             left: typeof left === 'number' ? left : 12 + (idx % 4) * 26,
             top: typeof top === 'number' ? top : 90 + idx * 118
         };
@@ -1849,19 +1874,19 @@ Plugins.rig_skin.createWatch = function () {
         if (s && s.f) addWatch(s.f, s.mode, s.left, s.top, s.note);
     });
 
-    var $btn = $('<div>').addClass('button').attr('id', 'owrx-rig-watch-button')
-        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
+    Plugins.rig_skin.windowButton({
+        id: 'rig-watch', elId: 'owrx-rig-watch-button', label: 'WATCH',
+        title: 'Add a watch window on the tuned frequency: a small live waterfall, press its speaker to listen there',
+        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>' +
             '<circle cx="12" cy="12" r="2.8"/>' +
-            '</svg><br/>WATCH')
-        .attr('title', 'Add a watch window on the tuned frequency: a small live waterfall, press its speaker to listen there')
-        .on('click', function () {
+            '</svg>',
+        after: '#owrx-rig-sat-button',
+        onClick: function () {
             if (typeof UI === 'undefined' || !UI.getFrequency) return;
             addWatch(UI.getFrequency(), (UI.getModulation && UI.getModulation()) || '');
-        });
-    var $satBtn = $('#owrx-rig-sat-button');
-    if ($satBtn.length) $satBtn.after($btn);
-    else $('.openwebrx-main-buttons').append($btn);
+        }
+    });
 };
 
 // Numeric keypad for entering a frequency, made for touch screens.
@@ -4564,6 +4589,106 @@ Plugins.rig_skin.hookFft = function () {
     };
 };
 
+// Floating windows ride the host's plugin window API when it exists
+// (OpenWebRX+ ext-windows), and the skin's own floating divs otherwise.
+// Callers get the same handle either way, so the DX, SAT and watch code
+// does not care which one is underneath.
+Plugins.rig_skin.hostWindows = function () {
+    return typeof Plugin !== 'undefined' && typeof Plugin.addWindow === 'function' &&
+        typeof Plugin.toggleWindow === 'function';
+};
+
+Plugins.rig_skin.frame = function (o) {
+    var $el = $('<div>');
+    if (o.elId) $el.attr('id', o.elId);
+    if (o.cls) $el.addClass(o.cls);
+    if (!Plugins.rig_skin.hostWindows()) {
+        $el.appendTo('body');
+        return {
+            hosted: false, $el: $el,
+            setOpen: function (on) { $el.toggleClass('visible', on); },
+            isOpen: function () { return $el.hasClass('visible'); },
+            onClose: function () {},
+            onResize: function () {},
+            setTitle: function () {},
+            remove: function () { $el.remove(); }
+        };
+    }
+    var host = Plugin.addWindow(o.id, o.title, '');
+    var $host = $(host).addClass('owrx-rig-hostwin'), $body = $host.find('.openwebrx-plugin-body');
+    // a fresh host window has no size of its own; without one the canvas
+    // inside would be sized from a body that is sized by the canvas
+    if (!host.style.width && o.width) $host.css({ width: o.width + 'px', height: o.height + 'px' });
+    $body.empty().append($el.addClass('owrx-rig-hosted'));
+    var closeFns = [], resizeFns = [], queued = false, placed = false;
+    $host.find('.openwebrx-plugin-close').on('click', function () {
+        closeFns.forEach(function (fn) { fn(); });
+    });
+    if (window.ResizeObserver) {
+        new ResizeObserver(function () {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(function () {
+                queued = false;
+                if ($host.is(':visible')) resizeFns.forEach(function (fn) { fn(); });
+            });
+        }).observe(host);
+    }
+    // the host centers a new window with a transform and keeps it after a
+    // drag, so a moved or restored window sits off by half its size; pin
+    // the window where it shows the first time and drop the transform
+    function place() {
+        if (placed) return;
+        placed = true;
+        var r = host.getBoundingClientRect();
+        $host.css({ left: r.left + 'px', top: r.top + 'px', transform: 'none' });
+    }
+    // the host drags with the mouse only; fingers get the skin's helper,
+    // saving the position under the host's own keys
+    var hx, hy;
+    Plugins.rig_skin.drag($host.find('.openwebrx-plugin-header'), {
+        touchOnly: true, skip: '.openwebrx-plugin-close',
+        start: function () { var r = host.getBoundingClientRect(); hx = r.left; hy = r.top; },
+        move: function (dx, dy) { $host.css({ left: (hx + dx) + 'px', top: (hy + dy) + 'px' }); },
+        end: function () {
+            if (typeof LS === 'undefined') return;
+            LS.save('plugin_' + o.id + '_x', host.offsetLeft);
+            LS.save('plugin_' + o.id + '_y', host.offsetTop);
+        }
+    });
+    return {
+        hosted: true, $el: $el,
+        setOpen: function (on) {
+            Plugin.toggleWindow(o.id, !!on);
+            if (on) place();
+        },
+        isOpen: function () { return $host.is(':visible'); },
+        width: function () { return $body.innerWidth(); },
+        height: function () { return $body.innerHeight(); },
+        onClose: function (fn) { closeFns.push(fn); },
+        onResize: function (fn) { resizeFns.push(fn); },
+        setTitle: function (t) { $host.find('.openwebrx-plugin-header > span').first().text(t); },
+        remove: function () { Plugin.toggleWindow(o.id, false); $el.remove(); }
+    };
+};
+
+// the button that opens a window: on the host's plugin button stack
+// when the API exists, in the rig's top banner otherwise
+Plugins.rig_skin.windowButton = function (o) {
+    if (Plugins.rig_skin.hostWindows() && typeof Plugin.addButton === 'function') {
+        var el = Plugin.addButton(o.id, o.label, o.onClick);
+        if (el) return $(el).addClass('owrx-rig-hostbtn').attr('title', o.title);
+    }
+    var $btn = $('<div>').addClass('button').attr('id', o.elId)
+        .html(o.svg + '<br/>' + o.label)
+        .attr('title', o.title)
+        .on('click', o.onClick);
+    var $after = $(o.after);
+    if ($after.length) $after.after($btn);
+    else $('.openwebrx-main-buttons').append($btn);
+    return $btn;
+};
+
 // Drag helper for the floating windows, the keypad and the watch
 // windows: the document handlers exist only between press and release,
 // so an idle page dispatches no pointer events through the skin
@@ -4574,7 +4699,7 @@ Plugins.rig_skin.drag = function ($handle, o) {
         var t = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0] : e;
         return [t.clientX, t.clientY];
     }
-    $handle.on('mousedown touchstart', function (e) {
+    $handle.on(o.touchOnly ? 'touchstart' : 'mousedown touchstart', function (e) {
         if (o.skip && $(e.target).is(o.skip)) return;
         var p0 = point(e);
         if (o.start) o.start(e);
