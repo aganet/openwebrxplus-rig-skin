@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.8 (2026-09-09)
+
+- Works with the new OpenWebRX+ plugin windows. OpenWebRX+ is getting a
+  built-in way for plugins to open floating windows (in its master
+  branch since September 8, coming in the release after 1.2.123). On a
+  receiver that has it, the DX cluster, the satellite map and the watch
+  windows open in the receiver's own window frames, drawn in the rig
+  look: drag by the header, resize by the corner, close with the X, and
+  the receiver remembers where you left them. On older receivers nothing
+  changes, the skin keeps drawing its own windows. The skin picks the
+  right one by itself, there is nothing to set. The DX, SAT and WATCH
+  buttons stay in the top banner either way.
+
 ## 0.10.7 (2026-09-04)
 
 - Touch keypad for direct frequency entry. Tap the active VFO frequency

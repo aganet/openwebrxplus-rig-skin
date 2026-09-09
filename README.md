@@ -277,6 +277,17 @@ are not there at all.
 
 ![watch windows](docs/screenshot-watch.png)
 
+## Windows on new and old OpenWebRX+
+
+OpenWebRX+ is getting its own floating windows for plugins (in its
+master branch since September 2026, in the release after 1.2.123). On
+a receiver that has them, the DX cluster, the satellite map and the
+watch windows open in the receiver's own frames, in the rig look: drag
+by the header, resize by the corner, close with the X, and the position
+is remembered. On an older receiver the skin draws its own windows, as
+before. It picks the right one by itself, there is nothing to set. The
+DX, SAT and WATCH buttons stay in the top banner either way.
+
 ## Waterfall
 
 There is a "Rig" palette in the waterfall theme selector, a jet style ramp
