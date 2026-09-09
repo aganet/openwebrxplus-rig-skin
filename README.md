@@ -280,13 +280,14 @@ are not there at all.
 ## Windows on new and old OpenWebRX+
 
 OpenWebRX+ is getting its own floating windows for plugins (in its
-master branch since September 2026, in the release after 1.2.123). On
-a receiver that has them, the DX cluster, the satellite map and the
-watch windows open in the receiver's own frames, in the rig look: drag
-by the header, resize by the corner, close with the X, and the position
-is remembered. On an older receiver the skin draws its own windows, as
-before. It picks the right one by itself, there is nothing to set. The
-DX, SAT and WATCH buttons stay in the top banner either way.
+master branch since September 8, 2026, in the release after 1.2.123).
+On an OpenWebRX+ version that has them, the DX cluster, the satellite
+map and the watch windows open in OpenWebRX+ windows, in the rig look:
+drag by the header, resize by the corner, close with the X, and
+OpenWebRX+ remembers where you left them. On an older OpenWebRX+ the
+skin draws its own windows, as before. It checks which version it runs
+on when the page loads and picks the right one by itself, nothing to
+set. The DX, SAT and WATCH buttons stay in the top banner in both cases.
 
 ## Waterfall
 
