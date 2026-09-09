@@ -335,8 +335,8 @@ Plugins.rig_skin.createDxWindow = function () {
 
     // --- header button, after Status ---
 
-    var $btn = Plugins.rig_skin.windowButton({
-        id: 'rig-dx', elId: 'owrx-rig-dx-button', label: 'DX', title: 'DX cluster spots',
+    var $btn = Plugins.rig_skin.bannerButton({
+        elId: 'owrx-rig-dx-button', label: 'DX', title: 'DX cluster spots',
         svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<circle cx="12" cy="12" r="9"/>' +
             '<path d="M3 12h18M12 3c-2.5 2.5-3.8 5.6-3.8 9s1.3 6.5 3.8 9m0-18c2.5 2.5 3.8 5.6 3.8 9s-1.3 6.5-3.8 9"/>' +
@@ -1459,8 +1459,8 @@ Plugins.rig_skin.createSatWindow = function () {
         }
     }
 
-    var $btn = Plugins.rig_skin.windowButton({
-        id: 'rig-sat', elId: 'owrx-rig-sat-button', label: 'SAT', title: 'Live satellite tracking map',
+    var $btn = Plugins.rig_skin.bannerButton({
+        elId: 'owrx-rig-sat-button', label: 'SAT', title: 'Live satellite tracking map',
         svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<rect x="9.4" y="9.4" width="5.2" height="5.2" transform="rotate(45 12 12)"/>' +
             '<path d="M3.5 7l4 4M16.5 13l4 4M5.5 5l6 6M12.5 12l6 6"/>' +
@@ -1874,8 +1874,8 @@ Plugins.rig_skin.createWatch = function () {
         if (s && s.f) addWatch(s.f, s.mode, s.left, s.top, s.note);
     });
 
-    Plugins.rig_skin.windowButton({
-        id: 'rig-watch', elId: 'owrx-rig-watch-button', label: 'WATCH',
+    Plugins.rig_skin.bannerButton({
+        elId: 'owrx-rig-watch-button', label: 'WATCH',
         title: 'Add a watch window on the tuned frequency: a small live waterfall, press its speaker to listen there',
         svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>' +
@@ -4663,13 +4663,10 @@ Plugins.rig_skin.frame = function (o) {
     };
 };
 
-// the button that opens a window: on the host's plugin button stack
-// when the API exists, in the rig's top banner otherwise
-Plugins.rig_skin.windowButton = function (o) {
-    if (Plugins.rig_skin.hostWindows() && typeof Plugin.addButton === 'function') {
-        var el = Plugin.addButton(o.id, o.label, o.onClick);
-        if (el) return $(el).addClass('owrx-rig-hostbtn').attr('title', o.title);
-    }
+// the button that opens a window lives in the rig's top banner on every
+// host: the host's own plugin button stack sits at the rig's corner,
+// which does not suit the face
+Plugins.rig_skin.bannerButton = function (o) {
     var $btn = $('<div>').addClass('button').attr('id', o.elId)
         .html(o.svg + '<br/>' + o.label)
         .attr('title', o.title)

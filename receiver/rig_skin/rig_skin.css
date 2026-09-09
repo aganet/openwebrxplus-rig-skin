@@ -2035,8 +2035,8 @@ body.theme-rig #openwebrx-panel-status .openwebrx-progressbar--over .openwebrx-p
 
 /* Windows on the host's plugin window API (OpenWebRX+ ext-windows): the
    skin's content sits inside a host window, so its own frame rules step
-   aside, and the host window takes the rig look under this theme. Host
-   windows and buttons of the skin stay hidden on the stock themes. */
+   aside, and the host window takes the rig look under this theme. The
+   skin's host windows stay hidden on the stock themes. */
 body.theme-rig #owrx-rig-dx.owrx-rig-hosted,
 body.theme-rig #owrx-rig-satwin.owrx-rig-hosted,
 body.theme-rig .owrx-rig-watch.owrx-rig-hosted {
@@ -2063,10 +2063,6 @@ body.theme-rig .owrx-rig-watch.owrx-rig-hosted {
 
 body:not(.theme-rig) .owrx-rig-hostwin {
     display: none !important;
-}
-
-body:not(.theme-rig) .owrx-rig-hostbtn {
-    display: none;
 }
 
 body.theme-rig .openwebrx-plugin-window {
@@ -2097,7 +2093,3 @@ body.theme-rig .openwebrx-plugin-body {
     overflow: hidden;
 }
 
-body.theme-rig .openwebrx-plugin-button {
-    font-family: 'roboto-mono', monospace;
-    letter-spacing: 1px;
-}
