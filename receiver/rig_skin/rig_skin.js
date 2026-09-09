@@ -4621,7 +4621,11 @@ Plugins.rig_skin.frame = function (o) {
     if (!host.style.width && o.width) $host.css({ width: o.width + 'px', height: o.height + 'px' });
     $body.empty().append($el.addClass('owrx-rig-hosted'));
     var closeFns = [], resizeFns = [], queued = false, placed = false;
-    $host.find('.openwebrx-plugin-close').on('click', function () {
+    // the host hides on click and on touchend; a touchend that hides the
+    // window swallows the click that would follow, so listen to both and
+    // let the touch path suppress the click
+    $host.find('.openwebrx-plugin-close').on('click touchend', function (e) {
+        if (e.type === 'touchend') e.preventDefault();
         closeFns.forEach(function (fn) { fn(); });
     });
     if (window.ResizeObserver) {
@@ -4643,19 +4647,6 @@ Plugins.rig_skin.frame = function (o) {
         var r = host.getBoundingClientRect();
         $host.css({ left: r.left + 'px', top: r.top + 'px', transform: 'none' });
     }
-    // the host drags with the mouse only; fingers get the skin's helper,
-    // saving the position under the host's own keys
-    var hx, hy;
-    Plugins.rig_skin.drag($host.find('.openwebrx-plugin-header'), {
-        touchOnly: true, skip: '.openwebrx-plugin-close',
-        start: function () { var r = host.getBoundingClientRect(); hx = r.left; hy = r.top; },
-        move: function (dx, dy) { $host.css({ left: (hx + dx) + 'px', top: (hy + dy) + 'px' }); },
-        end: function () {
-            if (typeof LS === 'undefined') return;
-            LS.save('plugin_' + o.id + '_x', host.offsetLeft);
-            LS.save('plugin_' + o.id + '_y', host.offsetTop);
-        }
-    });
     return {
         hosted: true, $el: $el,
         setOpen: function (on) {
@@ -4699,7 +4690,7 @@ Plugins.rig_skin.drag = function ($handle, o) {
         var t = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0] : e;
         return [t.clientX, t.clientY];
     }
-    $handle.on(o.touchOnly ? 'touchstart' : 'mousedown touchstart', function (e) {
+    $handle.on('mousedown touchstart', function (e) {
         if (o.skip && $(e.target).is(o.skip)) return;
         var p0 = point(e);
         if (o.start) o.start(e);
