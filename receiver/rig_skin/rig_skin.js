@@ -271,22 +271,11 @@ Plugins.rig_skin.createDxWindow = function () {
             winW = frame.width() || winW;
             listH = Math.max(120, frame.height() - Math.round((winW - 32) / 2) - 96);
         } else {
-            // never larger than the screen: the window has 16 px of padding
-            // around a map half the width tall, the list, and about 96 px of
-            // header, foot and padding. If even the map is too tall for the
-            // screen, the width gives way.
-            var OVER = 96, MIN_LIST = 120;
-            var availH = window.innerHeight - 24;
-            winW = Math.min(Math.max(winW, 340), 1100, window.innerWidth - 36);
-            var mapH = Math.round((winW - 32) / 2);
-            if (mapH + MIN_LIST + OVER > availH) {
-                winW = Math.max(340, 2 * (availH - MIN_LIST - OVER) + 32);
-                mapH = Math.round((winW - 32) / 2);
-            }
-            listH = Math.min(Math.max(listH, MIN_LIST), 800, Math.max(MIN_LIST, availH - OVER - mapH));
+            winW = Math.min(Math.max(winW, 340), 1100);
+            listH = Math.min(Math.max(listH, 120), 800);
             $win.css('width', winW + 'px');
         }
-        // a fixed list height keeps the window's size steady as spots arrive
+        // the list keeps its height, so a top-edge resize has something to move
         $list.css({ 'max-height': listH + 'px', 'min-height': listH + 'px' });
         if (!open) return;            // the canvases are allocated on first open
         sizeCanvas(winW - 32);        // panel + lcd padding
@@ -1069,7 +1058,6 @@ Plugins.rig_skin.createDxWindow = function () {
         $btn.toggleClass('highlighted', on);
         if (on) {
             applySize();
-            if (!frame.hosted) Plugins.rig_skin.keepOnScreen($win);
             ensureLand();
             loadCache();
             backlog();
@@ -1202,15 +1190,8 @@ Plugins.rig_skin.createSatWindow = function () {
             winW = frame.width() || winW;
             listH = Math.max(60, frame.height() - Math.round((winW - 32) / 2) - 96);
         } else {
-            var OVER = 96, MIN_LIST = 60;
-            var availH = window.innerHeight - 24;
-            winW = Math.min(Math.max(winW, 340), 1100, window.innerWidth - 36);
-            var mapH = Math.round((winW - 32) / 2);
-            if (mapH + MIN_LIST + OVER > availH) {
-                winW = Math.max(340, 2 * (availH - MIN_LIST - OVER) + 32);
-                mapH = Math.round((winW - 32) / 2);
-            }
-            listH = Math.min(Math.max(listH, MIN_LIST), 600, Math.max(MIN_LIST, availH - OVER - mapH));
+            winW = Math.min(Math.max(winW, 340), 1100);
+            listH = Math.min(Math.max(listH, 60), 600);
             $win.css('width', winW + 'px');
         }
         $plist.css({ 'max-height': listH + 'px', 'min-height': listH + 'px' });
@@ -1489,7 +1470,6 @@ Plugins.rig_skin.createSatWindow = function () {
         $btn.toggleClass('highlighted', on);
         if (on) {
             applySize();
-            if (!frame.hosted) Plugins.rig_skin.keepOnScreen($win);
             ensureLand();
             ensureOrbits();
             refresh();
@@ -4742,10 +4722,7 @@ Plugins.rig_skin.frame = function (o) {
     var $host = $(host).addClass('owrx-rig-hostwin'), $body = $host.find('.openwebrx-plugin-body');
     // a fresh host window has no size of its own; without one the canvas
     // inside would be sized from a body that is sized by the canvas
-    if (!host.style.width && o.width) {
-        $host.css({ width: Math.min(o.width, window.innerWidth - 20) + 'px',
-            height: Math.min(o.height, window.innerHeight - 40) + 'px' });
-    }
+    if (!host.style.width && o.width) $host.css({ width: o.width + 'px', height: o.height + 'px' });
     $body.empty().append($el.addClass('owrx-rig-hosted'));
     var closeFns = [], resizeFns = [], queued = false, placed = false;
     // the host hides on click and on touchend; a touchend that hides the
@@ -4856,15 +4833,6 @@ Plugins.rig_skin.edgeResize = function ($win, o) {
         },
         end: function () { o.end(); }
     });
-};
-
-// keep one of the skin's own windows inside the viewport after it was
-// sized or restored, so its edges and grip stay reachable
-Plugins.rig_skin.keepOnScreen = function ($win) {
-    var r = $win[0].getBoundingClientRect();
-    var left = Math.max(0, Math.min(r.left, window.innerWidth - r.width - 4));
-    var top = Math.max(0, Math.min(r.top, window.innerHeight - r.height - 4));
-    if (left !== r.left || top !== r.top) $win.css({ left: left + 'px', top: top + 'px' });
 };
 
 // Drag helper for the floating windows, the keypad and the watch
