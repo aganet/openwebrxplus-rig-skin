@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.8';
+Plugins.rig_skin._version = '0.10.9';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -4590,12 +4590,12 @@ Plugins.rig_skin.hookFft = function () {
 };
 
 // Floating windows ride the host's plugin window API when it exists
-// (OpenWebRX+ ext-windows), and the skin's own floating divs otherwise.
+// (OpenWebRX+ after 1.2.123, Plugins.addWindow), and the skin's own
+// floating divs otherwise.
 // Callers get the same handle either way, so the DX, SAT and watch code
 // does not care which one is underneath.
 Plugins.rig_skin.hostWindows = function () {
-    return typeof Plugin !== 'undefined' && typeof Plugin.addWindow === 'function' &&
-        typeof Plugin.toggleWindow === 'function';
+    return typeof Plugins.addWindow === 'function' && typeof Plugins.toggleWindow === 'function';
 };
 
 Plugins.rig_skin.frame = function (o) {
@@ -4614,7 +4614,7 @@ Plugins.rig_skin.frame = function (o) {
             remove: function () { $el.remove(); }
         };
     }
-    var host = Plugin.addWindow(o.id, o.title, '');
+    var host = Plugins.addWindow(o.id, o.title, '');
     var $host = $(host).addClass('owrx-rig-hostwin'), $body = $host.find('.openwebrx-plugin-body');
     // a fresh host window has no size of its own; without one the canvas
     // inside would be sized from a body that is sized by the canvas
@@ -4650,7 +4650,7 @@ Plugins.rig_skin.frame = function (o) {
     return {
         hosted: true, $el: $el,
         setOpen: function (on) {
-            Plugin.toggleWindow(o.id, !!on);
+            Plugins.toggleWindow(o.id, !!on);
             if (on) place();
         },
         isOpen: function () { return $host.is(':visible'); },
@@ -4659,7 +4659,7 @@ Plugins.rig_skin.frame = function (o) {
         onClose: function (fn) { closeFns.push(fn); },
         onResize: function (fn) { resizeFns.push(fn); },
         setTitle: function (t) { $host.find('.openwebrx-plugin-header > span').first().text(t); },
-        remove: function () { Plugin.toggleWindow(o.id, false); $el.remove(); }
+        remove: function () { Plugins.toggleWindow(o.id, false); $el.remove(); }
     };
 };
 
