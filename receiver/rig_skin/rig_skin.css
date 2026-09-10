@@ -2094,15 +2094,6 @@ body.theme-rig .openwebrx-plugin-body {
 }
 
 
-/* PIN chip in a window header: the window comes back on the next visit */
-.owrx-rig-pin {
-    margin-left: auto;
-}
-
-.owrx-rig-dx-count + .owrx-rig-pin {
-    margin-left: 6px;
-}
-
 /* parked watches: hidden together, remembered, one click brings them back */
 body.theme-rig .owrx-rig-watch.parked {
     display: none;

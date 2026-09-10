@@ -73,8 +73,6 @@ Plugins.rig_skin.init = function () {
     Plugins.rig_skin.createSatWindow();
     Plugins.rig_skin.createWatch();
     Plugins.rig_skin.createSpotRibbon();
-    // the windows exist now; pinned ones reopen if the rig face is already up
-    if (document.body.classList.contains('theme-rig')) Plugins.rig_skin.restorePins();
     // the install icons are drawn off the load path
     (window.requestIdleCallback || function (fn) { setTimeout(fn, 1500); })(function () {
         try { Plugins.rig_skin.createPwa(); } catch (e) {}
@@ -217,9 +215,7 @@ Plugins.rig_skin.createDxWindow = function () {
         .on('click', function () { setOpen(false); });
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
         .append($title).append($chips.band).append($chips.hf).append($chips.all)
-        .append($act).append($bcn).append($count)
-        .append(Plugins.rig_skin.pinChip('rig_dx_pin', function (on) { setOpen(on); }))
-        .append($close);
+        .append($act).append($bcn).append($count).append($close);
 
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
@@ -1154,7 +1150,6 @@ Plugins.rig_skin.createSatWindow = function () {
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr').append($title)
         .append(catChip('ham', 'HAM', 'Amateur radio satellites'))
         .append(catChip('wx', 'WX', 'Weather satellites'))
-        .append(Plugins.rig_skin.pinChip('rig_satwin_pin', function (on) { setOpen(on); }))
         .append($close);
     var $tip = $('<div>').addClass('owrx-rig-dx-tip');
     var $plist = $('<table>').addClass('owrx-rig-satwin-list');
@@ -3502,7 +3497,6 @@ Plugins.rig_skin.createPanelFit = function () {
         if (rig === fitTheme) return;
         fitTheme = rig;
         if (Plugins.rig_skin._syncDxFeed) Plugins.rig_skin._syncDxFeed();
-        if (rig) Plugins.rig_skin.restorePins();
     }
 
     function fit() {
@@ -4676,30 +4670,6 @@ Plugins.rig_skin.hookFft = function () {
         }
         return res;
     };
-};
-
-// PIN chip for a window header: a pinned window opens again on the
-// next visit; closing it does not unpin, unpinning does. The windows
-// are restored once, when the rig face first comes up (the theme class
-// lands after the plugins have started).
-Plugins.rig_skin._pins = [];
-Plugins.rig_skin.pinChip = function (key, setOpen) {
-    var on = typeof LS !== 'undefined' && LS.has(key) && LS.loadBool(key);
-    var $pin = $('<span>').addClass('owrx-rig-dx-chip owrx-rig-pin').text('PIN')
-        .attr('title', 'Keep this window open next time')
-        .toggleClass('on', on)
-        .on('click', function () {
-            on = !on;
-            $pin.toggleClass('on', on);
-            if (typeof LS !== 'undefined') LS.save(key, on);
-        });
-    Plugins.rig_skin._pins.push(function () { if (on) setOpen(true); });
-    return $pin;
-};
-Plugins.rig_skin.restorePins = function () {
-    var pins = Plugins.rig_skin._pins;
-    Plugins.rig_skin._pins = [];
-    pins.forEach(function (fn) { fn(); });
 };
 
 // Floating windows ride the host's plugin window API when it exists
