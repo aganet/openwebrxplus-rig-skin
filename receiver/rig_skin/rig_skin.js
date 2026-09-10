@@ -73,6 +73,8 @@ Plugins.rig_skin.init = function () {
     Plugins.rig_skin.createSatWindow();
     Plugins.rig_skin.createWatch();
     Plugins.rig_skin.createSpotRibbon();
+    // the windows exist now; pinned ones reopen if the rig face is already up
+    if (document.body.classList.contains('theme-rig')) Plugins.rig_skin.restorePins();
     // the install icons are drawn off the load path
     (window.requestIdleCallback || function (fn) { setTimeout(fn, 1500); })(function () {
         try { Plugins.rig_skin.createPwa(); } catch (e) {}
@@ -215,7 +217,9 @@ Plugins.rig_skin.createDxWindow = function () {
         .on('click', function () { setOpen(false); });
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr')
         .append($title).append($chips.band).append($chips.hf).append($chips.all)
-        .append($act).append($bcn).append($count).append($close);
+        .append($act).append($bcn).append($count)
+        .append(Plugins.rig_skin.pinChip('rig_dx_pin', function (on) { setOpen(on); }))
+        .append($close);
 
     var canvas = document.createElement('canvas');
     var dpr = window.devicePixelRatio || 1;
@@ -1150,6 +1154,7 @@ Plugins.rig_skin.createSatWindow = function () {
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr').append($title)
         .append(catChip('ham', 'HAM', 'Amateur radio satellites'))
         .append(catChip('wx', 'WX', 'Weather satellites'))
+        .append(Plugins.rig_skin.pinChip('rig_satwin_pin', function (on) { setOpen(on); }))
         .append($close);
     var $tip = $('<div>').addClass('owrx-rig-dx-tip');
     var $plist = $('<table>').addClass('owrx-rig-satwin-list');
@@ -1727,6 +1732,7 @@ Plugins.rig_skin.createWatch = function () {
         w.$win = w.frame.$el.css({ left: w.left + 'px', top: w.top + 'px' }).append($hdr).append($lcd);
         w.frame.onClose(closeWatch);
         w.frame.setOpen(true);
+        applyParked(w);
 
         // drag by the header, position remembered (a host window drags itself)
         var dragOx, dragOy;
@@ -1816,11 +1822,15 @@ Plugins.rig_skin.createWatch = function () {
         // of the slice. Both are maxima over noise bins, so the bias
         // cancels; only a real signal in the channel tips the balance.
         // Smoothed over a few lines, with a two second hold.
+        // the channel counts one FFT bin wider on each side: a signal a
+        // few hertz outside a narrow CW channel lands in the next bin
+        var binPx = Math.ceil(W * (bandwidth / data.length) / SPAN);
+        var pa0 = pb0 - binPx, pa1 = pb1 + binPx;
         var inPk = -1000, outPk = -1000;
         for (var px = 0; px < W; px++) {
             var lv = levels[px];
             if (lv === null) continue;
-            if (px >= pb0 && px < pb1) { if (lv > inPk) inPk = lv; }
+            if (px >= pa0 && px < pa1) { if (lv > inPk) inPk = lv; }
             else if (lv > outPk) outPk = lv;
         }
         if (inPk > -1000 && outPk > -1000) {
@@ -1839,8 +1849,84 @@ Plugins.rig_skin.createWatch = function () {
     }
 
     Plugins.rig_skin._watchFeed = function (data) {
+        if (parked) return;
         watches.forEach(function (w) { drawWatch(w, data); });
+        autoTick(Date.now());
     };
+
+    // parked: every watch out of sight at once (right-click WATCH), still
+    // remembered; the next click on WATCH brings them all back
+    var parked = typeof LS !== 'undefined' && LS.has('rig_watch_parked') && LS.loadBool('rig_watch_parked');
+    function applyParked(w) {
+        if (w.frame.hosted) w.frame.setOpen(!parked);
+        else w.$win.toggleClass('parked', parked);
+    }
+    function setParked(on) {
+        parked = on;
+        autoW = null;
+        watches.forEach(applyParked);
+        if (typeof LS !== 'undefined') LS.save('rig_watch_parked', on);
+    }
+
+    // Priority watch: with the squelch on and the VFO silent, the watch
+    // that heard something last takes the audio, like a priority channel
+    // on a rig; when it has been quiet for a few seconds the receiver
+    // goes back where it was. Squelch off means this never acts.
+    var autoW = null, quietSince = 0;
+    var QUIET_MS = 3000;
+
+    function vfoSilent() {
+        var sq = Plugins.rig_skin._squelchT ? Plugins.rig_skin._squelchT() : null;
+        var s = Plugins.rig_skin._sLevel;
+        return sq !== null && typeof s === 'number' && s < sq;
+    }
+
+    // a watch the user tuned away from stays out of the running until
+    // its activity has ended, or it would grab the dial right back
+    function lastActive(now) {
+        var best = null;
+        watches.forEach(function (w) {
+            if (w.snoozed && w.actUntil <= now) w.snoozed = false;
+            if (w.snoozed) return;
+            if (w.actUntil > now && (!best || w.actUntil > best.actUntil)) best = w;
+        });
+        return best;
+    }
+
+    function autoTick(now) {
+        var sq = Plugins.rig_skin._squelchT ? Plugins.rig_skin._squelchT() : null;
+        if (sq === null || !document.body.classList.contains('theme-rig')) {
+            autoW = null;
+            return;
+        }
+        if (autoW) {
+            // the dial moved away, or the watch is gone: hands off
+            if (watches.indexOf(autoW) < 0 || !playing(autoW)) {
+                autoW.snoozed = true;
+                autoW = null;
+                return;
+            }
+            if (autoW.actUntil > now) { quietSince = 0; return; }
+            var other = lastActive(now);
+            if (other) {
+                toggleSpeaker(other);       // hop, home stays the original spot
+                autoW = other;
+                quietSince = 0;
+                return;
+            }
+            if (!quietSince) quietSince = now;
+            if (now - quietSince > QUIET_MS) {
+                toggleSpeaker(autoW);       // playing: this returns home
+                autoW = null;
+            }
+            return;
+        }
+        var w = lastActive(now);
+        if (!w || anyPlaying() || !vfoSilent()) return;
+        toggleSpeaker(w);
+        autoW = w;
+        quietSince = 0;
+    }
 
     // a host window is addressed by id and remembers its place, so each
     // watch takes the lowest free slot number for life
@@ -1876,16 +1962,18 @@ Plugins.rig_skin.createWatch = function () {
 
     Plugins.rig_skin.bannerButton({
         elId: 'owrx-rig-watch-button', label: 'WATCH',
-        title: 'Add a watch window on the tuned frequency: a small live waterfall, press its speaker to listen there',
+        title: 'Add a watch window on the tuned frequency: a small live waterfall, press its speaker to listen there (right-click: hide or show all watches)',
         svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">' +
             '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/>' +
             '<circle cx="12" cy="12" r="2.8"/>' +
             '</svg>',
         after: '#owrx-rig-sat-button',
         onClick: function () {
+            if (parked) { setParked(false); return; }
             if (typeof UI === 'undefined' || !UI.getFrequency) return;
             addWatch(UI.getFrequency(), (UI.getModulation && UI.getModulation()) || '');
-        }
+        },
+        onContext: function () { setParked(!parked); }
     });
 };
 
@@ -3413,7 +3501,8 @@ Plugins.rig_skin.createPanelFit = function () {
         var rig = document.body.classList.contains('theme-rig');
         if (rig === fitTheme) return;
         fitTheme = rig;
-        syncTheme();
+        if (Plugins.rig_skin._syncDxFeed) Plugins.rig_skin._syncDxFeed();
+        if (rig) Plugins.rig_skin.restorePins();
     }
 
     function fit() {
@@ -4589,6 +4678,30 @@ Plugins.rig_skin.hookFft = function () {
     };
 };
 
+// PIN chip for a window header: a pinned window opens again on the
+// next visit; closing it does not unpin, unpinning does. The windows
+// are restored once, when the rig face first comes up (the theme class
+// lands after the plugins have started).
+Plugins.rig_skin._pins = [];
+Plugins.rig_skin.pinChip = function (key, setOpen) {
+    var on = typeof LS !== 'undefined' && LS.has(key) && LS.loadBool(key);
+    var $pin = $('<span>').addClass('owrx-rig-dx-chip owrx-rig-pin').text('PIN')
+        .attr('title', 'Keep this window open next time')
+        .toggleClass('on', on)
+        .on('click', function () {
+            on = !on;
+            $pin.toggleClass('on', on);
+            if (typeof LS !== 'undefined') LS.save(key, on);
+        });
+    Plugins.rig_skin._pins.push(function () { if (on) setOpen(true); });
+    return $pin;
+};
+Plugins.rig_skin.restorePins = function () {
+    var pins = Plugins.rig_skin._pins;
+    Plugins.rig_skin._pins = [];
+    pins.forEach(function (fn) { fn(); });
+};
+
 // Floating windows ride the host's plugin window API when it exists
 // (OpenWebRX+ after 1.2.123, Plugins.addWindow), and the skin's own
 // floating divs otherwise.
@@ -4671,6 +4784,12 @@ Plugins.rig_skin.bannerButton = function (o) {
         .html(o.svg + '<br/>' + o.label)
         .attr('title', o.title)
         .on('click', o.onClick);
+    if (o.onContext) {
+        $btn.on('contextmenu', function (e) {
+            e.preventDefault();
+            o.onContext();
+        });
+    }
     var $after = $(o.after);
     if ($after.length) $after.after($btn);
     else $('.openwebrx-main-buttons').append($btn);
@@ -5266,6 +5385,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
         }
         return t > 0 && t <= 1 ? t : null;
     }
+    Plugins.rig_skin._squelchT = squelchT;
 
     // the SQL marker is draggable: grab it on any face and the squelch
     // slider follows, so the threshold is set right on the instrument
@@ -5594,9 +5714,9 @@ Plugins.rig_skin.createMeter = function ($freq) {
             if (current >= peak) {
                 peak = current;
                 peakT = t;
-            } else if (t - peakT > 1000) {
-                // peak-hold expired, let the peak segment fall
-                peak = Math.max(current, peak - dt * 0.0005);
+            } else if (t - peakT > 2500) {
+                // peak-hold expired, let the peak fall slowly (about 4 s full scale)
+                peak = Math.max(current, peak - dt * 0.00025);
             }
         }
         lastT = t;
