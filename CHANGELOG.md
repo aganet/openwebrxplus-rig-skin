@@ -2,13 +2,10 @@
 
 ## 0.10.9 (2026-09-10)
 
-- Fix for the new OpenWebRX+ plugin windows. OpenWebRX+ renamed the
-  window API from Plugin to Plugins on September 9, after 0.10.8 was
-  built. 0.10.8 did not recognize the new name and quietly kept drawing
-  its own windows on the new OpenWebRX+. 0.10.9 looks for the new name,
-  so the DX cluster, the satellite map and the watch windows open in
-  OpenWebRX+ windows as intended. Older OpenWebRX+ versions are not
-  affected either way.
+- Follows the latest change in the new OpenWebRX+ plugin windows. On the
+  coming OpenWebRX+ release the DX cluster, the satellite map and the
+  watch windows open in OpenWebRX+ windows; 0.10.8 missed that change.
+  On older OpenWebRX+ versions nothing changes.
 
 ## 0.10.8 (2026-09-09)
 
