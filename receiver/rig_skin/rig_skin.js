@@ -271,11 +271,23 @@ Plugins.rig_skin.createDxWindow = function () {
             winW = frame.width() || winW;
             listH = Math.max(120, frame.height() - Math.round((winW - 32) / 2) - 96);
         } else {
-            winW = Math.min(Math.max(winW, 340), 1100);
-            listH = Math.min(Math.max(listH, 120), 800);
+            // never larger than the screen: the window has 16 px of padding
+            // around a map half the width tall, the list, and about 96 px of
+            // header, foot and padding. If even the map is too tall for the
+            // screen, the width gives way.
+            var OVER = 96, MIN_LIST = 120;
+            var availH = window.innerHeight - 24;
+            winW = Math.min(Math.max(winW, 340), 1100, window.innerWidth - 36);
+            var mapH = Math.round((winW - 32) / 2);
+            if (mapH + MIN_LIST + OVER > availH) {
+                winW = Math.max(340, 2 * (availH - MIN_LIST - OVER) + 32);
+                mapH = Math.round((winW - 32) / 2);
+            }
+            listH = Math.min(Math.max(listH, MIN_LIST), 800, Math.max(MIN_LIST, availH - OVER - mapH));
             $win.css('width', winW + 'px');
         }
-        $list.css('max-height', listH + 'px');
+        // a fixed list height keeps the window's size steady as spots arrive
+        $list.css({ 'max-height': listH + 'px', 'min-height': listH + 'px' });
         if (!open) return;            // the canvases are allocated on first open
         sizeCanvas(winW - 32);        // panel + lcd padding
         // the activity chart fills the same box as the map + a slice of
@@ -284,23 +296,32 @@ Plugins.rig_skin.createDxWindow = function () {
     }
     applySize();
 
-    // corner grip resizes the window (a host window resizes itself)
+    // resize from the corner grip or any edge (a host window resizes itself)
+    function saveGeometry() {
+        if (typeof LS === 'undefined') return;
+        LS.save('rig_dx_size', JSON.stringify({ w: winW, h: listH }));
+        var o = $win.position();
+        LS.save('rig_dx_pos', JSON.stringify({ left: o.left, top: o.top }));
+    }
     var sizeW0, sizeH0;
-    if (!frame.hosted) Plugins.rig_skin.drag($grip, {
-        stop: true,
-        start: function () { sizeW0 = winW; sizeH0 = listH; },
-        move: function (dx, dy) {
-            winW = sizeW0 + dx;
-            listH = sizeH0 + dy;
-            applySize();
-            render();
-        },
-        end: function () {
-            if (typeof LS !== 'undefined') {
-                LS.save('rig_dx_size', JSON.stringify({ w: winW, h: listH }));
-            }
-        }
-    });
+    if (!frame.hosted) {
+        Plugins.rig_skin.drag($grip, {
+            stop: true,
+            start: function () { sizeW0 = winW; sizeH0 = listH; },
+            move: function (dx, dy) {
+                winW = sizeW0 + dx;
+                listH = sizeH0 + dy;
+                applySize();
+                render();
+            },
+            end: saveGeometry
+        });
+        Plugins.rig_skin.edgeResize($win, {
+            get: function () { return { w: winW, h: listH }; },
+            set: function (w, h) { winW = w; listH = h; applySize(); render(); },
+            end: saveGeometry
+        });
+    }
 
     // restore position, kept inside the viewport
     try {
@@ -316,6 +337,7 @@ Plugins.rig_skin.createDxWindow = function () {
     // drag by the header (a host window drags itself)
     var dragOx, dragOy;
     if (!frame.hosted) Plugins.rig_skin.drag($hdr, {
+        stop: true,
         skip: '.owrx-rig-dx-chip, .owrx-rig-dx-close',
         start: function () {
             var off = $win.offset();
@@ -1047,6 +1069,7 @@ Plugins.rig_skin.createDxWindow = function () {
         $btn.toggleClass('highlighted', on);
         if (on) {
             applySize();
+            if (!frame.hosted) Plugins.rig_skin.keepOnScreen($win);
             ensureLand();
             loadCache();
             backlog();
@@ -1179,33 +1202,49 @@ Plugins.rig_skin.createSatWindow = function () {
             winW = frame.width() || winW;
             listH = Math.max(60, frame.height() - Math.round((winW - 32) / 2) - 96);
         } else {
-            winW = Math.min(Math.max(winW, 340), 1100);
-            listH = Math.min(Math.max(listH, 60), 600);
+            var OVER = 96, MIN_LIST = 60;
+            var availH = window.innerHeight - 24;
+            winW = Math.min(Math.max(winW, 340), 1100, window.innerWidth - 36);
+            var mapH = Math.round((winW - 32) / 2);
+            if (mapH + MIN_LIST + OVER > availH) {
+                winW = Math.max(340, 2 * (availH - MIN_LIST - OVER) + 32);
+                mapH = Math.round((winW - 32) / 2);
+            }
+            listH = Math.min(Math.max(listH, MIN_LIST), 600, Math.max(MIN_LIST, availH - OVER - mapH));
             $win.css('width', winW + 'px');
         }
-        $plist.css('max-height', listH + 'px');
+        $plist.css({ 'max-height': listH + 'px', 'min-height': listH + 'px' });
         if (!open) return;       // the canvas is allocated on first open
         sizeCanvas(winW - 32);   // panel + lcd padding
     }
     applySize();
 
-    // corner grip resizes the window (a host window resizes itself)
+    // resize from the corner grip or any edge (a host window resizes itself)
+    function saveGeometry() {
+        if (typeof LS === 'undefined') return;
+        LS.save('rig_satwin_size', JSON.stringify({ w: winW, h: listH }));
+        var o = $win.position();
+        LS.save('rig_satwin_pos', JSON.stringify({ left: o.left, top: o.top }));
+    }
     var sizeW0, sizeH0;
-    if (!frame.hosted) Plugins.rig_skin.drag($grip, {
-        stop: true,
-        start: function () { sizeW0 = winW; sizeH0 = listH; },
-        move: function (dx, dy) {
-            winW = sizeW0 + dx;
-            listH = sizeH0 + dy;
-            applySize();
-            render();
-        },
-        end: function () {
-            if (typeof LS !== 'undefined') {
-                LS.save('rig_satwin_size', JSON.stringify({ w: winW, h: listH }));
-            }
-        }
-    });
+    if (!frame.hosted) {
+        Plugins.rig_skin.drag($grip, {
+            stop: true,
+            start: function () { sizeW0 = winW; sizeH0 = listH; },
+            move: function (dx, dy) {
+                winW = sizeW0 + dx;
+                listH = sizeH0 + dy;
+                applySize();
+                render();
+            },
+            end: saveGeometry
+        });
+        Plugins.rig_skin.edgeResize($win, {
+            get: function () { return { w: winW, h: listH }; },
+            set: function (w, h) { winW = w; listH = h; applySize(); render(); },
+            end: saveGeometry
+        });
+    }
 
     function px(lat, lon) {
         return [(lon + 180) / 360 * MW, (90 - lat) / 180 * MH];
@@ -1365,6 +1404,7 @@ Plugins.rig_skin.createSatWindow = function () {
     // drag by the header (a host window drags itself)
     var dragOx, dragOy;
     if (!frame.hosted) Plugins.rig_skin.drag($hdr, {
+        stop: true,
         skip: '.owrx-rig-dx-close',
         start: function () {
             var off = $win.offset();
@@ -1449,6 +1489,7 @@ Plugins.rig_skin.createSatWindow = function () {
         $btn.toggleClass('highlighted', on);
         if (on) {
             applySize();
+            if (!frame.hosted) Plugins.rig_skin.keepOnScreen($win);
             ensureLand();
             ensureOrbits();
             refresh();
@@ -4701,7 +4742,10 @@ Plugins.rig_skin.frame = function (o) {
     var $host = $(host).addClass('owrx-rig-hostwin'), $body = $host.find('.openwebrx-plugin-body');
     // a fresh host window has no size of its own; without one the canvas
     // inside would be sized from a body that is sized by the canvas
-    if (!host.style.width && o.width) $host.css({ width: o.width + 'px', height: o.height + 'px' });
+    if (!host.style.width && o.width) {
+        $host.css({ width: Math.min(o.width, window.innerWidth - 20) + 'px',
+            height: Math.min(o.height, window.innerHeight - 40) + 'px' });
+    }
     $body.empty().append($el.addClass('owrx-rig-hosted'));
     var closeFns = [], resizeFns = [], queued = false, placed = false;
     // the host hides on click and on touchend; a touchend that hides the
@@ -4766,6 +4810,63 @@ Plugins.rig_skin.bannerButton = function (o) {
     return $btn;
 };
 
+// Resize one of the skin's own windows from any edge or corner: within
+// 8 px of an edge the pointer becomes a resize cursor and a drag changes
+// the size. The left and top edges keep the opposite edge in place. Host
+// windows are not touched, they resize themselves.
+Plugins.rig_skin.edgeResize = function ($win, o) {
+    var EDGE = 8;
+    var el = $win[0];
+    function edges(e) {
+        var r = el.getBoundingClientRect();
+        var t = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0] : e;
+        var x = t.clientX - r.left, y = t.clientY - r.top;
+        return { l: x < EDGE, r: x > r.width - EDGE, t: y < EDGE, b: y > r.height - EDGE };
+    }
+    function cursor(ed) {
+        if ((ed.l && ed.t) || (ed.r && ed.b)) return 'nwse-resize';
+        if ((ed.r && ed.t) || (ed.l && ed.b)) return 'nesw-resize';
+        if (ed.l || ed.r) return 'ew-resize';
+        if (ed.t || ed.b) return 'ns-resize';
+        return '';
+    }
+    var shown = '';
+    $win.on('mousemove', function (e) {
+        var c = cursor(edges(e));
+        if (c !== shown) { shown = c; el.style.cursor = c; }
+    });
+    var ed, r0, s0;
+    Plugins.rig_skin.drag($win, {
+        start: function (e) {
+            ed = edges(e);
+            if (!cursor(ed)) return false;
+            r0 = el.getBoundingClientRect();
+            s0 = o.get();
+        },
+        move: function (dx, dy) {
+            var w = s0.w, h = s0.h;
+            if (ed.r) w = s0.w + dx;
+            if (ed.l) w = s0.w - dx;
+            if (ed.b) h = s0.h + dy;
+            if (ed.t) h = s0.h - dy;
+            o.set(w, h);
+            var r = el.getBoundingClientRect();
+            if (ed.l) $win.css('left', (r0.right - r.width) + 'px');
+            if (ed.t) $win.css('top', (r0.bottom - r.height) + 'px');
+        },
+        end: function () { o.end(); }
+    });
+};
+
+// keep one of the skin's own windows inside the viewport after it was
+// sized or restored, so its edges and grip stay reachable
+Plugins.rig_skin.keepOnScreen = function ($win) {
+    var r = $win[0].getBoundingClientRect();
+    var left = Math.max(0, Math.min(r.left, window.innerWidth - r.width - 4));
+    var top = Math.max(0, Math.min(r.top, window.innerHeight - r.height - 4));
+    if (left !== r.left || top !== r.top) $win.css({ left: left + 'px', top: top + 'px' });
+};
+
 // Drag helper for the floating windows, the keypad and the watch
 // windows: the document handlers exist only between press and release,
 // so an idle page dispatches no pointer events through the skin
@@ -4779,14 +4880,20 @@ Plugins.rig_skin.drag = function ($handle, o) {
     $handle.on('mousedown touchstart', function (e) {
         if (o.skip && $(e.target).is(o.skip)) return;
         var p0 = point(e);
-        if (o.start) o.start(e);
+        if (o.start && o.start(e) === false) return;
         e.preventDefault();
         if (o.stop) e.stopPropagation();
+        // a transparent shield over the page for the duration: the pointer
+        // crosses the waterfall and other canvases, whose own handlers
+        // would otherwise take the moves
+        var $shield = $('<div>').addClass('owrx-rig-drag-shield')
+            .css('cursor', getComputedStyle(e.target).cursor).appendTo('body');
         $(document).on('mousemove' + ns + ' touchmove' + ns, function (ev) {
             var p = point(ev);
             o.move(p[0] - p0[0], p[1] - p0[1]);
-        }).on('mouseup' + ns + ' touchend' + ns, function () {
+        }).on('mouseup' + ns + ' touchend' + ns + ' touchcancel' + ns, function () {
             $(document).off(ns);
+            $shield.remove();
             if (o.end) o.end();
         });
     });

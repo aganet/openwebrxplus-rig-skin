@@ -2098,3 +2098,10 @@ body.theme-rig .openwebrx-plugin-body {
 body.theme-rig .owrx-rig-watch.parked {
     display: none;
 }
+
+/* full-page shield while one of the skin's drags runs */
+.owrx-rig-drag-shield {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+}
