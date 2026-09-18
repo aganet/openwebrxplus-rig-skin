@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.10 (2026-09-18)
+
+- Priority watch. With the squelch on and the dial sitting on silence,
+  a watch window that hears something takes the audio by itself, like a
+  priority channel on a rig; when it has been quiet for three seconds
+  the receiver goes back where it was. Several active watches: the one
+  heard last wins. Turn the dial and it lets go. Squelch off, nothing
+  happens.
+- Park the watches. Right-click WATCH hides every watch window at once
+  and remembers them; the next click on WATCH brings them all back.
+- The DX and satellite windows resize from any edge or corner, not only
+  the bottom-right grip. The left and top edges keep the opposite edge
+  in place.
+- The needle's peak hold is slower: it holds for 2.5 seconds and falls
+  over about 4.
+- Fix: dragging or resizing a window across the waterfall lost the
+  pointer to the waterfall after the first step. The windows now follow
+  the mouse all the way.
+- Fix: the live DX spots on the bookmark ribbon and the band scope only
+  started after the DX window had been opened once, since 0.10.7. They
+  start with the rig face again, as in 0.10.6.
+- A narrow CW watch now counts a signal one FFT bin off the dial as its
+  own, so its activity light and the priority watch see it.
+
 ## 0.10.9 (2026-09-10)
 
 - Follows the latest change in the new OpenWebRX+ plugin windows. On the

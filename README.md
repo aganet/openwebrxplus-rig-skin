@@ -189,8 +189,8 @@ track and footprint. Click a bird to see its path. Click it again to
 tune the downlink. Under the map is the pass list for the next 24
 hours: when, how long, how high, and the frequency. A pass in progress
 glows green. Click a row to tune. The HAM and WX chips show or hide the
-amateur and weather birds. Drag the window by its header, resize it by
-the corner. It remembers where you left it.
+amateur and weather birds. Drag the window by its header, resize it
+from any edge or corner. It remembers where you left it.
 
 ![satellite tracking](docs/screenshot-satwin.png)
 
@@ -246,7 +246,7 @@ of HF, or everything. The ACT chip switches to a band-activity chart:
 spots per band from 160 m up through VHF, the band you are on
 highlighted, with a trend line so you can see which bands are waking up.
 Click a band in the chart to jump there. The window can be dragged
-anywhere and resized by its corner grip, and it remembers its size,
+anywhere and resized from any edge or corner, and it remembers its size,
 position and filter.
 
 Spots stream in live from the HolyCluster network, with DXSummit as the
@@ -269,7 +269,14 @@ when a signal is there, so you see activity without listening. Click a
 window to listen to it: the receiver tunes over and the window turns
 green. Click the speaker to go back where you were. Type or scroll the
 frequency to move a watch. Drag them anywhere; they stay where you put
-them.
+them. Right-click WATCH to park them all out of sight; the next click
+on WATCH brings them back.
+
+With the squelch on, the watches also act as priority channels. When
+the dial sits on silence and a watch lights up, the receiver tunes to
+it by itself, and three seconds after it goes quiet it returns to where
+you were. If several are active, the one heard last wins; turn the dial
+and it lets go. With the squelch off nothing happens on its own.
 
 They only cost the small waterfall, nothing on the server, and only the
 one you are listening to uses the receiver. On the stock themes they
