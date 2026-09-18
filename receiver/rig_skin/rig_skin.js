@@ -1744,7 +1744,8 @@ Plugins.rig_skin.createWatch = function () {
         }
         $(w.canvas).on('dblclick', editNote);
         $note.on('click', listen).on('dblclick', editNote);
-        w.frame = Plugins.rig_skin.frame({ id: 'rig-watch-' + w.slot, title: 'WATCH ' + letter(idx), cls: 'owrx-rig-watch', width: 256, height: 150 });
+        w.frame = Plugins.rig_skin.frame({ id: 'rig-watch-' + w.slot, title: 'WATCH ' + letter(idx), cls: 'owrx-rig-watch',
+            width: 256, height: 150, left: w.left, top: w.top });
         w.$win = w.frame.$el.css({ left: w.left + 'px', top: w.top + 'px' }).append($hdr).append($lcd);
         w.frame.onClose(closeWatch);
         w.frame.setOpen(true);
@@ -4723,8 +4724,23 @@ Plugins.rig_skin.frame = function (o) {
     // a fresh host window has no size of its own; without one the canvas
     // inside would be sized from a body that is sized by the canvas
     if (!host.style.width && o.width) $host.css({ width: o.width + 'px', height: o.height + 'px' });
+    // the host centers a new window with a transform and keeps it after a
+    // drag, which shifts a restored window by half its size. Plain
+    // coordinates instead: the host's saved ones when it restored any,
+    // else the caller's spot or the screen center, saved under the host's
+    // keys so the place survives a reload without a drag.
+    if (!host.style.left) {
+        var left = typeof o.left === 'number' ? o.left : Math.max(0, Math.round((window.innerWidth - (o.width || 400)) / 2));
+        var top = typeof o.top === 'number' ? o.top : Math.max(0, Math.round((window.innerHeight - (o.height || 300)) / 2));
+        $host.css({ left: left + 'px', top: top + 'px' });
+        if (typeof LS !== 'undefined') {
+            LS.save('plugin_' + o.id + '_x', left + 'px');
+            LS.save('plugin_' + o.id + '_y', top + 'px');
+        }
+    }
+    $host.css('transform', 'none');
     $body.empty().append($el.addClass('owrx-rig-hosted'));
-    var closeFns = [], resizeFns = [], queued = false, placed = false;
+    var closeFns = [], resizeFns = [], queued = false;
     // the host hides on click and on touchend; a touchend that hides the
     // window swallows the click that would follow, so listen to both and
     // let the touch path suppress the click
@@ -4742,21 +4758,9 @@ Plugins.rig_skin.frame = function (o) {
             });
         }).observe(host);
     }
-    // the host centers a new window with a transform and keeps it after a
-    // drag, so a moved or restored window sits off by half its size; pin
-    // the window where it shows the first time and drop the transform
-    function place() {
-        if (placed) return;
-        placed = true;
-        var r = host.getBoundingClientRect();
-        $host.css({ left: r.left + 'px', top: r.top + 'px', transform: 'none' });
-    }
     return {
         hosted: true, $el: $el,
-        setOpen: function (on) {
-            Plugins.toggleWindow(o.id, !!on);
-            if (on) place();
-        },
+        setOpen: function (on) { Plugins.toggleWindow(o.id, !!on); },
         isOpen: function () { return $host.is(':visible'); },
         width: function () { return $body.innerWidth(); },
         height: function () { return $body.innerHeight(); },
