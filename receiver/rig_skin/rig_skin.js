@@ -1158,13 +1158,15 @@ Plugins.rig_skin.createSatWindow = function () {
     var $title = $('<span>').addClass('owrx-rig-dx-title').text('SAT TRACKING');
     var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
         .on('click', function () { setOpen(false); });
-    var $reload = $('<span>').addClass('owrx-rig-dx-chip').html('&#x21bb;')
+    var $reload = $('<span>').addClass('owrx-rig-dx-chip')
+        .append($('<span>').addClass('owrx-rig-spin').html('&#x21bb;'))
         .attr('title', 'Download the orbits again')
         .on('click', function () {
-            $reload.text('...');
+            if ($reload.hasClass('busy')) return;
+            $reload.addClass('busy');
             lastEnsure = Date.now();
             Plugins.rig_skin._satTrack.reload(function () {
-                $reload.html('&#x21bb;');
+                $reload.removeClass('busy');
                 refresh();
             });
         });
@@ -2856,7 +2858,8 @@ Plugins.rig_skin.createSatScreen = function () {
         function grab(query, done) {
             var ctl = new AbortController();
             var timer = setTimeout(function () { ctl.abort(); }, 15000);
-            fetch(base + query, { signal: ctl.signal })
+            // past the browser's HTTP cache, or a reload would get the old file
+            fetch(base + query, { signal: ctl.signal, cache: 'no-cache' })
                 .then(function (r) { return r.text(); })
                 .then(function (t) { parseTles(t, all); })
                 .catch(function () {})
@@ -2870,7 +2873,7 @@ Plugins.rig_skin.createSatScreen = function () {
             SATS.forEach(function (s) {
                 var ctl = new AbortController();
                 var timer = setTimeout(function () { ctl.abort(); }, 15000);
-                fetch('https://tle.ivanstanojevic.me/api/tle/' + s.id, { signal: ctl.signal })
+                fetch('https://tle.ivanstanojevic.me/api/tle/' + s.id, { signal: ctl.signal, cache: 'no-cache' })
                     .then(function (r) { return r.json(); })
                     .then(function (j) {
                         if (j.line1 && j.line2) all[s.id] = { line1: j.line1, line2: j.line2 };
@@ -2891,7 +2894,7 @@ Plugins.rig_skin.createSatScreen = function () {
                 // offline or blocked: run on the stale cache if there is one
                 if (cached && cached.tles) return cb(cached.tles);
                 $head.text('TLE download failed');
-                return;
+                return cb(null);
             }
             tleFail = false;
             var partial = Object.keys(tles).length < SATS.length;
@@ -2944,6 +2947,8 @@ Plugins.rig_skin.createSatScreen = function () {
             if (trackRecs && !tleFail) return cb();
             ensureLib(function () {
                 ensureTles(function (tles) {
+                    // nothing at all: stay not ready, the map says so and retries
+                    if (!tles) return cb();
                     trackRecs = [];
                     SATS.forEach(function (s) {
                         var tle = tles[s.id];

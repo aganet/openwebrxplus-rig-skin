@@ -2105,3 +2105,16 @@ body.theme-rig .owrx-rig-watch.parked {
     inset: 0;
     z-index: 2000;
 }
+
+/* the SAT reload chip turns while the orbits download */
+.owrx-rig-spin {
+    display: inline-block;
+}
+
+.owrx-rig-dx-chip.busy .owrx-rig-spin {
+    animation: owrx-rig-spin 1s linear infinite;
+}
+
+@keyframes owrx-rig-spin {
+    to { transform: rotate(360deg); }
+}
