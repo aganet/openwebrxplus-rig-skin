@@ -1270,14 +1270,29 @@ Plugins.rig_skin.createSatWindow = function () {
             ctx.stroke();
         }
 
-        if (!Plugins.rig_skin._satTrack || !Plugins.rig_skin._satTrack.ready()) {
-            ctx.font = '9px roboto-mono, monospace';
-            ctx.fillStyle = '#5c6670';
-            ctx.fillText(Plugins.rig_skin._satTrack && Plugins.rig_skin._satTrack.failed()
-                ? 'TLE download failed, retrying...' : 'loading orbits...', 8, MH - 8);
+        // status in the middle of the map, where it cannot be missed
+        function note(text) {
+            ctx.font = 'bold 11px roboto-mono, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            var w = ctx.measureText(text).width + 24;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(MW / 2 - w / 2, MH / 2 - 12, w, 24);
+            ctx.fillStyle = '#3adb4a';
+            ctx.fillText(text, MW / 2, MH / 2);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+        }
+        var st = Plugins.rig_skin._satTrack;
+        if (!st || !st.ready()) {
+            note(st && st.failed() ? 'orbit download failed, retrying' : 'loading orbits');
             return;
         }
-        Plugins.rig_skin._satTrack.positions().forEach(function (sp) {
+        if (!cats.ham && !cats.wx) {
+            note('HAM and WX are both off');
+            return;
+        }
+        st.positions().forEach(function (sp) {
             if (!cats[sp.sat.cat]) return;
             var up = sp.el !== null && sp.el > 0;
             var sel = sp.sat.name === selected;
