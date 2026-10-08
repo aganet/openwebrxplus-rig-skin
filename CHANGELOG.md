@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.11 (2026-10-08)
+
+- Satellites: a reload chip in the SAT window header downloads the
+  orbits again; the arrow turns while it works. An orbit download that
+  came back incomplete (celestrak throttles repeat requests) is now
+  kept for 30 minutes instead of 12 hours, so the next open tries
+  again by itself. Before, a throttled download could leave three
+  birds on the map for half a day.
+- The SAT map says what is going on in its middle, where it is seen:
+  loading, download failed, or HAM and WX both switched off.
+
 ## 0.10.10 (2026-09-18)
 
 - Priority watch. With the squelch on and the dial sitting on silence,
