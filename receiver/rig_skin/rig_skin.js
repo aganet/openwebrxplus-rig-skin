@@ -1158,9 +1158,20 @@ Plugins.rig_skin.createSatWindow = function () {
     var $title = $('<span>').addClass('owrx-rig-dx-title').text('SAT TRACKING');
     var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
         .on('click', function () { setOpen(false); });
+    var $reload = $('<span>').addClass('owrx-rig-dx-chip').html('&#x21bb;')
+        .attr('title', 'Download the orbits again')
+        .on('click', function () {
+            $reload.text('...');
+            lastEnsure = Date.now();
+            Plugins.rig_skin._satTrack.reload(function () {
+                $reload.html('&#x21bb;');
+                refresh();
+            });
+        });
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr').append($title)
         .append(catChip('ham', 'HAM', 'Amateur radio satellites'))
         .append(catChip('wx', 'WX', 'Weather satellites'))
+        .append($reload)
         .append($close);
     var $tip = $('<div>').addClass('owrx-rig-dx-tip');
     var $plist = $('<table>').addClass('owrx-rig-satwin-list');
@@ -2816,8 +2827,11 @@ Plugins.rig_skin.createSatScreen = function () {
         try {
             cached = JSON.parse(localStorage.getItem('rig_sat_tles') || 'null');
         } catch (e) {}
+        // a download that missed some birds (celestrak throttling) is only
+        // good for half an hour, so the next open tries again
+        var ttl = cached && cached.partial ? 30 * 60 * 1000 : 12 * 3600 * 1000;
         if (cached && cached.tles && cached.ids === ids &&
-            Date.now() - cached.ts < 12 * 3600 * 1000) return cb(cached.tles);
+            Date.now() - cached.ts < ttl) return cb(cached.tles);
 
         var base = 'https://celestrak.org/NORAD/elements/gp.php?FORMAT=TLE&';
         var all = {};
@@ -2865,8 +2879,9 @@ Plugins.rig_skin.createSatScreen = function () {
                 return;
             }
             tleFail = false;
+            var partial = Object.keys(tles).length < SATS.length;
             try {
-                localStorage.setItem('rig_sat_tles', JSON.stringify({ ts: Date.now(), ids: ids, tles: tles }));
+                localStorage.setItem('rig_sat_tles', JSON.stringify({ ts: Date.now(), ids: ids, tles: tles, partial: partial }));
             } catch (e) {}
             cb(tles);
         }
@@ -2900,6 +2915,13 @@ Plugins.rig_skin.createSatScreen = function () {
     Plugins.rig_skin._satTrack = {
         ready: function () { return !!trackRecs; },
         failed: function () { return tleFail; },
+        // drop the cached orbits and download again
+        reload: function (cb) {
+            try { localStorage.removeItem('rig_sat_tles'); } catch (e) {}
+            trackRecs = null;
+            tleFail = false;
+            this.ensure(cb);
+        },
         ensure: function (cb) {
             // after a failed download the tracker runs on stale cached
             // orbits; keep re-ensuring so it upgrades when the source
