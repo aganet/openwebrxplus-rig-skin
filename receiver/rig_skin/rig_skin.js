@@ -2216,20 +2216,31 @@ Plugins.rig_skin.createSpotRibbon = function () {
         render();
     };
 
-    // reposition when the waterfall zooms or pans, like the bookmarks do
-    if (typeof bookmarks !== 'undefined' && bookmarks && bookmarks.position) {
-        var origPosition = bookmarks.position.bind(bookmarks);
-        bookmarks.position = function () {
+    // reposition when the waterfall zooms or pans, like the bookmarks do.
+    // The host creates its bookmark bar after the plugins have started,
+    // so the hook goes on the class, not on an instance.
+    if (typeof BookmarkBar !== 'undefined' && BookmarkBar.prototype.position) {
+        var origPosition = BookmarkBar.prototype.position;
+        BookmarkBar.prototype.position = function () {
             var res = origPosition.apply(this, arguments);
             render();
             return res;
         };
     }
 
-    // fresh spots and aging, on a relaxed clock
+    // a moved receiver window (profile change) redraws at once; fresh
+    // spots and aging ride a relaxed clock
+    var lastCenter = null, ticks = 0;
     setInterval(function () {
-        if (rigActive()) render();
-    }, 10000);
+        if (!rigActive()) return;
+        var center = typeof center_freq !== 'undefined' ? center_freq : null;
+        if (center !== lastCenter) {
+            lastCenter = center;
+            render();
+        } else if (++ticks % 10 === 0) {
+            render();
+        }
+    }, 1000);
 
     setTimeout(Plugins.rig_skin._syncDxFeed, 0);
 };
