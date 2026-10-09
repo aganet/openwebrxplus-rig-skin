@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.12 (2026-10-09)
+
+- Fix: the DX callsign chips on the bookmark ribbon follow zoom, pan
+  and profile changes again. They were only redrawn every ten seconds,
+  so after a band change the old callsigns stayed and on zoom the chips
+  stood still while the bookmarks moved. The hook that keeps them in
+  step with the bookmarks never took hold on recent OpenWebRX+, which
+  creates its bookmark bar after the plugins start.
+
 ## 0.10.11 (2026-10-08)
 
 - Satellites: a reload chip in the SAT window header downloads the
