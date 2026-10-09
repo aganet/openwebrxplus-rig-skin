@@ -2133,8 +2133,17 @@ body.theme-rig.rig-phone #openwebrx-panel-status {
     display: none !important;
 }
 
+/* edge to edge on a phone: no side margins, only the top corners round,
+   and the page behind is plain dark instead of the background picture */
 body.theme-rig.rig-phone #openwebrx-panel-receiver {
     box-sizing: border-box;
+    margin: 0;
+    border-radius: 10px 10px 0 0;
+}
+
+body.theme-rig.rig-phone #webrx-canvas-background {
+    background-image: none;
+    background-color: #0e1114;
 }
 
 /* in the scrolling phone panel the version print sits after the last

@@ -3624,7 +3624,7 @@ Plugins.rig_skin.createPanelFit = function () {
         // waterfall strip; no shrinking, so keys stay thumb-sized
         if (document.body.classList.contains('rig-phone')) {
             if (Plugins.rig_skin._setWideView) Plugins.rig_skin._setWideView(false);
-            setStyle('width', (window.innerWidth - 16) + 'px', true);
+            setStyle('width', window.innerWidth + 'px', true);
             var strip = Math.min(160, Math.round(window.innerHeight * 0.2));
             setStyle('max-height', Math.max(200, availH - strip) + 'px');
             panel.classList.add('rig-overflow');
