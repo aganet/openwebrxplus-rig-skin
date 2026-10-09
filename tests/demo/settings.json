@@ -1,0 +1,30 @@
+{
+    "version": 8,
+    "receiver_name": "Rig Skin Demo",
+    "receiver_location": "Nowhere",
+    "allow_center_freq_changes": true,
+    "magic_key": "",
+    "sdrs": {
+        "fake": {
+            "name": "Fake RTL",
+            "type": "rtl_tcp",
+            "remote": "127.0.0.1:11234",
+            "profiles": {
+                "40m": {
+                    "name": "40m",
+                    "center_freq": 7100000,
+                    "samp_rate": 2400000,
+                    "start_freq": 7105000,
+                    "start_mod": "lsb"
+                },
+                "20m": {
+                    "name": "20m",
+                    "center_freq": 14150000,
+                    "samp_rate": 2400000,
+                    "start_freq": 14100000,
+                    "start_mod": "cw"
+                }
+            }
+        }
+    }
+}
