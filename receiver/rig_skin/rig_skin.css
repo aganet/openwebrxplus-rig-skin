@@ -2118,3 +2118,9 @@ body.theme-rig .owrx-rig-watch.parked {
 @keyframes owrx-rig-spin {
     to { transform: rotate(360deg); }
 }
+
+/* a newer build is on the server */
+body.theme-rig #owrx-rig-version.update {
+    color: #3adb4a;
+    cursor: pointer;
+}

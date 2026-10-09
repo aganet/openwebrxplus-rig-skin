@@ -38,21 +38,19 @@ Plugins.rig_skin.init = function () {
     }).appendTo('head');
 
 
-    // the loader fetches rig_skin.js with a plain URL that browsers
-    // (phones especially) cache across releases; revalidate it in the
-    // background at most once an hour, so the user's next reload gets
-    // a new build without clearing the cache. Nothing reloads on its
-    // own. A new build carries a new version, which in turn refreshes
-    // the CSS above.
+    // The server caches the plugin file for an hour, so a plain reload
+    // right after an update still runs the old build. On every load the
+    // skin asks the server for its own file past that cache (a cheap 304
+    // when nothing changed); a newer build refreshes the browser's copy
+    // and the version print offers a reload. Nothing reloads on its own.
     try {
-        var reval = parseInt(localStorage.getItem('rig_skin_revalidate') || '0', 10);
-        if (Date.now() - reval > 3600000) {
-            localStorage.setItem('rig_skin_revalidate', '' + Date.now());
-            ['rig_skin.js'].forEach(function (f) {
-                fetch(Plugins.rig_skin._base + f, { cache: 'no-cache', mode: 'no-cors' })
-                    .catch(function () {});
-            });
-        }
+        fetch(Plugins.rig_skin._base + 'rig_skin.js', { cache: 'no-cache' })
+            .then(function (r) { return r.text(); })
+            .then(function (t) {
+                var m = /_version = '([0-9.]+)'/.exec(t);
+                if (m && m[1] !== Plugins.rig_skin._version) Plugins.rig_skin.showUpdate(m[1]);
+            })
+            .catch(function () {});
     } catch (e) {}
 
     // Register the theme in the selector
@@ -2307,6 +2305,23 @@ Plugins.rig_skin.createVfoLine = function () {
         .attr('title', 'rig skin releases on GitHub')
         .text('rig skin ' + Plugins.rig_skin._version)
         .appendTo('#openwebrx-panel-receiver');
+    if (Plugins.rig_skin._newVersion) Plugins.rig_skin.showUpdate(Plugins.rig_skin._newVersion);
+};
+
+// a newer build is on the server: the version print says so and a
+// click reloads the page (the browser's copy is already refreshed)
+Plugins.rig_skin.showUpdate = function (v) {
+    Plugins.rig_skin._newVersion = v;
+    var $v = $('#owrx-rig-version');
+    if (!$v.length) return;
+    $v.addClass('update')
+        .text('rig skin ' + v + ' ready, click to reload')
+        .attr('title', 'You run ' + Plugins.rig_skin._version + '; ' + v + ' is on the server')
+        .attr('href', '#').removeAttr('target')
+        .off('click').on('click', function (e) {
+            e.preventDefault();
+            location.reload();
+        });
 };
 
 Plugins.rig_skin.createVfoKeys = function () {

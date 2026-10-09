@@ -373,9 +373,12 @@ unzip -o rig-skin.zip 'rig_skin/*' -d plugins/receiver/
 rm rig-skin.zip
 ```
 
-`unzip -o` overwrites the old files. Then hard-refresh the browser
-(Ctrl+Shift+R). No container restart needed when the folder is
-bind-mounted.
+`unzip -o` overwrites the old files. No container restart needed when
+the folder is bind-mounted. In the browser, open the page: the version
+print in the panel's corner turns green and says the new version is
+ready; click it and the page reloads on the new build. (The browser
+keeps the old file for up to an hour otherwise; a hard refresh,
+Ctrl+Shift+R, also works.)
 
 ### Remote (no files on the server)
 
