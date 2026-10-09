@@ -2124,3 +2124,23 @@ body.theme-rig #owrx-rig-version.update {
     color: #3adb4a;
     cursor: pointer;
 }
+
+/* Phones (touch, up to 600 px wide): the rig docks across the bottom at
+   real size and scrolls; the message log and the status bars, which the
+   panel would cover anyway, step aside */
+body.theme-rig.rig-phone #openwebrx-panel-log,
+body.theme-rig.rig-phone #openwebrx-panel-status {
+    display: none !important;
+}
+
+body.theme-rig.rig-phone #openwebrx-panel-receiver {
+    box-sizing: border-box;
+}
+
+/* in the scrolling phone panel the version print sits after the last
+   row instead of floating over the keys */
+body.theme-rig.rig-phone #owrx-rig-version {
+    position: static;
+    text-align: right;
+    padding: 4px 2px 2px;
+}

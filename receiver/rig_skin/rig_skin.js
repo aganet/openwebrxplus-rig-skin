@@ -3619,6 +3619,23 @@ Plugins.rig_skin.createPanelFit = function () {
         var availH = window.innerHeight - topEdge - 24;
         var availW = window.innerWidth - 24;
 
+        // phones: one column at real size across the screen width, and
+        // the panel scrolls when it is taller than the space below the
+        // waterfall strip; no shrinking, so keys stay thumb-sized
+        if (document.body.classList.contains('rig-phone')) {
+            if (Plugins.rig_skin._setWideView) Plugins.rig_skin._setWideView(false);
+            setStyle('width', (window.innerWidth - 16) + 'px', true);
+            var strip = Math.min(160, Math.round(window.innerHeight * 0.2));
+            setStyle('max-height', Math.max(200, availH - strip) + 'px');
+            panel.classList.add('rig-overflow');
+            lastW = 0;
+            lastZ = 1;
+            Plugins.rig_skin._lcdEpoch++;
+            if (Plugins.rig_skin._applyPanelPos) Plugins.rig_skin._applyPanelPos();
+            syncTheme();
+            return;
+        }
+
         // pick the layout: a pinned choice wins; otherwise go two-column
         // automatically when the one-column rig would have to shrink a lot
         // (with hysteresis, so the layout cannot flap at the threshold) or
@@ -3712,6 +3729,16 @@ Plugins.rig_skin.createPanelFit = function () {
             fit();
         });
     }
+
+    // phone mode: a touch screen no wider than a phone; rotating to a
+    // wide landscape or docking a keyboard switches it off again
+    var phoneQuery = window.matchMedia('(pointer: coarse) and (max-width: 600px)');
+    function syncPhone() {
+        document.body.classList.toggle('rig-phone', phoneQuery.matches);
+        schedule();
+    }
+    if (phoneQuery.addEventListener) phoneQuery.addEventListener('change', syncPhone);
+    document.body.classList.toggle('rig-phone', phoneQuery.matches);
 
     window.addEventListener('resize', schedule);
     if (typeof ResizeObserver === 'function') {
