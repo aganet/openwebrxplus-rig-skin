@@ -3625,8 +3625,9 @@ Plugins.rig_skin.createPanelFit = function () {
         if (document.body.classList.contains('rig-phone')) {
             if (Plugins.rig_skin._setWideView) Plugins.rig_skin._setWideView(false);
             setStyle('width', window.innerWidth + 'px', true);
-            var strip = Math.min(160, Math.round(window.innerHeight * 0.2));
-            setStyle('max-height', Math.max(200, availH - strip) + 'px');
+            // a thin strip of waterfall above, the rest for the rig
+            var strip = 48;
+            setStyle('max-height', Math.max(200, availH + 24 - strip) + 'px');
             panel.classList.add('rig-overflow');
             lastW = 0;
             lastZ = 1;
