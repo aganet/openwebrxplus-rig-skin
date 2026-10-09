@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.13 (2026-10-09)
+
+- Updating no longer needs a hard refresh. The server keeps the plugin
+  file cached for an hour, so a plain reload right after an update kept
+  the old build. The skin now checks its own file on every page load,
+  past that cache (a cheap 304 when nothing changed). When a newer
+  build is on the server, the version print in the panel's corner
+  turns green and says so; click it and the page reloads on the new
+  build. Nothing reloads on its own.
+
 ## 0.10.12 (2026-10-09)
 
 - Fix: the DX callsign chips on the bookmark ribbon follow zoom, pan
