@@ -54,7 +54,7 @@ unzip -o -q "$TMP/rig-skin.zip" 'rig_skin/*' -d "$TMP/stage"
 for f in rig_skin.js rig_skin.css rig_skin_map.js; do
     [ -s "$TMP/stage/rig_skin/$f" ] || { echo "bad download: $f missing from the zip"; exit 1; }
 done
-GOT=$(grep -o "_version = '[^']*'" "$TMP/stage/rig_skin/rig_skin.js" | cut -d"'" -f2)
+GOT=$(grep -o "^Plugins.rig_skin._version = '[^']*'" "$TMP/stage/rig_skin/rig_skin.js" | head -1 | cut -d"'" -f2)
 [ "$GOT" = "$V" ] || { echo "the zip contains version $GOT, expected $V; not installing"; exit 1; }
 
 mkdir -p "$DIR/rig_skin"

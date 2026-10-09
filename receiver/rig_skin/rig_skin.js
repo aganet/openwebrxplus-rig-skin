@@ -47,7 +47,9 @@ Plugins.rig_skin.init = function () {
         fetch(Plugins.rig_skin._base + 'rig_skin.js', { cache: 'no-cache' })
             .then(function (r) { return r.text(); })
             .then(function (t) {
-                var m = /_version = '([0-9.]+)'/.exec(t);
+                // \x27 is the quote: written plainly, this line would look like
+                // a second version line to update-rig-skin.sh
+                var m = /_version = \x27([0-9.]+)\x27/.exec(t);
                 if (m && m[1] !== Plugins.rig_skin._version) Plugins.rig_skin.showUpdate(m[1]);
             })
             .catch(function () {});
