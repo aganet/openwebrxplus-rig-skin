@@ -325,8 +325,6 @@ double tap on the bar goes back to the thin strip. The message log and
 the status bars step aside there. Computers and tablets keep the
 layout described above.
 
-![rig on a phone](docs/screenshot-phone.png)
-
 On a computer or tablet the rig is also movable: drag the grip bar on
 its top edge to place it anywhere, double-click (or double-tap) the bar to snap it back to its
 corner. The position is remembered per browser and only applies while
