@@ -10,7 +10,7 @@ It is a plain receiver plugin. No fork, nothing patched. It adds a "Rig"
 entry to the normal theme dropdown, so you and your visitors can switch
 between this and the stock look any time.
 
-![screenshot](docs/screenshot.png)
+<img src="docs/screenshot.png" alt="screenshot" width="75%">
 
 ## The dial and the keys
 
@@ -127,7 +127,7 @@ the RF gain in a profile, give them a new pass.
 
 Then two scopes:
 
-![the two meter faces](docs/screenshot-meters.png)
+<img src="docs/screenshot-meters.png" alt="the two meter faces" width="75%">
 
 - A band scope centered on the tuned frequency, like the center mode scope
   on a rig. Click it to tune, scroll it to step, SPAN switches the width
@@ -149,7 +149,7 @@ grows the rig leftward into two columns and "&#8594;| NARROW" folds it
 back: click it to switch and keep your choice, right-click to let the
 rig decide again.
 
-![wide layout with propagation](docs/screenshot-wide.png)
+<img src="docs/screenshot-wide.png" alt="wide layout with propagation" width="75%">
 
 ## Propagation
 
@@ -176,9 +176,9 @@ where you are); the wide layout shows them side by side:
   map, so you see at a glance which paths are open.
 - The live MUF world map from prop.kc2g.com.
 
-![band conditions](docs/screenshot-prop.png)
+<img src="docs/screenshot-prop.png" alt="band conditions" width="75%">
 
-![beacon tracker](docs/screenshot-beacons.png)
+<img src="docs/screenshot-beacons.png" alt="beacon tracker" width="75%">
 
 ## Satellites
 
@@ -192,7 +192,7 @@ glows green. Click a row to tune. The HAM and WX chips show or hide the
 amateur and weather birds. Drag the window by its header, resize it
 from any edge or corner. It remembers where you left it.
 
-![satellite tracking](docs/screenshot-satwin.png)
+<img src="docs/screenshot-satwin.png" alt="satellite tracking" width="75%">
 
 The list has the popular active birds. FM: ISS, SO-50, AO-91, PO-101,
 AO-27, AO-123 and the nine TEVEL2 satellites (they share 436.400 and
@@ -209,7 +209,7 @@ server allows it.
 Orbits come from celestrak.org, cached for half a day. All the pass
 math runs in your browser.
 
-![satellite passes](docs/screenshot-sats.png)
+<img src="docs/screenshot-sats.png" alt="satellite passes" width="75%">
 
 ## DX cluster
 
@@ -254,7 +254,7 @@ backlog source where the page can reach it. The map itself is drawn in
 your browser from public domain Natural Earth coastline data, no map
 service involved.
 
-![DX cluster](docs/screenshot-dx.png)
+<img src="docs/screenshot-dx.png" alt="DX cluster" width="75%">
 
 ## Watch windows
 
@@ -282,7 +282,7 @@ They only cost the small waterfall, nothing on the server, and only the
 one you are listening to uses the receiver. On the stock themes they
 are not there at all.
 
-![watch windows](docs/screenshot-watch.png)
+<img src="docs/screenshot-watch.png" alt="watch windows" width="75%">
 
 ## Windows on new and old OpenWebRX+
 
