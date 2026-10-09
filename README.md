@@ -312,15 +312,23 @@ resolution laptops) the sections flow into two balanced columns, LCD
 and dial on the left, modes and controls on the right, before any
 shrinking, and screens with plenty of width start wide right away; the
 layout chip in the top left corner pins one layout if you prefer
-(right-click it to go back to automatic). On phones the rig fills the
-screen width and leaves a strip of
-waterfall visible above it. Everything refits live when you resize the
-window, switch profiles or open the propagation and satellite screens.
-On very short landscape screens it stops at half size and scrolls
-instead.
+(right-click it to go back to automatic). Everything refits live when
+you resize the window, switch profiles or open the propagation and
+satellite screens. On very short landscape screens it stops at half
+size and scrolls instead.
 
-The rig is also movable: drag the grip bar on its top edge to place it
-anywhere, double-click (or double-tap) the bar to snap it back to its
+On a phone the rig docks across the bottom of the screen at full size,
+edge to edge, and scrolls for the modes and controls. A thin strip of
+waterfall stays on top. Drag the grip bar on the rig's top edge down
+for more waterfall or up for more rig; the phone remembers it, and a
+double tap on the bar goes back to the thin strip. The message log and
+the status bars step aside there. Computers and tablets keep the
+layout described above.
+
+![rig on a phone](docs/screenshot-phone.png)
+
+On a computer or tablet the rig is also movable: drag the grip bar on
+its top edge to place it anywhere, double-click (or double-tap) the bar to snap it back to its
 corner. The position is remembered per browser and only applies while
 the Rig theme is selected.
 

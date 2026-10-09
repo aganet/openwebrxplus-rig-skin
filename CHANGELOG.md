@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.14 (2026-10-09)
+
+- A proper phone layout. On a phone the rig no longer shrinks into two
+  tiny columns: it docks across the bottom of the screen at full size,
+  edge to edge, with a thin strip of waterfall on top, and scrolls for
+  the modes and controls. Drag the grip bar on the rig's top edge to
+  set how much waterfall you see; the phone remembers it, and a double
+  tap goes back to the thin strip. The message log and status bars step
+  aside on a phone, and the page behind the rig is plain dark.
+  Computers and tablets are not affected.
+
 ## 0.10.13 (2026-10-09)
 
 - Updating no longer needs a hard refresh. The server keeps the plugin
