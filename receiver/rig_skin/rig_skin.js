@@ -3625,8 +3625,9 @@ Plugins.rig_skin.createPanelFit = function () {
         if (document.body.classList.contains('rig-phone')) {
             if (Plugins.rig_skin._setWideView) Plugins.rig_skin._setWideView(false);
             setStyle('width', window.innerWidth + 'px', true);
-            // a thin strip of waterfall above, the rest for the rig
-            var strip = 48;
+            // a strip of waterfall above, the rest for the rig; the grip
+            // bar sets the strip by dragging, remembered
+            var strip = Plugins.rig_skin.phoneStrip();
             setStyle('max-height', Math.max(200, availH + 24 - strip) + 'px');
             panel.classList.add('rig-overflow');
             lastW = 0;
@@ -3753,6 +3754,20 @@ Plugins.rig_skin.createPanelFit = function () {
     setTimeout(fit, 500);
 };
 
+// on a phone, the waterfall strip kept above the docked rig, in px
+Plugins.rig_skin.PHONE_STRIP = 48;
+Plugins.rig_skin.phoneStrip = function (v) {
+    if (typeof v === 'number') {
+        Plugins.rig_skin._phoneStrip = v;
+        return v;
+    }
+    if (typeof Plugins.rig_skin._phoneStrip !== 'number') {
+        Plugins.rig_skin._phoneStrip = (typeof LS !== 'undefined' && LS.has('rig_phone_strip'))
+            ? LS.loadInt('rig_phone_strip') : Plugins.rig_skin.PHONE_STRIP;
+    }
+    return Plugins.rig_skin._phoneStrip;
+};
+
 // The rig can be picked up and arranged: drag the grip bar on the top
 // edge to move it anywhere (double-click the bar to snap back to the
 // stock corner). The position is remembered and only applies while the
@@ -3829,7 +3844,9 @@ Plugins.rig_skin.createPanelDrag = function () {
     }
 
     Plugins.rig_skin._applyPanelPos = function () {
-        var pos = $('body').hasClass('theme-rig') ? saved() : null;
+        // a phone docks the rig at the bottom, a saved spot does not apply
+        var phone = document.body.classList.contains('rig-phone');
+        var pos = $('body').hasClass('theme-rig') && !phone ? saved() : null;
         if (pos) {
             // a hidden panel measures zero; leave it alone, the resize
             // observer refits it the moment it shows again
@@ -3850,15 +3867,25 @@ Plugins.rig_skin.createPanelDrag = function () {
         grip.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
     });
 
+    // on a phone the grip moves the rig's top edge up and down instead:
+    // more rig or more waterfall
+    function phone() { return document.body.classList.contains('rig-phone'); }
     var start = null;
     grip.addEventListener('pointerdown', function (e) {
         e.preventDefault();
         try { grip.setPointerCapture(e.pointerId); } catch (err) {}
         var r = panel.getBoundingClientRect();
-        start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top, b: bounds() };
+        start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top, b: bounds(),
+            strip: Plugins.rig_skin.phoneStrip() };
     });
     grip.addEventListener('pointermove', function (e) {
         if (!start) return;
+        if (phone()) {
+            var max = Math.round(window.innerHeight * 0.6);
+            Plugins.rig_skin.phoneStrip(Math.max(0, Math.min(max, Math.round(start.strip + e.clientY - start.y))));
+            if (Plugins.rig_skin._fitPanel) Plugins.rig_skin._fitPanel();
+            return;
+        }
         place(clamp({ left: start.left + e.clientX - start.x,
                       top: start.top + e.clientY - start.y }, start.b));
     });
@@ -3869,6 +3896,21 @@ Plugins.rig_skin.createPanelDrag = function () {
         if (!start) return;
         var moved = Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 5;
         start = null;
+        if (phone()) {
+            if (moved) {
+                lastTap = 0;
+                if (typeof LS !== 'undefined') LS.save('rig_phone_strip', Plugins.rig_skin.phoneStrip());
+            } else if (e.timeStamp - lastTap < 400) {
+                // double tap: back to the thin default strip
+                lastTap = 0;
+                Plugins.rig_skin.phoneStrip(Plugins.rig_skin.PHONE_STRIP);
+                if (typeof LS !== 'undefined') LS.delete('rig_phone_strip');
+                if (Plugins.rig_skin._fitPanel) Plugins.rig_skin._fitPanel();
+            } else {
+                lastTap = e.timeStamp;
+            }
+            return;
+        }
         if (moved) {
             lastTap = 0;
             var r = panel.getBoundingClientRect();

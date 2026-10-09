@@ -2153,3 +2153,11 @@ body.theme-rig.rig-phone #owrx-rig-version {
     text-align: right;
     padding: 4px 2px 2px;
 }
+
+/* a finger-sized grip on a phone; it sets the rig's height there */
+body.theme-rig.rig-phone #owrx-rig-grip {
+    height: 22px;
+    left: 30%;
+    right: 30%;
+    cursor: ns-resize;
+}
