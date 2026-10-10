@@ -1159,7 +1159,9 @@ Plugins.rig_skin.createSatWindow = function () {
     var $close = $('<span>').addClass('owrx-rig-dx-close').html('&#x2715;')
         .on('click', function () { setOpen(false); });
     var $reload = $('<span>').addClass('owrx-rig-dx-chip')
-        .append($('<span>').addClass('owrx-rig-spin').html('&#x21bb;'))
+        .append($('<span>').addClass('owrx-rig-spin').html(
+            '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
+            '<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M12.2 1.6v2.8H9.4"/></svg>'))
         .attr('title', 'Download the orbits again')
         .on('click', function () {
             if ($reload.hasClass('busy')) return;

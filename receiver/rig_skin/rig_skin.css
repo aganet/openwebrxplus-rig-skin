@@ -2107,8 +2107,19 @@ body.theme-rig .owrx-rig-watch.parked {
 }
 
 /* the SAT reload chip turns while the orbits download */
+/* a round arrow in a square box, so it turns around its own center */
 .owrx-rig-spin {
     display: inline-block;
+    width: 11px;
+    height: 11px;
+    vertical-align: -1px;
+    transform-origin: 50% 50%;
+}
+
+.owrx-rig-spin svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .owrx-rig-dx-chip.busy .owrx-rig-spin {
