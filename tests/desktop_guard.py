@@ -11,7 +11,9 @@ FP="""(props)=>{
  const els=[...document.querySelectorAll('#openwebrx-panel-receiver, #openwebrx-panel-receiver *, [id^=owrx-rig], [class*=owrx-rig], .openwebrx-main-buttons, .openwebrx-main-buttons *')];
  const out={}, seen={};
  // live content (spot chips, beacon rotation, lists, clocks) changes by itself: skip it
- const LIVE='#owrx-rig-flash, #owrx-rig-spots, .owrx-rig-beacon-row, .owrx-rig-dx-list, .owrx-rig-sats-list, .owrx-rig-satwin-list, #openwebrx-panel-log';
+ // the digits inside the frequency readouts follow the tuned frequency too;
+ // the readout boxes themselves are still measured
+ const LIVE='#owrx-rig-flash, #owrx-rig-spots, .owrx-rig-beacon-row, .owrx-rig-dx-list, .owrx-rig-sats-list, .owrx-rig-satwin-list, #openwebrx-panel-log, .webrx-actual-freq *, .webrx-mouse-freq *, .owrx-rig-vfo-freq *';
  els.forEach((e)=>{ if(e.closest(LIVE)) return;
   const cls=[...e.classList].filter(c=>!['listening','active','act','playing','highlighted'].includes(c)).sort().join('.');
   const base=e.id?'#'+e.id:e.tagName+'.'+cls; seen[base]=(seen[base]||0)+1;
@@ -33,7 +35,10 @@ def capture():
    # a fixed receiver state, whatever the last session left: 40 m profile, LSB
    if pg.evaluate("document.querySelector('#openwebrx-sdr-profiles-listbox').value") != 'fake|40m':
     pg.select_option('#openwebrx-sdr-profiles-listbox','fake|40m'); pg.wait_for_timeout(3000)
-   pg.evaluate("UI.setModulation('lsb')"); pg.wait_for_timeout(1500)
+   pg.evaluate("UI.setModulation('lsb')"); pg.wait_for_timeout(500)
+   # and a fixed frequency: earlier tests leave the receiver tuned elsewhere,
+   # and the frequency readout's digits are measured too
+   pg.evaluate("Plugins.rig_skin.tuneTo(7105000, 'lsb')"); pg.wait_for_timeout(2500)
    ov=pg.locator('#openwebrx-autoplay-overlay')
    if ov.count() and ov.is_visible(): ov.click(); pg.wait_for_timeout(1500)
    res['%dx%d'%(w,h)]=pg.evaluate(FP, PROPS)
@@ -61,7 +66,7 @@ base=json.load(open(OUT)); bad=0
 for size in base:
  a,b2=base[size],cur.get(size,{})
  diff=[k for k in set(a)|set(b2) if not same(a.get(k), b2.get(k))]
- if diff and os.environ.get('DETAIL'):
+ if diff:
   for k in sorted(diff)[:3]: print('   ',k,'\n      base',a.get(k),'\n      now ',b2.get(k))
  print(('PASS ' if not diff else 'FAIL ')+size+' %d elements'%len(a)+('' if not diff else ', %d differ: %s'%(len(diff), sorted(diff)[:6])))
  bad+=bool(diff)

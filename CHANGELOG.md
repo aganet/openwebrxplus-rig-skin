@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.15 (2026-10-11)
+
+- Fix: Chat and Status work again on phones (issue #17, thanks
+  konstkarapan). The phone layout hid the log and status panels for
+  good, and the three rig buttons pushed Help and Status off the left
+  edge of the top bar. Now both panels start closed on a phone and open
+  on top of the rig from their buttons, and the top bar scrolls
+  sideways from Help, so every button can be reached.
+
 ## 0.10.14 (2026-10-09)
 
 - A proper phone layout. On a phone the rig no longer shrinks into two
