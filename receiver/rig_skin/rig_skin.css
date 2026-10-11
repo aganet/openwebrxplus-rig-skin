@@ -2137,11 +2137,11 @@ body.theme-rig #owrx-rig-version.update {
 }
 
 /* Phones (touch, up to 600 px wide): the rig docks across the bottom at
-   real size and scrolls; the message log and the status bars, which the
-   panel would cover anyway, step aside */
-body.theme-rig.rig-phone #openwebrx-panel-log,
-body.theme-rig.rig-phone #openwebrx-panel-status {
-    display: none !important;
+   real size and scrolls. The log and status panels start closed there
+   (rig_skin.js) and open over the rig from the Chat and Status buttons */
+body.theme-rig.rig-phone #openwebrx-panels-container-left {
+    position: relative;
+    z-index: 3;
 }
 
 /* edge to edge on a phone: no side margins, only the top corners round,
@@ -2171,4 +2171,24 @@ body.theme-rig.rig-phone #owrx-rig-grip {
     left: 30%;
     right: 30%;
     cursor: ns-resize;
+}
+
+/* the banner has three more buttons with the rig (DX, SAT, WATCH) than a
+   phone has room for: the row scrolls sideways instead of pushing Help
+   and Status off the left edge */
+body.theme-rig.rig-phone .openwebrx-main-buttons {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+/* the receiver name has no room on a phone bar (the stock page squeezes it
+   to nothing too); the receiver photo icon stays */
+body.theme-rig.rig-phone .webrx-top-bar .webrx-rx-texts {
+    display: none;
+}
+
+body.theme-rig.rig-phone .openwebrx-main-buttons::-webkit-scrollbar {
+    display: none;
 }

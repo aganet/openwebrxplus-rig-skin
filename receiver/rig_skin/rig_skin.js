@@ -3574,6 +3574,7 @@ Plugins.rig_skin.createPanelFit = function () {
     var autoWide = false;
     var lastW = 0;   // last applied fluid width, for the 1px stickiness
     var lastZ = 0;   // last applied zoom, same reason
+    var phonePanelsClosed = false;
 
     // assign only when the value differs: identical writes still invalidate
     // style and can keep the ResizeObserver loop warm
@@ -3627,6 +3628,14 @@ Plugins.rig_skin.createPanelFit = function () {
         // the panel scrolls when it is taller than the space below the
         // waterfall strip; no shrinking, so keys stay thumb-sized
         if (document.body.classList.contains('rig-phone')) {
+            // the log and status panels would sit under the docked rig:
+            // close them once per visit with the host's own switch, so
+            // the Chat and Status buttons still open them
+            if (!phonePanelsClosed && typeof toggle_panel === 'function') {
+                phonePanelsClosed = true;
+                toggle_panel('openwebrx-panel-log', false);
+                toggle_panel('openwebrx-panel-status', false);
+            }
             if (Plugins.rig_skin._setWideView) Plugins.rig_skin._setWideView(false);
             setStyle('width', window.innerWidth + 'px', true);
             // a strip of waterfall above, the rest for the rig; the grip
