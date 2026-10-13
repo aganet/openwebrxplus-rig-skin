@@ -321,8 +321,11 @@ On a phone the rig docks across the bottom of the screen at full size,
 edge to edge, and scrolls for the modes and controls. A thin strip of
 waterfall stays on top. Drag the grip bar on the rig's top edge down
 for more waterfall or up for more rig; the phone remembers it, and a
-double tap on the bar goes back to the thin strip. The message log and
-the status bars step aside there. Computers and tablets keep the
+double tap on the bar goes back to the thin strip. Chat and Status
+start closed and open on top of the rig from their buttons. The panels
+of the digital and data modes (FT8 decodes, ADS-B, DMR and so on) appear
+inside the rig, under its controls: scroll down to read them. The top
+bar scrolls sideways when its buttons do not fit. Computers and tablets keep the
 layout described above.
 
 On a computer or tablet the rig is also movable: drag the grip bar on

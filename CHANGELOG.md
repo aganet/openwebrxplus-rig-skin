@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.16 (2026-10-13)
+
+- Fix: on phones the information panels of the digital and data modes
+  (digital modes, decodes, timeslots, ADS-B, ACARS and the others) no
+  longer cover the rig (issue #18, thanks konstkarapan). In 0.10.15
+  they opened on top of it, over the mode buttons that switch them off.
+  Now they sit inside the rig, under its controls, full width: scroll
+  down to read them. They go back to OpenWebRX+'s own place when you
+  leave the Rig theme.
+- On a narrow phone the top bar buttons keep their width and the bar
+  scrolls, instead of squeezing the labels together.
+- Computers and tablets are not affected.
+
 ## 0.10.15 (2026-10-11)
 
 - Fix: Chat and Status work again on phones (issue #17, thanks
