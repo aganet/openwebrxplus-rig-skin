@@ -3576,6 +3576,33 @@ Plugins.rig_skin.createPanelFit = function () {
     var lastZ = 0;   // last applied zoom, same reason
     var phonePanelsClosed = false;
 
+    // On a phone the mode information panels (digital modes, timeslots,
+    // ADS-B and so on) would open under the docked rig, out of sight. They
+    // move into the rig's scroll, below its controls, and go back to their
+    // exact place when the phone layout or the rig theme ends.
+    var infoHolder = null, infoMoved = [];
+    function infoPanelsIn() {
+        if (infoMoved.length) return;
+        var left = document.getElementById('openwebrx-panels-container-left');
+        if (!left) return;
+        if (!infoHolder) infoHolder = $('<div>').attr('id', 'owrx-rig-phone-info')[0];
+        panel.insertBefore(infoHolder, document.getElementById('owrx-rig-version'));
+        $(left).children('.openwebrx-panel').each(function () {
+            if (this.id === 'openwebrx-panel-log' || this.id === 'openwebrx-panel-status') return;
+            infoMoved.push({ el: this, parent: left, next: this.nextSibling });
+        });
+        infoMoved.forEach(function (m) { infoHolder.appendChild(m.el); });
+    }
+    function infoPanelsOut() {
+        if (!infoMoved.length) return;
+        // last first, so every panel's original next sibling is back in place
+        for (var i = infoMoved.length - 1; i >= 0; i--) {
+            infoMoved[i].parent.insertBefore(infoMoved[i].el, infoMoved[i].next);
+        }
+        infoMoved = [];
+        if (infoHolder.parentNode) infoHolder.parentNode.removeChild(infoHolder);
+    }
+
     // assign only when the value differs: identical writes still invalidate
     // style and can keep the ResizeObserver loop warm
     function setStyle(prop, value, important) {
@@ -3596,6 +3623,7 @@ Plugins.rig_skin.createPanelFit = function () {
 
     function fit() {
         if (!$('body').hasClass('theme-rig')) {
+            infoPanelsOut();
             setStyle('zoom', '');
             setStyle('max-height', '');
             setStyle('width', stockWidth);
@@ -3631,6 +3659,7 @@ Plugins.rig_skin.createPanelFit = function () {
             // the log and status panels would sit under the docked rig:
             // close them once per visit with the host's own switch, so
             // the Chat and Status buttons still open them
+            infoPanelsIn();
             if (!phonePanelsClosed && typeof toggle_panel === 'function') {
                 phonePanelsClosed = true;
                 toggle_panel('openwebrx-panel-log', false);
@@ -3650,6 +3679,7 @@ Plugins.rig_skin.createPanelFit = function () {
             syncTheme();
             return;
         }
+        infoPanelsOut();
 
         // pick the layout: a pinned choice wins; otherwise go two-column
         // automatically when the one-column rig would have to shrink a lot

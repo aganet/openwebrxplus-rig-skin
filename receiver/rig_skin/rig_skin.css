@@ -2195,3 +2195,24 @@ body.theme-rig.rig-phone .webrx-top-bar .webrx-rx-texts {
 body.theme-rig.rig-phone .openwebrx-main-buttons::-webkit-scrollbar {
     display: none;
 }
+
+/* the buttons keep their width and the row scrolls, labels never squeeze */
+body.theme-rig.rig-phone .openwebrx-main-buttons > * {
+    flex-shrink: 0;
+}
+
+/* on a phone the mode information panels sit in the rig's scroll, under
+   its controls, full width (rig_skin.js moves them there and back) */
+body.theme-rig.rig-phone #owrx-rig-phone-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+body.theme-rig.rig-phone #owrx-rig-phone-info > .openwebrx-panel {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0;
+    box-sizing: border-box;
+}
