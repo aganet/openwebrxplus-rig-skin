@@ -2138,8 +2138,11 @@ body.theme-rig #owrx-rig-version.update {
 
 /* Phones (touch, up to 600 px wide): the rig docks across the bottom at
    real size and scrolls. The log and status panels start closed there
-   (rig_skin.js) and open over the rig from the Chat and Status buttons */
-body.theme-rig.rig-phone #openwebrx-panels-container-left {
+   (rig_skin.js) and open over the rig from the Chat and Status buttons.
+   Only those two rise above the rig: the mode information panels stay
+   under it, or they would cover the mode buttons that close them */
+body.theme-rig.rig-phone #openwebrx-panel-log,
+body.theme-rig.rig-phone #openwebrx-panel-status {
     position: relative;
     z-index: 3;
 }

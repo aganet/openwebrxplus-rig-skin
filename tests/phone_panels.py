@@ -1,5 +1,6 @@
 """Phone: the log (chat) and status panels start closed, and the Chat and
-Status buttons open them on top of the docked rig and close them again."""
+Status buttons open them on top of the docked rig and close them again.
+Mode information panels stay under the rig, so its mode buttons can be used."""
 from playwright.sync_api import sync_playwright
 fails=[]
 def check(n,ok,i=''):
@@ -29,6 +30,13 @@ with sync_playwright() as p:
   pg.screenshot(path='/tmp/rig-skin-phone-%s.png'%label.lower())
   btn.tap(); pg.wait_for_timeout(1200)
   check(label+' closes again', pg.evaluate(SHOWN,pid)=='closed', pg.evaluate(SHOWN,pid))
+ # a mode information panel (here digital modes) must not cover the rig:
+ # its mode buttons are how the panel gets closed again (issue #18)
+ pg.evaluate("toggle_panel('openwebrx-panel-digimodes', true)"); pg.wait_for_timeout(1200)
+ reach=pg.evaluate("""(()=>{const b=document.querySelector('#openwebrx-panel-receiver .openwebrx-demodulator-button'); b.scrollIntoView({block:'center'});
+  const r=b.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2); return !!(t && b.contains(t));})()""")
+ check('mode buttons stay reachable with an info panel open', reach)
+ pg.evaluate("toggle_panel('openwebrx-panel-digimodes', false)")
  check('no page errors', not errs, errs[:3])
  b.close()
 print('RESULT', 'ALL PASS' if not fails else 'FAILED: '+', '.join(fails))
