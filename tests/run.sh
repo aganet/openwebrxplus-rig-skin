@@ -9,7 +9,7 @@ PY="$DIR/.venv/bin/python"
 [ -x "$PY" ] || { echo "no tests/.venv: see the setup lines at the top of this file"; exit 1; }
 curl -s -o /dev/null -m 5 http://localhost:8073/ || { echo "no test receiver: run tests/demo/start.sh"; exit 1; }
 cd "$DIR"
-for t in smoke isolation desktop_guard feature resize satreload update_hint phone_grip phone_panels ribbon; do
+for t in smoke isolation desktop_guard feature resize satreload update_hint phone_grip phone_panels info_panels ribbon; do
     printf '%-14s ' "$t"
     "$PY" "$t.py" > "/tmp/rig-skin-test-$t.log" 2>&1
     if grep -qE "^RESULT ALL PASS|passed [0-9]+ failed 0" "/tmp/rig-skin-test-$t.log"; then
