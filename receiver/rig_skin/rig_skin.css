@@ -2216,3 +2216,13 @@ body.theme-rig.rig-phone #owrx-rig-phone-info > .openwebrx-panel {
     margin: 0;
     box-sizing: border-box;
 }
+
+/* a decode table wider than the phone (ADS-B, ACARS, packet...) scrolls
+   sideways inside its panel, header and rows together; the rows keep
+   their own up and down scroll */
+body.theme-rig.rig-phone #owrx-rig-phone-info > .openwebrx-message-panel {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #2e343b #0d1013;
+}

@@ -11,9 +11,9 @@ FP="""(props)=>{
  const els=[...document.querySelectorAll('#openwebrx-panel-receiver, #openwebrx-panel-receiver *, [id^=owrx-rig], [class*=owrx-rig], .openwebrx-main-buttons, .openwebrx-main-buttons *')];
  const out={}, seen={};
  // live content (spot chips, beacon rotation, lists, clocks) changes by itself: skip it
- // the digits inside the frequency readouts follow the tuned frequency too;
- // the readout boxes themselves are still measured
- const LIVE='#owrx-rig-flash, #owrx-rig-spots, .owrx-rig-beacon-row, .owrx-rig-dx-list, .owrx-rig-sats-list, .owrx-rig-satwin-list, #openwebrx-panel-log, .webrx-actual-freq *, .webrx-mouse-freq *, .owrx-rig-vfo-freq *';
+ // the digits inside the frequency readouts follow the tuned frequency, and
+ // the version print follows the version; the readout boxes are still measured
+ const LIVE='#owrx-rig-flash, #owrx-rig-spots, .owrx-rig-beacon-row, .owrx-rig-dx-list, .owrx-rig-sats-list, .owrx-rig-satwin-list, #openwebrx-panel-log, .webrx-actual-freq *, .webrx-mouse-freq *, .owrx-rig-vfo-freq *, #owrx-rig-version';
  els.forEach((e)=>{ if(e.closest(LIVE)) return;
   const cls=[...e.classList].filter(c=>!['listening','active','act','playing','highlighted'].includes(c)).sort().join('.');
   const base=e.id?'#'+e.id:e.tagName+'.'+cls; seen[base]=(seen[base]||0)+1;

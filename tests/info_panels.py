@@ -38,6 +38,15 @@ with sync_playwright() as p:
  both=[pg.evaluate(ONE,'openwebrx-panel-digimodes'), pg.evaluate(ONE,'openwebrx-panel-wsjt-message')]
  check('phone: two panels open together, both readable', all(x['inRig'] and x['readable'] and x['modes'] for x in both))
  pg.screenshot(path='/tmp/rig-skin-info-phone.png')
+ pg.evaluate("toggle_panel('openwebrx-panel-digimodes', false); toggle_panel('openwebrx-panel-wsjt-message', false)"); pg.wait_for_timeout(800)
+ # a decode table wider than the phone scrolls sideways to its last column
+ pg.evaluate("toggle_panel('openwebrx-panel-adsb-message', true)"); pg.wait_for_timeout(1200)
+ wide=pg.evaluate("""(()=>{const p=document.getElementById('openwebrx-panel-adsb-message'); const ths=p.querySelectorAll('thead th, thead td');
+  const tb=p.querySelector('tbody'); for(let i=0;i<6;i++){const tr=document.createElement('tr'); ths.forEach((h,c)=>{const td=document.createElement('td'); td.style.whiteSpace='nowrap'; td.textContent=c===ths.length-1?'LAST_COLUMN':'WIDE_VALUE_'+c; tr.appendChild(td);}); tb.appendChild(tr);}
+  p.scrollIntoView({block:'center'}); const r=p.getBoundingClientRect(); const last=ths[ths.length-1];
+  const before=last.getBoundingClientRect().right<=r.right+1; p.scrollLeft=99999; const q=last.getBoundingClientRect();
+  return {needsScroll: !before, reachable: q.right<=r.right+1 && q.left>=r.left-1}})()""")
+ check('phone: a too-wide decode table scrolls sideways to its last column', wide['needsScroll'] and wide['reachable'], wide)
  check('phone: no page errors', not errs, errs[:3])
  # a computer: the panels stay in OpenWebRX+'s own place
  errs.clear(); pd=b.new_context(viewport={'width':1400,'height':900}).new_page(); pd.on('pageerror', lambda e: errs.append(str(e)))
