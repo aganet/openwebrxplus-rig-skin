@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.17 (2026-10-14)
+
+- On a phone, a decode table wider than the screen (ADS-B, ACARS,
+  packet and the others) scrolls left and right inside its panel,
+  header and rows together, so the last columns can be reached.
+  Requested in issue #18, thanks konstkarapan. Computers and tablets
+  are not affected.
+
 ## 0.10.16 (2026-10-13)
 
 - Fix: on phones the information panels of the digital and data modes

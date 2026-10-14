@@ -324,7 +324,8 @@ for more waterfall or up for more rig; the phone remembers it, and a
 double tap on the bar goes back to the thin strip. Chat and Status
 start closed and open on top of the rig from their buttons. The panels
 of the digital and data modes (FT8 decodes, ADS-B, DMR and so on) appear
-inside the rig, under its controls: scroll down to read them. The top
+inside the rig, under its controls: scroll down to read them, and swipe
+a table sideways when it is wider than the screen. The top
 bar scrolls sideways when its buttons do not fit. Computers and tablets keep the
 layout described above.
 
