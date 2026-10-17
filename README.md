@@ -199,15 +199,22 @@ AO-27, AO-123 and the nine TEVEL2 satellites (they share 436.400 and
 take turns). Linear: RS-44, AO-7 with its 10 m downlink you can hear on
 an HF antenna, FO-29, AO-73, JO-97, XW-3 and MO-122. Digital: the
 IO-117 digipeater and NO-44 for APRS. Weather: Meteor M2-3 and M2-4
-with LRPT images, NOAA 15 and 19 with APT.
+with LRPT images. NOAA 15 and 19 are gone from the list: NOAA switched
+them off in August 2025.
 
 The SAT key on the LCD still has the compact pass list, with the MIN
 control to hide passes too low to be useful. Click the frequency and
 the receiver jumps there with the right mode, across bands if the
 server allows it.
 
-Orbits come from celestrak.org, cached for half a day. All the pass
-math runs in your browser.
+Orbits come from celestrak.org. celestrak blocks addresses that ask
+too often, so the skin asks at most once every 2 hours, three small
+files one after another, and waits longer if celestrak says no. Until
+a download comes through, the skin uses the orbits it already has, or
+a set built into each release, so the map is never empty. The bottom
+line of the SAT window shows where the orbits come from and how old
+they are. The arrow next to HAM and WX asks for an update, at the same
+polite pace. All the pass math runs in your browser.
 
 <img src="docs/screenshot-sats.png" alt="satellite passes" width="75%">
 
@@ -542,7 +549,7 @@ Data and libraries the plugin uses:
 - Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
 - Solar data: NOAA SWPC (public domain)
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
-- TLE data: [celestrak.org](https://celestrak.org/)
+- TLE data: [celestrak.org](https://celestrak.org/); the built-in set in each release comes from [SatNOGS](https://db.satnogs.org/) (CC BY-SA 4.0)
 - DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](http://www.dxsummit.fi/)
 - Country flags: DXCC entity list from [k0swe/dxcc-json](https://github.com/k0swe/dxcc-json) (Apache 2.0), bundled
 - Coastlines: [Natural Earth](https://www.naturalearthdata.com/) (public domain), bundled

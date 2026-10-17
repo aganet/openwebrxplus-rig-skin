@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.18 (2026-10-18)
+
+- Satellites: the map no longer comes up empty or short. celestrak
+  blocks addresses that download too often, and the skin made that
+  worse: on a failed file it asked for up to 28 satellites at once,
+  retried every half hour, and replaced its full list with whatever a
+  short download brought, so satellites disappeared.
+- Now an update is three small files, one after another, at most once
+  every 2 hours, and longer after a refusal. Every satellite keeps its
+  newest orbit, from the download, from what the browser already had,
+  or from a set built into each release, so the map shows all of them
+  right away, even while celestrak blocks. The SAT window's bottom line
+  shows where the orbits come from and how old they are; the update
+  arrow keeps to the same pace and says when the next update is.
+- NOAA 15 and NOAA 19 are removed: NOAA switched them off in August
+  2025, and their 137 MHz signals are gone.
+
 ## 0.10.17 (2026-10-14)
 
 - On a phone, a decode table wider than the screen (ADS-B, ACARS,
