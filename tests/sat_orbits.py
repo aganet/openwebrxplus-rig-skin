@@ -38,6 +38,19 @@ with sync_playwright() as p:
  ov=pg.locator('#openwebrx-autoplay-overlay')
  if ov.count() and ov.is_visible(): ov.click(); pg.wait_for_timeout(800)
  check('no NOAA 15 or 19 in the list', '25338' not in IDS and '33591' not in IDS and len(IDS)==26, len(IDS))
+ # 0. a blocked celestrak hangs rather than refusing: the map must not wait for it
+ hp=ctx.new_page(); hp.add_init_script("""localStorage.removeItem('rig_sat_tles');
+  const of=window.fetch; window.fetch=function(u,o){ if(String(u).includes('celestrak')) return new Promise((res,rej)=>{ if(o&&o.signal) o.signal.addEventListener('abort',()=>rej(new DOMException('aborted','AbortError'))); }); return of.apply(this,arguments); };""")
+ hp.goto('http://localhost:8073/',wait_until='networkidle'); hp.wait_for_timeout(1000)
+ hp.select_option('#openwebrx-themes-listbox','rig'); hp.wait_for_timeout(1500)
+ hov=hp.locator('#openwebrx-autoplay-overlay')
+ if hov.count() and hov.is_visible(): hov.click(); hp.wait_for_timeout(500)
+ t0=time.time(); hp.click('#owrx-rig-sat-button'); n=0
+ while time.time()-t0<8:
+  hp.wait_for_timeout(250); n=hp.evaluate("Plugins.rig_skin._satTrack.positions().length")
+  if n: break
+ check('celestrak hanging: every bird on the map within seconds', n==26, (n, round(time.time()-t0,1)))
+ hp.close()
  # 1. blocked, nothing stored: the built-in set
  pg.click('#owrx-rig-sat-button')
  for _ in range(60):

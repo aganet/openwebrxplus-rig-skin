@@ -2943,6 +2943,9 @@ Plugins.rig_skin.createSatScreen = function () {
         var have = newest(newest({}, SAT_SEED.tles), st.tles);
         var due = Date.now() >= (force ? (st.tried || 0) + TLE_WAIT : tleNextTry(st));
         if (!due) return cb(Object.keys(have).length ? have : null, { skipped: true });
+        // show what is at hand right away; a blocked celestrak holds each
+        // request up to 15 s, and the map must not wait for that
+        if (Object.keys(have).length) cb(have, { pending: true });
 
         var base = 'https://celestrak.org/NORAD/elements/gp.php?FORMAT=TLE&';
         var groups = ['stations', 'amateur', 'weather'];
@@ -3001,13 +3004,14 @@ Plugins.rig_skin.createSatScreen = function () {
             ensureLib(function () {
                 ensureTles(function (tles, how) {
                     if (tles) load(tles);
-                    cb(how);
+                    if (!how.pending) cb(how);
                 }, true);
             });
         },
         ensure: function (cb) {
             // the orbits are rebuilt at most every 10 minutes; the download
-            // itself decides whether it is due
+            // itself decides whether it is due. The callback can run twice:
+            // with the orbits at hand, then again after a download.
             if (trackRecs && Date.now() - loadedAt < 600000) return cb();
             ensureLib(function () {
                 ensureTles(function (tles) {
