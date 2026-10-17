@@ -2,20 +2,12 @@
 
 ## 0.10.18 (2026-10-18)
 
-- Satellites: the map no longer comes up empty or short. celestrak
-  blocks addresses that download too often, and the skin made that
-  worse: on a failed file it asked for up to 28 satellites at once,
-  retried every half hour, and replaced its full list with whatever a
-  short download brought, so satellites disappeared.
-- Now an update is three small files, one after another, at most once
-  every 2 hours, and longer after a refusal. Every satellite keeps its
-  newest orbit, from the download, from what the browser already had,
-  or from a set built into each release, so the map shows all of them
-  right away, even while celestrak blocks. The SAT window's bottom line
-  shows where the orbits come from and how old they are; the update
-  arrow keeps to the same pace and says when the next update is.
-- NOAA 15 and NOAA 19 are removed: NOAA switched them off in August
-  2025, and their 137 MHz signals are gone.
+- Satellites load straight away. The map shows all satellites at once,
+  also when the orbit download is slow or fails; the skin keeps the
+  orbits it has and ships a fresh set with each release.
+- Orbit updates are lighter: a few small downloads, at most every two
+  hours. The bottom line of the SAT window shows how old the orbits are.
+- NOAA 15 and NOAA 19 are removed: they were switched off in 2025.
 
 ## 0.10.17 (2026-10-14)
 

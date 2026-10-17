@@ -199,19 +199,18 @@ AO-27, AO-123 and the nine TEVEL2 satellites (they share 436.400 and
 take turns). Linear: RS-44, AO-7 with its 10 m downlink you can hear on
 an HF antenna, FO-29, AO-73, JO-97, XW-3 and MO-122. Digital: the
 IO-117 digipeater and NO-44 for APRS. Weather: Meteor M2-3 and M2-4
-with LRPT images. NOAA 15 and 19 are gone from the list: NOAA switched
-them off in August 2025.
+with LRPT images. NOAA 15 and 19 were switched off in 2025 and are no
+longer listed.
 
 The SAT key on the LCD still has the compact pass list, with the MIN
 control to hide passes too low to be useful. Click the frequency and
 the receiver jumps there with the right mode, across bands if the
 server allows it.
 
-Orbits come from celestrak.org. celestrak blocks addresses that ask
-too often, so the skin asks at most once every 2 hours, three small
-files one after another, and waits longer if celestrak says no. Until
-a download comes through, the skin uses the orbits it already has, or
-a set built into each release, so the map is never empty. The bottom
+Orbits come from celestrak.org, a few small downloads at most once
+every two hours. Until a download comes through, the skin uses the
+orbits it already has, or a set built into each release, so the map is
+never empty. The bottom
 line of the SAT window shows where the orbits come from and how old
 they are. The arrow next to HAM and WX asks for an update, at the same
 polite pace. All the pass math runs in your browser.
