@@ -207,13 +207,12 @@ control to hide passes too low to be useful. Click the frequency and
 the receiver jumps there with the right mode, across bands if the
 server allows it.
 
-Orbits come from celestrak.org, a few small downloads at most once
-every two hours. Until a download comes through, the skin uses the
-orbits it already has, or a set built into each release, so the map is
-never empty. The bottom
-line of the SAT window shows where the orbits come from and how old
-they are. The arrow next to HAM and WX asks for an update, at the same
-polite pace. All the pass math runs in your browser.
+Orbits come from tle.ivanstanojevic.me, and from celestrak.org for any
+satellite it misses. Opening the SAT window updates them when they are
+more than an hour old. The arrow next to HAM and WX updates them at
+once. Until the first download, the map uses a set built into each
+release, so it is never empty. The bottom line of the SAT window says
+when the orbits were updated. All the pass math runs in your browser.
 
 <img src="docs/screenshot-sats.png" alt="satellite passes" width="75%">
 
@@ -548,7 +547,7 @@ Data and libraries the plugin uses:
 - Orbit propagation: [satellite.js](https://github.com/shashwatak/satellite-js) (MIT), loaded on demand
 - Solar data: NOAA SWPC (public domain)
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
-- TLE data: [celestrak.org](https://celestrak.org/); the built-in set in each release comes from [SatNOGS](https://db.satnogs.org/) (CC BY-SA 4.0)
+- TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/) and [celestrak.org](https://celestrak.org/); the built-in set in each release comes from [SatNOGS](https://db.satnogs.org/) (CC BY-SA 4.0)
 - DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](http://www.dxsummit.fi/)
 - Country flags: DXCC entity list from [k0swe/dxcc-json](https://github.com/k0swe/dxcc-json) (Apache 2.0), bundled
 - Coastlines: [Natural Earth](https://www.naturalearthdata.com/) (public domain), bundled

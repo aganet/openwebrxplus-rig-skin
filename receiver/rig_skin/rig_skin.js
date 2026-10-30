@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.18';
+Plugins.rig_skin._version = '0.10.19';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -1162,18 +1162,19 @@ Plugins.rig_skin.createSatWindow = function () {
         .append($('<span>').addClass('owrx-rig-spin').html(
             '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">' +
             '<path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M12.2 1.6v2.8H9.4"/></svg>'))
-        .attr('title', 'Update the orbits (at most every 2 hours, celestrak asks for that)')
+        .attr('title', 'Update the orbits')
         .on('click', function () {
             if ($reload.hasClass('busy')) return;
             $reload.addClass('busy');
             lastEnsure = Date.now();
             Plugins.rig_skin._satTrack.reload(function (how) {
                 $reload.removeClass('busy');
-                if (how && how.skipped) {
-                    Plugins.rig_skin.flash('next update after ' + hhmm(Plugins.rig_skin._satTrack.info().next));
-                }
+                if (how.busy) Plugins.rig_skin.flash('the orbits are updating');
+                else Plugins.rig_skin.flash(how.ok ? 'orbits updated' : 'orbit update failed');
+                showAge();
                 refresh();
             });
+            showAge();
         });
     var $hdr = $('<div>').addClass('owrx-rig-dx-hdr').append($title)
         .append(catChip('ham', 'HAM', 'Amateur radio satellites'))
@@ -1191,15 +1192,16 @@ Plugins.rig_skin.createSatWindow = function () {
         var d = new Date(t);
         return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
     }
-    // where the orbits come from and how old they are
+    // what the orbit update is doing, never an old date
     function showAge() {
         var st = Plugins.rig_skin._satTrack;
         if (!st || !st.info) return;
         var i = st.info();
-        $age.text(i.downloaded
-            ? 'orbits: ' + new Date(i.downloaded).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-              ' ' + hhmm(i.downloaded) + ' (celestrak)'
-            : 'orbits: built-in set, ' + i.seed).attr('title', 'next update after ' + hhmm(i.next));
+        var text = '';
+        if (i.busy) text = 'updating orbits';
+        else if (i.failed) text = 'orbit update failed';
+        else if (i.downloaded) text = 'orbits updated ' + hhmm(i.downloaded);
+        $age.text(text).attr('title', 'next update after ' + hhmm(i.next));
     }
     var $grip = $('<div>').addClass('owrx-rig-dx-grip');
     var frame = Plugins.rig_skin.frame({ id: 'rig-sat', title: 'SAT TRACKING', elId: 'owrx-rig-satwin', width: 500, height: 460 });
@@ -2826,33 +2828,33 @@ Plugins.rig_skin.createSatScreen = function () {
 
     // built-in orbits, used only when nothing newer is at hand;
     // refreshed with tools/sat_seed.py before a release
-    var SAT_SEED = { date: "2026-10-17", tles: {
-        7530: { line1: "1  7530U 74089B   26290.49662131 -.00000043  00000-0  20353-4 0  9999", line2: "2  7530 101.9901 305.0160 0011955 257.7301 270.9576 12.53700114375846" },
-        22825: { line1: "1 22825U 93061C   26290.15572919  .00000086  00000-0  49456-4 0  9992", line2: "2 22825  98.6750 357.4428 0009487 101.6505 258.5743 14.30967793724449" },
-        24278: { line1: "1 24278U 96046B   26290.30209476 -.00000015  00000-0  18230-4 0  9993", line2: "2 24278  98.5133 122.4205 0350488 139.3857 223.4000 13.53279596489680" },
-        25544: { line1: "1 25544U 98067A   26290.49943124  .00006695  00000-0  12995-3 0  9990", line2: "2 25544  51.6327  54.8173 0006780 275.4148  84.6066 15.48907033590718" },
-        26931: { line1: "1 26931U 01043C   26290.38712132  .00000104  00000-0  69865-4 0  9998", line2: "2 26931  67.0497 288.1962 0006115 275.5661  84.4743 14.31993346307943" },
-        27607: { line1: "1 27607U 02058C   26289.99633960  .00000932  00000-0  12723-3 0  9991", line2: "2 27607  64.5505 112.0471 0069997 239.9444 119.4708 14.83263434282527" },
-        39444: { line1: "1 39444U 13066AE  26290.49878935  .00006313  00000-0  37690-3 0  9993", line2: "2 39444  97.8437 264.7366 0036113 144.6333 215.7301 15.10941716698126" },
-        43017: { line1: "1 43017U 17073E   26289.06376079  .00008251  00000-0  34971-3 0  9991", line2: "2 43017  97.4485 153.8085 0144337 270.6936  87.7760 15.14349132483675" },
-        43678: { line1: "1 43678U 18084H   26290.52575387  .00001587  00000-0  12987-3 0  9991", line2: "2 43678  98.1144 132.1160 0013374 125.5143 234.7330 15.00819884434568" },
-        43803: { line1: "1 43803U 18099AX  26290.41761108  .00020947  00000-0  57417-3 0  9991", line2: "2 43803  97.3982 353.8953 0005432 176.3994 183.7291 15.37307169432380" },
-        44909: { line1: "1 44909U 19096E   26290.27804767  .00000013  00000-0  12511-4 0  9999", line2: "2 44909  82.5176 258.5641 0216684 218.6900 139.8510 12.79749756317961" },
-        50466: { line1: "1 50466U 21131B   26290.50605383  .00000407  00000-0  13922-3 0  9999", line2: "2 50466  98.4968  22.2262 0005275  91.6745 268.5049 14.41448651252735" },
-        53109: { line1: "1 53109U 22080E   26289.26936332 -.00000003  00000-0  00000-0 0  9995", line2: "2 53109  70.1218 256.1195 0008873 264.9822  94.9825  6.42583661 99845" },
-        57166: { line1: "1 57166U 23091A   26290.49501058 -.00000018  00000-0  11043-4 0  9994", line2: "2 57166  98.5941 342.8806 0004279 159.7585 200.3764 14.24054422171926" },
-        59051: { line1: "1 59051U 24039A   26290.50766627  .00000019  00000-0  28331-4 0  9997", line2: "2 59051  98.7186 248.3570 0007113 167.3062 192.8296 14.22440373136655" },
-        60209: { line1: "1 60209U 24125G   26290.36672003  .00185109  00000-0  83454-3 0  9998", line2: "2 60209  97.2026 151.9951 0007536 110.3712 249.8369 15.83510804128751" },
-        61781: { line1: "1 61781U 24199AY  26290.53744281  .00007881  00000-0  21754-3 0  9997", line2: "2 61781  97.2780 158.1043 0011792 223.2100 136.8220 15.37280844152710" },
-        63213: { line1: "1 63213U 25052D   26290.15223157  .00022758  00000-0  59633-3 0  9997", line2: "2 63213  97.3732 186.9780 0004298  60.3102 299.8570 15.38688912 88841" },
-        63214: { line1: "1 63214U 25052E   26290.18914134  .00024266  00000-0  64061-3 0  9990", line2: "2 63214  97.3725 186.9228 0004215  61.5407 298.6262 15.38446747 88844" },
-        63215: { line1: "1 63215U 25052F   26290.52929436  .00020725  00000-0  54801-3 0  9997", line2: "2 63215  97.3728 187.2504 0004216  62.4169 297.7504 15.38428686 88891" },
-        63217: { line1: "1 63217U 25052H   26290.15124917  .00020858  00000-0  56430-3 0  9996", line2: "2 63217  97.3697 186.3345 0004623  68.8795 291.2944 15.37717855 88815" },
-        63218: { line1: "1 63218U 25052J   26290.53072108  .00020318  00000-0  54800-3 0  9993", line2: "2 63218  97.3703 186.7575 0004386  69.8409 290.3307 15.37819659 88876" },
-        63219: { line1: "1 63219U 25052K   26290.15052011  .00022035  00000-0  59551-3 0  9999", line2: "2 63219  97.3697 186.3391 0004657  69.3241 290.8503 15.37738404 88816" },
-        63237: { line1: "1 63237U 25052AD  26290.16781115  .00020252  00000-0  58982-3 0  9990", line2: "2 63237  97.3760 185.4363 0007895  73.0433 287.1676 15.35401170 88723" },
-        63238: { line1: "1 63238U 25052AE  26290.49657329  .00017364  00000-0  51246-3 0  9992", line2: "2 63238  97.3764 185.6219 0007836  73.9942 286.2164 15.35016165 88761" },
-        63239: { line1: "1 63239U 25052AF  26290.17983667  .00020222  00000-0  59651-3 0  9990", line2: "2 63239  97.3758 185.2782 0008097  72.2882 287.9245 15.34998618 88715" }
+    var SAT_SEED = { date: "2026-10-30", tles: {
+        7530: { line1: "1 07530U 74089B   26302.99381697 -.00000054  00000-0 -47110-4 0  9996", line2: "2 07530 101.9888 317.6387 0012030 233.3797 155.3079 12.53700292377410" },
+        22825: { line1: "1 22825U 93061C   26302.60194329  .00000044  00000-0  33660-4 0  9995", line2: "2 22825  98.6736   9.8628 0009403  69.4115 290.8076 14.30970319726223" },
+        24278: { line1: "1 24278U 96046B   26302.50143899 -.00000030  00000-0  20658-5 0  9990", line2: "2 24278  98.5119 132.9392 0350813 107.7941 256.1797 13.53279837491331" },
+        25544: { line1: "1 25544U 98067A   26302.56368278  .00005507  00000-0  10765-3 0  9997", line2: "2 25544  51.6333 355.1294 0007050 324.3141  35.7375 15.49100842592585" },
+        26931: { line1: "1 26931U 01043C   26302.60972630  .00000057  00000-0  52161-4 0  9996", line2: "2 26931  67.0502 256.5787 0006197 276.5974  83.4422 14.31997465309695" },
+        27607: { line1: "1 27607U 02058C   26301.86258439  .00000702  00000-0  10049-3 0  9990", line2: "2 27607  64.5521  75.3196 0069189 237.7397 121.6992 14.83290128284281" },
+        39444: { line1: "1 39444U 13066AE  26302.88232778  .00004803  00000-0  28646-3 0  9992", line2: "2 39444  97.8458 277.4323 0036818 104.0083 256.5244 15.11082795699996" },
+        43017: { line1: "1 43017U 17073E   26302.60865385  .00004806  00000-0  20407-3 0  9991", line2: "2 43017  97.4465 167.0765 0144176 223.2331 135.7513 15.14549272485724" },
+        43678: { line1: "1 43678U 18084H   26302.92645006  .00001225  00000-0  10133-3 0  9995", line2: "2 43678  98.1134 145.0602 0013165  87.6472 272.6258 15.00860656436422" },
+        43803: { line1: "1 43803U 18099AX  26301.74194318  .00011921  00000-0  32407-3 0  9997", line2: "2 43803  97.3968   5.2998 0006196 141.1387 219.0304 15.37685907434126" },
+        44909: { line1: "1 44909U 19096E   26302.55254824  .00000017  00000-0  23194-4 0  9990", line2: "2 44909  82.5200 250.4049 0217173 189.9085 169.7701 12.79749625319534" },
+        50466: { line1: "1 50466U 21131B   26302.93125993  .00000241  00000-0  87917-4 0  9996", line2: "2 50466  98.4976  34.5830 0005110  62.6121 297.5587 14.41457466254527" },
+        53109: { line1: "1 53109U 22080E   26302.80971962 -.00000003  00000-0  00000-0 0  9999", line2: "2 53109  70.1245 251.4070 0008838 261.8974  98.0683  6.42583684100711" },
+        57166: { line1: "1 57166U 23091A   26302.93137059 -.00000023  00000-0  87118-5 0  9996", line2: "2 57166  98.5920 355.0376 0004828 129.4483 230.7124 14.24055181173698" },
+        59051: { line1: "1 59051U 24039A   26302.95810294 -.00000008  00000-0  15945-4 0  9996", line2: "2 59051  98.7215 260.6756 0007732 133.5553 226.6268 14.22441474138423" },
+        60209: { line1: "1 60209U 24125G   26302.35589393  .00191614  14987-4  70868-3 0  9996", line2: "2 60209  97.1976 164.6268 0006913  77.5613 282.6432 15.88120158130650" },
+        61781: { line1: "1 61781U 24199AY  26302.90420132  .00005958  00000-0  16398-3 0  9999", line2: "2 61781  97.2758 170.3566 0013053 176.0729 184.0621 15.37463857154613" },
+        63213: { line1: "1 63213U 25052D   26302.44132575  .00014387  00000-0  37239-3 0  9993", line2: "2 63213  97.3722 199.3417 0003194  39.0051 321.1424 15.39167119 90735" },
+        63214: { line1: "1 63214U 25052E   26301.69993271  .00013705  00000-0  35807-3 0  9990", line2: "2 63214  97.3723 198.4981 0003308  41.3912 318.7584 15.38891649 90619" },
+        63215: { line1: "1 63215U 25052F   26302.49538535  .00013861  00000-0  36219-3 0  9999", line2: "2 63215  97.3727 199.2839 0003229  41.7134 318.4357 15.38884938 90738" },
+        63217: { line1: "1 63217U 25052H   26302.51327724  .00013413  00000-0  35878-3 0  9993", line2: "2 63217  97.3696 198.7479 0003826  45.3755 314.7801 15.38168378 90715" },
+        63218: { line1: "1 63218U 25052J   26302.17636556  .00013829  00000-0  36887-3 0  9994", line2: "2 63218  97.3701 198.4535 0003664  48.9167 311.2395 15.38250030 90660" },
+        63219: { line1: "1 63219U 25052K   26302.44734108  .00013718  00000-0  36666-3 0  9999", line2: "2 63219  97.3697 198.6874 0003894  44.9903 315.1657 15.38186121 90700" },
+        63237: { line1: "1 63237U 25052AD  26301.63651082  .00011661  00000-0  33695-3 0  9992", line2: "2 63237  97.3757 196.9218 0007194  43.1950 316.9857 15.35780986 90482" },
+        63238: { line1: "1 63238U 25052AE  26301.70749457  .00011397  00000-0  33363-3 0  9993", line2: "2 63238  97.3761 196.8426 0007173  44.9177 315.2646 15.35376177 90486" },
+        63239: { line1: "1 63239U 25052AF  26302.17296990  .00012239  00000-0  35802-3 0  9991", line2: "2 63239  97.3758 197.2808 0007218  39.8123 320.3649 15.35380839 90554" }
     } };
 
     function tuneSat(s) {
@@ -2925,65 +2927,105 @@ Plugins.rig_skin.createSatScreen = function () {
         return into;
     }
 
-    // Orbits come from celestrak's three group files, fetched one after
-    // another, and celestrak blocks addresses that ask too often: at most
-    // one attempt every 2 hours, 4 and 8 after failures. Every bird keeps
-    // its newest orbit from the download, the stored copy or the set built
-    // into this release, so a short or failed download never loses one.
-    var TLE_WAIT = 2 * 3600 * 1000;
+    // An update asks tle.ivanstanojevic.me for each bird, four at a
+    // time; birds it does not deliver come from celestrak's three group
+    // files. Updates come every hour, 10 minutes after a failed or partial
+    // one, and at once on a click. celestrak is asked at most every 2 hours, 4 and 8
+    // after it did not answer, as it asks for. Every bird keeps its newest
+    // orbit from the download, the stored copy or the set built into this
+    // release, so a failed download never loses one.
+    var TLE_WAIT = 3600 * 1000, TLE_RETRY = 10 * 60 * 1000, CT_WAIT = 2 * 3600 * 1000;
     function tleState() {
         try { return JSON.parse(localStorage.getItem('rig_sat_tles') || 'null') || {}; }
         catch (e) { return {}; }
     }
+    function tleSave(st) {
+        try { localStorage.setItem('rig_sat_tles', JSON.stringify(st)); } catch (e) {}
+    }
     function tleNextTry(st) {
-        return (st.tried || 0) + TLE_WAIT * Math.pow(2, Math.min(st.fails || 0, 2));
+        return (st.tried || 0) + (st.fails || st.partial ? TLE_RETRY : TLE_WAIT);
     }
     function ensureTles(cb, force) {
         var st = tleState();
         var have = newest(newest({}, SAT_SEED.tles), st.tles);
-        var due = Date.now() >= (force ? (st.tried || 0) + TLE_WAIT : tleNextTry(st));
-        if (!due) return cb(Object.keys(have).length ? have : null, { skipped: true });
-        // show what is at hand right away; a blocked celestrak holds each
-        // request up to 15 s, and the map must not wait for that
+        if (!force && Date.now() < tleNextTry(st)) return cb(Object.keys(have).length ? have : null, { skipped: true });
+        // the attempt counts from its start, so another tab meanwhile
+        // does not start a second one
+        st.tried = Date.now();
+        tleSave(st);
+        tleBusy = true;
+        // show what is at hand right away; a request that gets no answer
+        // takes up to 10 s, and the map must not wait for that
         if (Object.keys(have).length) cb(have, { pending: true });
 
-        var base = 'https://celestrak.org/NORAD/elements/gp.php?FORMAT=TLE&';
-        var groups = ['stations', 'amateur', 'weather'];
-        var got = {};
-        function next(i) {
-            if (i === groups.length) return finish();
-            // celestrak throttles by holding connections open: hard timeout
+        // null when the server does not answer; a busy server can hold the
+        // connection open, hence the hard timeout
+        function get(url, json) {
             var ctl = new AbortController();
-            var timer = setTimeout(function () { ctl.abort(); }, 15000);
-            fetch(base + 'GROUP=' + groups[i], { signal: ctl.signal, cache: 'no-cache' })
-                .then(function (r) { return r.ok ? r.text() : ''; })
-                .then(function (t) { parseTles(t, got); })
-                .catch(function () {})
-                .then(function () { clearTimeout(timer); next(i + 1); });
+            var timer = setTimeout(function () { ctl.abort(); }, 10000);
+            return fetch(url, { signal: ctl.signal, cache: 'no-cache' })
+                .then(function (r) { return r.ok ? (json ? r.json() : r.text()) : (json ? {} : ''); })
+                .catch(function () { return null; })
+                .then(function (v) { clearTimeout(timer); return v; });
+        }
+        var got = {}, ask = false, silent = false;
+        // four requests at a time; one without an answer stops the rest
+        function primary() {
+            var next = 0, running = 0, stop = false;
+            function one(id) {
+                running++;
+                get('https://tle.ivanstanojevic.me/api/tle/' + id, true).then(function (j) {
+                    running--;
+                    if (j === null) stop = true;
+                    else if (j.line1 && j.line2) got[id] = { line1: j.line1, line2: j.line2 };
+                    if (!running && (stop || next === SATS.length)) return fallback();
+                    more();
+                });
+            }
+            function more() {
+                while (!stop && running < 4 && next < SATS.length) one(SATS[next++].id);
+            }
+            more();
+        }
+        function fallback() {
+            ask = SATS.some(function (s) { return !got[s.id]; }) &&
+                Date.now() >= (st.ctried || 0) + CT_WAIT * Math.pow(2, Math.min(st.cfails || 0, 2));
+            if (ask) st.ctried = Date.now();
+            groups(0);
+        }
+        var base = 'https://celestrak.org/NORAD/elements/gp.php?FORMAT=TLE&';
+        var GROUPS = ['stations', 'amateur', 'weather'];
+        function groups(i) {
+            if (!ask || i === GROUPS.length) return finish();
+            get(base + 'GROUP=' + GROUPS[i]).then(function (t) {
+                if (t === null) { silent = true; return finish(); }
+                parseTles(t, got);
+                groups(i + 1);
+            });
         }
         function finish() {
             var ours = {};
             SATS.forEach(function (sat) { if (got[sat.id]) ours[sat.id] = got[sat.id]; });
             var ok = Object.keys(ours).length > 0;
             tleFail = !ok;
+            tleBusy = false;
             newest(have, ours);
             var keep = {};
             SATS.forEach(function (sat) { if (have[sat.id]) keep[sat.id] = have[sat.id]; });
-            try {
-                localStorage.setItem('rig_sat_tles', JSON.stringify({
-                    tles: keep, tried: Date.now(),
-                    ts: ok ? Date.now() : st.ts, fails: ok ? 0 : (st.fails || 0) + 1
-                }));
-            } catch (e) {}
+            tleSave({
+                tles: keep, tried: Date.now(),
+                ts: ok ? Date.now() : st.ts, fails: ok ? 0 : (st.fails || 0) + 1,
+                partial: ok && Object.keys(ours).length < SATS.length, ctried: st.ctried, cfails: ask ? (silent ? (st.cfails || 0) + 1 : 0) : st.cfails
+            });
             cb(Object.keys(keep).length ? keep : null, { skipped: false, ok: ok });
         }
-        next(0);
+        primary();
     }
 
     // live tracking for the SAT window: current geodetic position,
     // elevation from this receiver, ground track and the visibility
     // footprint of every satellite in the table
-    var trackRecs = null, passCache = null, passCacheT = 0, tleFail = false, loadedAt = 0;
+    var trackRecs = null, passCache = null, passCacheT = 0, tleFail = false, tleBusy = false, loadedAt = 0;
     function load(tles) {
         trackRecs = [];
         SATS.forEach(function (s) {
@@ -2997,10 +3039,10 @@ Plugins.rig_skin.createSatScreen = function () {
     Plugins.rig_skin._satTrack = {
         ready: function () { return !!trackRecs; },
         failed: function () { return tleFail; },
-        // a manual update: downloads only if the last attempt is at least
-        // 2 hours old; the callback gets { skipped } and the tracker info
+        // a manual update, at once unless one is running; the callback
+        // gets { busy, ok }
         reload: function (cb) {
-            var self = this;
+            if (tleBusy) return cb({ busy: true });
             ensureLib(function () {
                 ensureTles(function (tles, how) {
                     if (tles) load(tles);
@@ -3023,7 +3065,7 @@ Plugins.rig_skin.createSatScreen = function () {
         // what the SAT window prints about the orbits
         info: function () {
             var st = tleState();
-            return { downloaded: st.ts || null, seed: SAT_SEED.date, next: tleNextTry(st), failed: tleFail };
+            return { downloaded: st.ts || null, next: tleNextTry(st), busy: tleBusy, failed: (st.fails || 0) > 0 };
         },
         positions: function () {
             if (!trackRecs) return [];

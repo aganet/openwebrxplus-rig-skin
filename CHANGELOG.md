@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.19 (2026-10-30)
+
+- Satellite orbits are always fresh. Opening the SAT window updates
+  them when they are more than an hour old, and the arrow next to HAM
+  and WX updates them at once. A download takes about a second.
+- The orbits come first from tle.ivanstanojevic.me, and from
+  celestrak.org for any satellite it misses, so the update also works
+  where celestrak does not answer.
+- The bottom line of the SAT window says only what is happening:
+  updating, updated with the time, or failed. A failed update is tried
+  again after ten minutes.
+
 ## 0.10.18 (2026-10-18)
 
 - Satellites load straight away. The map shows all satellites at once,
