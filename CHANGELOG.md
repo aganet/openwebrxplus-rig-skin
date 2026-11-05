@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.20 (2026-11-05)
+
+- The ISS frequencies are current: the voice repeater on 437.800 FM and
+  APRS on 437.825, both in the list. 145.800 is no longer in use.
+- A satellite can have more than one frequency; click the one you want
+  to tune it. AO-7 shows both its modes, 29.450 and 145.950.
+- AO-73 and JO-97 now tune the middle of their passband.
+- AO-27, XW-3, MO-122 and IO-117 are removed: they no longer work.
+  The list was checked against AMSAT and ARISS in November 2026.
+
 ## 0.10.19 (2026-10-30)
 
 - Satellite orbits are always fresh. Opening the SAT window updates

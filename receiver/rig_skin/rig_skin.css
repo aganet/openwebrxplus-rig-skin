@@ -1564,6 +1564,8 @@ body.theme-rig .owrx-rig-watch {
 .owrx-rig-satwin-list td.dur { flex: 0 0 36px; text-align: right; }
 .owrx-rig-satwin-list td.el { flex: 0 0 34px; text-align: right; }
 .owrx-rig-satwin-list td.freq { flex: 0 0 90px; text-align: right; color: #5aa8ff; }
+.owrx-rig-satwin-list td.freq span { display: block; }
+.owrx-rig-satwin-list td.freq span:hover { color: #f2f5f7; }
 
 .owrx-rig-satwin-list tr.active td {
     color: #3adb4a;

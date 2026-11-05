@@ -194,13 +194,16 @@ from any edge or corner. It remembers where you left it.
 
 <img src="docs/screenshot-satwin.png" alt="satellite tracking" width="75%">
 
-The list has the popular active birds. FM: ISS, SO-50, AO-91, PO-101,
-AO-27, AO-123 and the nine TEVEL2 satellites (they share 436.400 and
-take turns). Linear: RS-44, AO-7 with its 10 m downlink you can hear on
-an HF antenna, FO-29, AO-73, JO-97, XW-3 and MO-122. Digital: the
-IO-117 digipeater and NO-44 for APRS. Weather: Meteor M2-3 and M2-4
-with LRPT images. NOAA 15 and 19 were switched off in 2025 and are no
-longer listed.
+The list has the active birds, checked against AMSAT and ARISS in
+November 2026. FM: ISS, SO-50, AO-91, PO-101, AO-123 and the nine
+TEVEL2 satellites (they share 436.400 and take turns). Linear: RS-44,
+AO-7, FO-29, AO-73 and JO-97. Digital: NO-44 for APRS. Weather: Meteor
+M2-3 and M2-4 with LRPT images.
+
+Some birds have two frequencies. The ISS has its voice repeater on
+437.800 FM and APRS on 437.825. AO-7 switches between 29.450, which
+you can hear on an HF antenna, and 145.950. Click a frequency to tune
+it. During an announced ISS SSTV event the pictures come on 437.550 FM.
 
 The SAT key on the LCD still has the compact pass list, with the MIN
 control to hide passes too low to be useful. Click the frequency and

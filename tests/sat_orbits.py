@@ -10,7 +10,8 @@ contacts neither.
 - celestrak is asked only for birds the first source misses, at most every
   2 hours, 4 after it did not answer
 - a download with only some birds updates those and loses none
-- a failed update kept from 0.10.18 does not hold the next one back"""
+- a failed update kept from 0.10.18 does not hold the next one back
+- the ISS lists its voice repeater and APRS, each tuning on its own"""
 from playwright.sync_api import sync_playwright
 import re, time, json
 fails=[]
@@ -51,7 +52,7 @@ with sync_playwright() as p:
  pg.select_option('#openwebrx-themes-listbox','rig'); pg.wait_for_timeout(1500)
  ov=pg.locator('#openwebrx-autoplay-overlay')
  if ov.count() and ov.is_visible(): ov.click(); pg.wait_for_timeout(800)
- check('no NOAA 15 or 19 in the list', '25338' not in IDS and '33591' not in IDS and len(IDS)==26, len(IDS))
+ check('no dead birds in the list (NOAA 15/19, AO-27, XW-3, MO-122, IO-117)', not set(IDS) & {'25338','33591','22825','50466','60209','53109'} and len(IDS)==22, len(IDS))
  # 0. a server can hold a request open without answering: the map must not wait for it
  hp=ctx.new_page(); hp.add_init_script("""localStorage.removeItem('rig_sat_tles');
   window.__n=0; const of=window.fetch; window.fetch=function(u,o){ if(/celestrak|ivanstanojevic/.test(String(u))) return (window.__n++, new Promise((res,rej)=>{ if(o&&o.signal) o.signal.addEventListener('abort',()=>rej(new DOMException('aborted','AbortError'))); })); return of.apply(this,arguments); };""")
@@ -63,7 +64,7 @@ with sync_playwright() as p:
  while time.time()-t0<8:
   hp.wait_for_timeout(250); n=hp.evaluate("Plugins.rig_skin._satTrack.positions().length")
   if n: break
- check('no server answering: every bird on the map within seconds', n==26, (n, round(time.time()-t0,1)))
+ check('no server answering: every bird on the map within seconds', n==len(IDS), (n, round(time.time()-t0,1)))
  foot=hp.evaluate(FOOT)
  check('the window says the orbits are updating, no old date', foot.endswith('updating orbits') and 'built-in' not in foot and '20' not in foot.split('tune')[-1], foot)
  hp.wait_for_timeout(500); hp.locator('#owrx-rig-satwin .owrx-rig-dx-chip[title*="orbits"]').click(); hp.wait_for_timeout(1000)
@@ -90,7 +91,7 @@ with sync_playwright() as p:
  # 1. nothing stored, no server answering: every bird from the built-in set, which is never named
  pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(1500); idle()
  n=pg.evaluate("Plugins.rig_skin._satTrack.positions().length")
- check('no server answering, nothing stored: every bird on the map', n==26, n)
+ check('no server answering, nothing stored: every bird on the map', n==len(IDS), n)
  foot=pg.evaluate(FOOT)
  check('the window says the update failed, and shows no old date', foot.endswith('orbit update failed') and 'built-in' not in foot, foot)
  check('first source first, then celestrak, each given up at its first no-answer', sorted(calls[:4])==sorted(IVAN[:4]) and calls[4:]==[GROUPS[0]], calls)
@@ -121,8 +122,8 @@ with sync_playwright() as p:
  # 5. the first source misses the ISS: celestrak gets it, nobody is lost
  setst(ctried=300); mode['ivan']='no-iss'; mode['ck']='iss-only'; calls.clear(); click()
  st=pg.evaluate("JSON.parse(localStorage.getItem('rig_sat_tles'))")
- check('a bird the first source misses comes from celestrak', sorted(calls[:26])==sorted(IVAN) and calls[26:]==GROUPS, calls[-4:])
- check('ISS from celestrak, nobody lost', len(st['tles'])==26 and st['tles']['25544']['line1']==newer(SEED['25544'][0], 7), (len(st['tles']), st['tles']['25544']['line1'][18:32]))
+ check('a bird the first source misses comes from celestrak', sorted(calls[:len(IDS)])==sorted(IVAN) and calls[len(IDS):]==GROUPS, calls[-4:])
+ check('ISS from celestrak, nobody lost', len(st['tles'])==len(IDS) and st['tles']['25544']['line1']==newer(SEED['25544'][0], 7), (len(st['tles']), st['tles']['25544']['line1'][18:32]))
  # celestrak answered just now: within its 2 hours it is not asked again
  calls.clear(); click()
  check('celestrak within its 2 hours: not asked again', sorted(calls)==sorted(IVAN), calls[-3:])
@@ -133,6 +134,15 @@ with sync_playwright() as p:
  pg.evaluate("localStorage.setItem('rig_sat_tles', JSON.stringify({tles:{}, tried:Date.now()-20*60000, ts:Date.now()-12*864e5, fails:1}))")
  calls.clear(); reopen(); foot=pg.evaluate(FOOT)
  check('a failed update kept from 0.10.18: fresh orbits as soon as the window opens', re.search(r'orbits updated \d\d:\d\d$', foot) is not None and sorted(calls)==sorted(IVAN), (foot, len(calls)))
+ # 7. the ISS lists what it uses now (ARISS status, November 2026), each frequency tunes on its own
+ iss=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text='ISS')).first
+ check('the ISS shows the voice repeater and APRS, not 145.800', iss.locator('td.freq span').all_inner_texts()==['437.800 FM', '437.825 APRS'], iss.locator('td.freq span').all_inner_texts())
+ pg.evaluate("window.__tuned=[]; Plugins.rig_skin.tuneTo=function(f,m){ window.__tuned.push([f,m]); }; null")
+ iss.scroll_into_view_if_needed()
+ iss.locator('td.freq span', has_text='437.825 APRS').click(); iss.locator('td.freq span', has_text='437.800 FM').click(); iss.locator('td.name').click()
+ ao7=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text='AO-7')).first
+ check('AO-7 shows mode A and mode B', ao7.locator('td.freq span').all_inner_texts()==['29.450 SSB', '145.950 SSB'], ao7.locator('td.freq span').all_inner_texts())
+ check('each ISS frequency tunes on its own, the row tunes the repeater', pg.evaluate("window.__tuned")==[[437825000,'nfm'],[437800000,'nfm'],[437800000,'nfm']], pg.evaluate("window.__tuned"))
  check('no page errors', not errs, errs[:3])
  b.close()
 print('RESULT', 'ALL PASS' if not fails else 'FAILED: '+', '.join(fails))
