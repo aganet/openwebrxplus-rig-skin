@@ -77,8 +77,8 @@ readout itself: point at a digit, scroll, and that digit spins. This
 works on the MHz digits too; when the target leaves the receiver window
 the window moves along with you (the server must allow center frequency
 changes). The S-meter has two faces: a segmented bar, and an analog
-needle drawn like an Icom meter face. Right-click the meter to switch,
-or hold your finger on it on a phone.
+needle drawn like an Icom meter face. Click the meter to switch, or
+hold your finger on it on a phone.
 Both move with proper meter ballistics, hold the peak, and show the S
 value as a number; the needle face also shows the dB reading. With the
 squelch on, an SQL marker sits where the gate opens. Drag the marker
@@ -135,8 +135,8 @@ Then two scopes:
   the main waterfall and averages its trace, so weak signals are easy to
   spot and click.
 - An audio scope: spectrum of what you are hearing with a small waterfall,
-  and a waveform. Good for tuning SSB by eye. Click the S-meter to show or
-  hide it. It keeps running while the audio is muted, so you can watch a
+  and a waveform. Good for tuning SSB by eye. It keeps running while the
+  audio is muted, so you can watch a
   signal without listening to it. The waveform timebase is selectable like
   a rig's scope: click the ms/Div label to cycle 1/3/10/30/100/300 ms per
   division. Fast settings draw a steady triggered sweep so you see the

@@ -4420,9 +4420,8 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
-    var $bs = $('<div>').attr('id', 'owrx-rig-bscope').append(canvas);
-    var $bar = $('<div>').attr('id', 'owrx-rig-bscope-bar').text('BAND SCOPE');
-    $freq.append($bs).append($bar);
+    var $bs = $('<div>').attr('id', 'owrx-rig-bscope').addClass('visible').append(canvas);
+    $freq.append($bs);
 
     var ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
@@ -4434,16 +4433,6 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     // scrolled by drawing the canvas onto itself, one row down: the
     // spec snapshots the source first, so no pixel readback happens
     var wfCtx = wf.getContext('2d');
-
-    function visible() {
-        return $bs.hasClass('visible');
-    }
-
-    function setVisible(on) {
-        $bs.toggleClass('visible', on);
-        $bar.toggleClass('visible', !on);
-        if (typeof LS !== 'undefined') LS.save('rig_bscope', on);
-    }
 
     function span() {
         var s = SPANS[spanIdx];
@@ -4567,16 +4556,13 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         ctx.textAlign = 'center';
         ctx.fillText('-' + k + 'k', W * 0.25, TRACE_H + WF_H + 3);
         ctx.fillText('+' + k + 'k', W * 0.75, TRACE_H + WF_H + 3);
-        ctx.fillStyle = '#5c6670';
-        ctx.textAlign = 'right';
-        ctx.fillText('HIDE', W - 2, TRACE_H + WF_H + 3);
     }
 
     // feed from the waterfall FFT stream; keep the latest line around
     // for the auto tune key as well
     // the scope draws from the skin's single FFT hook
     Plugins.rig_skin._scopeFeed = function (data) {
-        if (visible()) draw(data);
+        draw(data);
     };
 
     canvas.addEventListener('click', function (e) {
@@ -4584,9 +4570,8 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         var x = (e.clientX - r.left) / r.width * W;
         var y = (e.clientY - r.top) / r.height * H;
         if (y > TRACE_H + WF_H) {
-            // axis strip: SPAN cycles, HIDE collapses (finger-sized zones)
+            // axis strip: SPAN cycles (a finger-sized zone)
             if (x < 90) spanIdx = (spanIdx + 1) % SPANS.length;
-            else if (x > W - 56) setVisible(false);
             return;
         }
         // tune to the clicked frequency
@@ -4601,12 +4586,6 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         if (steps && typeof tuneBySteps === 'function') tuneBySteps(steps);
     }, { passive: false });
 
-    $bar.on('click', function () {
-        setVisible(true);
-    });
-
-    setVisible((typeof LS !== 'undefined' && LS.has('rig_bscope'))
-        ? LS.loadBool('rig_bscope') : true);
 };
 
 // Audio scope inside the LCD: audio spectrum on the left, waveform on
@@ -4950,18 +4929,7 @@ Plugins.rig_skin.createScope = function ($freq) {
         }
     });
 
-    $('#owrx-rig-meter')
-        .css('cursor', 'pointer')
-        .attr('title', 'Toggle audio scope (right-click: bar / needle meter; drag the SQL marker to set the squelch)')
-        .on('click', function () {
-            var on = !$scope.hasClass('visible');
-            setVisible(on);
-            if (typeof LS !== 'undefined') LS.save('rig_scope', on);
-        });
-
-    // visible by default, click the meter to hide
-    setVisible((typeof LS !== 'undefined' && LS.has('rig_scope'))
-        ? LS.loadBool('rig_scope') : true);
+    setVisible(true);
 };
 
 Plugins.rig_skin.makeKey = function (label, title) {
@@ -5746,14 +5714,14 @@ Plugins.rig_skin.createMeter = function ($freq) {
         });
     });
 
-    // the release after a long press must not toggle the audio scope
-    // (this handler is bound before the scope's, so it can stop it)
-    $meter.on('click', function (e) {
-        if (pressed) {
-            pressed = false;
-            e.stopImmediatePropagation();
-        }
-    });
+    // a click switches the face; the release after a long press already
+    // did, so it must not switch back
+    $meter.css('cursor', 'pointer')
+        .attr('title', 'Click: bar / needle meter; drag the SQL marker to set the squelch')
+        .on('click', function () {
+            if (pressed) { pressed = false; return; }
+            toggleStyle();
+        });
 
     // modern-rig meter colors: blue segments up to S9, red beyond
     function segColor(t) {
@@ -5881,7 +5849,7 @@ Plugins.rig_skin.createMeter = function ($freq) {
     }
     canvas.addEventListener('pointerup', sqEnd);
     canvas.addEventListener('pointercancel', sqEnd);
-    // grabbing the marker must not toggle the audio scope
+    // grabbing the marker must not switch the meter face
     canvas.addEventListener('click', function (e) {
         if (sqWas) {
             sqWas = false;
