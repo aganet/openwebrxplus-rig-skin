@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.10.21 (2026-11-23)
+
+Fixes from a full review of the code.
+
+- Security: a callsign from the spot feed is shown as plain text in
+  the DX map tooltip. Before, a crafted callsign could run as markup.
+- The DX spot history now loads on receivers served over https.
+- Tuning by digit works on VFO B below 10 MHz.
+- Mouse wheels that report lines no longer lose the first notch.
+  Quick notches on a MHz digit add up, and a new tuning target
+  replaces one still on its way.
+- The DX map can be dragged and pinched on touch screens.
+- Satellites: when the orbit library cannot load, the update arrow
+  says so and frees itself. The bottom line shows UTC, like the pass
+  list. The map tooltip hides when the mouse leaves the map.
+- Beacon radar: it stays on when the band is outside the receiver
+  window, and HIDE switches it off.
+- Dual watch: turning the dial on the watched VFO makes it the active
+  one, and the other VFO keeps its frequency.
+- Watch windows on OpenWebRX+ with plugin windows: closing one no
+  longer removes another.
+- A right click on the tuning knob or the panel grip no longer leaves
+  a drag stuck. A second finger no longer makes the knob jump.
+- The PROP screen fetches nothing while another theme is selected.
+- Old spots are cleaned up while the DX window is closed.
+- S-meter: the dBm number follows the signal below S0 and above
+  S9+60. A tap after dragging the squelch marker works first time. A
+  long press switches the meter face once.
+- update-rig-skin.sh swaps the files in only when every copy
+  succeeded, so a full disk cannot leave a mix of two versions.
+
 ## 0.10.20 (2026-11-05)
 
 - The ISS frequencies are current: the voice repeater on 437.800 FM and

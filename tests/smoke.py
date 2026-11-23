@@ -8,6 +8,11 @@ fails=[]; errors=[]
 def check(name,ok,info=''):
  print(('PASS ' if ok else 'FAIL ')+name+(' '+str(info) if info else ''))
  if not ok: fails.append(name)
+# a receiver served over https cannot load anything from a plain http address
+import re
+SKIN=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'receiver', 'rig_skin')
+plain=[f+': '+u for f in ('rig_skin.js','rig_skin_map.js','rig_skin.css') for u in re.findall(r'http://[^\s\'")]+', open(os.path.join(SKIN,f)).read()) if 'www.w3.org' not in u]
+check('the skin loads nothing over plain http', not plain, plain)
 PAINTED="""(sel)=>{const c=document.querySelector(sel); if(!c) return -1;
  const x=c.getContext('2d'); const d=x.getImageData(0,0,c.width,c.height).data;
  let n=0; for(let i=3;i<d.length;i+=4*97){ if(d[i]>0) n++; } return n;}"""

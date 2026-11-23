@@ -43,6 +43,7 @@ fi
 echo "updating rig_skin to $V in $DIR"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+trap 'exit 1' INT TERM
 
 curl -fsSL -o "$TMP/rig-skin.zip" \
     "https://github.com/$REPO/releases/download/v$V/openwebrxplus-rig-skin-$V.zip"
@@ -58,7 +59,20 @@ GOT=$(grep -o "^Plugins.rig_skin._version = '[^']*'" "$TMP/stage/rig_skin/rig_sk
 [ "$GOT" = "$V" ] || { echo "the zip contains version $GOT, expected $V; not installing"; exit 1; }
 
 mkdir -p "$DIR/rig_skin"
-cp -f "$TMP/stage/rig_skin/"* "$DIR/rig_skin/"
+# copy next to the live files first and swap them in only when every
+# copy succeeded: a full disk must not leave a mix of two versions
+for f in "$TMP/stage/rig_skin/"*; do
+    n=$(basename "$f")
+    cp -f "$f" "$DIR/rig_skin/.$n.new" || {
+        rm -f "$DIR/rig_skin/".*.new
+        echo "cannot write to $DIR/rig_skin; nothing was changed"
+        exit 1
+    }
+done
+for f in "$TMP/stage/rig_skin/"*; do
+    n=$(basename "$f")
+    mv -f "$DIR/rig_skin/.$n.new" "$DIR/rig_skin/$n"
+done
 
 echo "installed: $GOT"
 if ! grep -q "Plugins.load('rig_skin')" "$DIR/init.js" 2>/dev/null; then

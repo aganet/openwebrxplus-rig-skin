@@ -109,7 +109,7 @@ with sync_playwright() as p:
  st=pg.evaluate("JSON.parse(localStorage.getItem('rig_sat_tles'))"); foot=pg.evaluate(FOOT)
  check('first source up: every bird from it, celestrak not asked', sorted(calls)==sorted(IVAN), calls[:3])
  check('every bird has the new orbit', all(st['tles'][i]['line1']==newer(SEED[i][0], 5) for i in IDS), len(st['tles']))
- check('the window says when the orbits were updated', re.search(r'orbits updated \d\d:\d\d$', foot) is not None, foot)
+ check('the window says when the orbits were updated', re.search(r'orbits updated \d\d:\d\d UTC$', foot) is not None, foot)
  check('the reload chip says the orbits are updated', flash()=='orbits updated', flash())
  # 4. within the hour nothing is asked on reopening; a click still updates at once
  calls.clear(); pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(500); pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(2000)
@@ -133,7 +133,7 @@ with sync_playwright() as p:
  mode['ivan']='up'
  pg.evaluate("localStorage.setItem('rig_sat_tles', JSON.stringify({tles:{}, tried:Date.now()-20*60000, ts:Date.now()-12*864e5, fails:1}))")
  calls.clear(); reopen(); foot=pg.evaluate(FOOT)
- check('a failed update kept from 0.10.18: fresh orbits as soon as the window opens', re.search(r'orbits updated \d\d:\d\d$', foot) is not None and sorted(calls)==sorted(IVAN), (foot, len(calls)))
+ check('a failed update kept from 0.10.18: fresh orbits as soon as the window opens', re.search(r'orbits updated \d\d:\d\d UTC$', foot) is not None and sorted(calls)==sorted(IVAN), (foot, len(calls)))
  # 7. the ISS lists what it uses now (ARISS status, November 2026), each frequency tunes on its own
  iss=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text='ISS')).first
  check('the ISS shows the voice repeater and APRS, not 145.800', iss.locator('td.freq span').all_inner_texts()==['437.800 FM', '437.825 APRS'], iss.locator('td.freq span').all_inner_texts())

@@ -551,6 +551,6 @@ Data and libraries the plugin uses:
 - Solar data: NOAA SWPC (public domain)
 - MUF map: [prop.kc2g.com](https://prop.kc2g.com/)
 - TLE data: [tle.ivanstanojevic.me](https://tle.ivanstanojevic.me/) and [celestrak.org](https://celestrak.org/); the built-in set in each release comes from [SatNOGS](https://db.satnogs.org/) (CC BY-SA 4.0)
-- DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](http://www.dxsummit.fi/)
+- DX spots: [HolyCluster](https://holycluster.iarc.org/) by IARC and [DXSummit](https://www.dxsummit.fi/)
 - Country flags: DXCC entity list from [k0swe/dxcc-json](https://github.com/k0swe/dxcc-json) (Apache 2.0), bundled
 - Coastlines: [Natural Earth](https://www.naturalearthdata.com/) (public domain), bundled
