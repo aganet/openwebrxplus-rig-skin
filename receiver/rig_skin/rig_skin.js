@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.21';
+Plugins.rig_skin._version = '0.10.22';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -522,7 +522,34 @@ Plugins.rig_skin.createDxWindow = function () {
     // country flag from the spot's DXCC entity, when the feed sent one
     function flagOf(s) {
         var f = s.dxcc && Plugins.rig_skin._dxccFlag[s.dxcc];
-        return f ? f + ' ' : '';
+        if (!f) return '';
+        if (flagsDrawn()) return f + ' ';
+        // a flag is the two letters of its country code in a special
+        // alphabet: show the plain letters
+        var code = Array.from(f).map(function (ch) {
+            return String.fromCharCode(ch.codePointAt(0) - 0x1F1E6 + 65);
+        }).join('');
+        return /^[A-Z]{2}$/.test(code) ? code + ' ' : '';
+    }
+
+    // Windows has no flag pictures (Chrome and Edge show two letters in
+    // a box or nothing): a drawn flag has colors, a fallback has none
+    function flagsDrawn() {
+        if (typeof Plugins.rig_skin._flags === 'boolean') return Plugins.rig_skin._flags;
+        var ok = false;
+        try {
+            var c = document.createElement('canvas');
+            c.width = 40; c.height = 28;
+            var x = c.getContext('2d');
+            x.font = '18px sans-serif';
+            x.textBaseline = 'top';
+            x.fillText('\uD83C\uDDEA\uD83C\uDDF8', 2, 2);
+            var d = x.getImageData(0, 0, 40, 28).data;
+            for (var i = 0; i < d.length && !ok; i += 4) {
+                ok = d[i + 3] > 50 && (Math.abs(d[i] - d[i + 1]) > 40 || Math.abs(d[i + 1] - d[i + 2]) > 40);
+            }
+        } catch (e) {}
+        return (Plugins.rig_skin._flags = ok);
     }
 
     // --- rendering ---
@@ -1659,7 +1686,9 @@ Plugins.rig_skin.createWatch = function () {
     function load() {
         try {
             if (typeof LS !== 'undefined' && LS.has('rig_watch')) {
-                return JSON.parse(LS.loadStr('rig_watch')) || [];
+                var list = JSON.parse(LS.loadStr('rig_watch'));
+                // a damaged entry must not stop the skin from loading
+                return Array.isArray(list) ? list.filter(function (w) { return w && w.f; }) : [];
             }
         } catch (e) {}
         return [];
@@ -1998,7 +2027,8 @@ Plugins.rig_skin.createWatch = function () {
         }
         if (autoW) {
             // the dial moved away, or the watch is gone: hands off
-            if (watches.indexOf(autoW) < 0 || !playing(autoW)) {
+            var hopping = Plugins.rig_skin._tuning && Math.abs(Plugins.rig_skin._tuning.f - autoW.f) < 50;
+            if (watches.indexOf(autoW) < 0 || (!playing(autoW) && !hopping)) {
                 autoW.snoozed = true;
                 autoW = null;
                 return;
@@ -2394,6 +2424,9 @@ Plugins.rig_skin.createVfoKeys = function () {
             if (LS.has('rig_vfo_active')) active = LS.loadStr('rig_vfo_active');
         }
     } catch (e) {}
+    // a damaged saved value must not stop the skin from loading
+    if (!vfoA || typeof vfoA !== 'object') vfoA = { freq: null, mod: null };
+    if (!vfoB || typeof vfoB !== 'object') vfoB = { freq: null, mod: null };
     if (active !== 'A' && active !== 'B') active = 'A';
 
     function slot(id) { return id === 'A' ? vfoA : vfoB; }
@@ -2982,7 +3015,9 @@ Plugins.rig_skin.createSatScreen = function () {
     }
     function newest(into, from) {
         Object.keys(from || {}).forEach(function (id) {
-            if (!into[id] || epoch(from[id].line1) > epoch(into[id].line1)) into[id] = from[id];
+            var t = from[id];
+            if (!t || typeof t.line1 !== 'string' || typeof t.line2 !== 'string') return;
+            if (!into[id] || epoch(t.line1) > epoch(into[id].line1)) into[id] = t;
         });
         return into;
     }
@@ -2995,12 +3030,16 @@ Plugins.rig_skin.createSatScreen = function () {
     // orbit from the download, the stored copy or the set built into this
     // release, so a failed download never loses one.
     var TLE_WAIT = 3600 * 1000, TLE_RETRY = 10 * 60 * 1000, CT_WAIT = 2 * 3600 * 1000;
+    // without usable storage the state lives in memory, so the pace holds
+    var tleMem = null;
     function tleState() {
+        if (tleMem) return tleMem;
         try { return JSON.parse(localStorage.getItem('rig_sat_tles') || 'null') || {}; }
         catch (e) { return {}; }
     }
     function tleSave(st) {
-        try { localStorage.setItem('rig_sat_tles', JSON.stringify(st)); } catch (e) {}
+        try { localStorage.setItem('rig_sat_tles', JSON.stringify(st)); }
+        catch (e) { tleMem = st; }
     }
     function tleNextTry(st) {
         return (st.tried || 0) + (st.fails || st.partial ? TLE_RETRY : TLE_WAIT);
@@ -3018,13 +3057,17 @@ Plugins.rig_skin.createSatScreen = function () {
         // takes up to 10 s, and the map must not wait for that
         if (Object.keys(have).length) cb(have, { pending: true });
 
-        // null when the server does not answer; a busy server can hold the
-        // connection open, hence the hard timeout
+        // null when the server does not answer or refuses; a busy server
+        // can hold the connection open, hence the hard timeout
         function get(url, json) {
             var ctl = new AbortController();
             var timer = setTimeout(function () { ctl.abort(); }, 10000);
             return fetch(url, { signal: ctl.signal, cache: 'no-cache' })
-                .then(function (r) { return r.ok ? (json ? r.json() : r.text()) : (json ? {} : ''); })
+                .then(function (r) {
+                    if (r.ok) return json ? r.json() : r.text();
+                    if (r.status === 404) return json ? {} : '';
+                    throw new Error('refused');
+                })
                 .catch(function () { return null; })
                 .then(function (v) { clearTimeout(timer); return v; });
         }
@@ -3852,7 +3895,7 @@ Plugins.rig_skin.createPanelFit = function () {
         }
 
         var natW = panel.offsetWidth, natH = panel.offsetHeight;
-        if (!natW || !natH) return;
+        if (!natW || !natH) { syncTheme(); return; }
 
         // portrait phones: the rig would cover the whole height, so leave
         // a strip of waterfall visible above it instead

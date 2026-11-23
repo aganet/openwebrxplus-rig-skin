@@ -5,7 +5,11 @@
 - a wheel that reports lines gives one step per notch, from the first
 - a new tuning target replaces one still on its way; quick notches add up
 - an orbit library that cannot load frees the reload chip and says so
-- the PROP screen fetches nothing while a stock theme is active"""
+- the PROP screen fetches nothing while a stock theme is active
+- a browser without flag pictures shows the country code
+- damaged saved values do not stop the skin from loading
+- a refusal from celestrak counts as no answer; the download pace holds
+  without usable storage"""
 from playwright.sync_api import sync_playwright
 import json, datetime
 fails=[]
@@ -88,5 +92,41 @@ with sync_playwright() as p:
  check('back on the rig theme the PROP data loads', any('noaa' in u or 'kc2g' in u for u in seen), seen[:2])
  pg.evaluate("LS.save('rig_prop', false)")
  check('no page errors', not errs, errs[:3])
+ # 7. a browser that cannot draw flags shows the country code
+ pg.select_option('#openwebrx-themes-listbox','rig'); pg.wait_for_timeout(1000)
+ ctx.unroute('**/www.dxsummit.fi/**'); ctx.route('**/www.dxsummit.fi/**', lambda r: r.abort())
+ start(); pg.select_option('#openwebrx-sdr-profiles-listbox','fake|40m'); pg.wait_for_timeout(2500)
+# written after the reload: leaving a page saves its own spots over the cache
+ pg.evaluate("""LS.save('rig_dx_cache', JSON.stringify([{call:'EA7TEST', freq:7074000, mode:'', time:Date.now(), loc:[-4.4,36.7], cont:'EU', dxcc:21, spotter:'T3ST', comment:''}]))""")
+ pg.evaluate("Plugins.rig_skin._flags = false"); pg.click('#owrx-rig-dx-button'); pg.wait_for_timeout(1500)
+ cell=lambda: pg.evaluate("([...document.querySelectorAll('#owrx-rig-dx .owrx-rig-dx-spot td.call')].find(c=>c.textContent.includes('EA7TEST'))||{}).textContent||''")
+ check('no flag pictures: the country code stands in', cell()=='ES EA7TEST', cell())
+ pg.evaluate("Plugins.rig_skin._flags = true; Plugins.rig_skin._dxRender()"); pg.wait_for_timeout(300)
+ check('with flag pictures the flag is shown', cell().endswith(' EA7TEST') and not cell().startswith('ES'), cell().encode('unicode_escape').decode()[:40])
+ pg.click('#owrx-rig-dx-button')
+ # 8. damaged saved values do not stop the skin
+ pg.evaluate("""LS.save('rig_vfo_a','null'); LS.save('rig_vfo_b','7'); LS.save('rig_watch','{"a":1}'); localStorage.setItem('rig_sat_tles','{"tles":{"25544":null,"27607":{"line1":5}}}')""")
+ errs.clear(); start(); pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(2500)
+ check('damaged saved values: the skin loads, the VFO and every satellite show', not errs and pg.locator('.owrx-rig-vfo-box.active .owrx-rig-digit').count()>0 and pg.evaluate("Plugins.rig_skin._satTrack.positions().length")==22, (errs[:2], pg.evaluate("Plugins.rig_skin._satTrack.positions().length")))
+ b.close()
+ # 9. orbit download pace without usable storage, and a refusal from celestrak
+ b=p.chromium.launch(); ctx=b.new_context(viewport={'width':1400,'height':900}); pg=ctx.new_page()
+ JS=open(__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '..', 'receiver', 'rig_skin', 'rig_skin.js')).read()
+ SEED={i: (l1, l2) for i, l1, l2 in __import__('re').findall(r'^        (\d+): \{ line1: "([^"]+)", line2: "([^"]+)"', JS, __import__('re').M)}
+ calls=[]
+ def ivan(route):
+  sid=route.request.url.rstrip('/').split('/')[-1]; calls.append('ivan')
+  if sid=='25544': return route.fulfill(status=404, content_type='application/json', headers={'Access-Control-Allow-Origin':'*'}, body='{}')
+  route.fulfill(status=200, content_type='application/json', headers={'Access-Control-Allow-Origin':'*'}, body=json.dumps({'line1': SEED[sid][0], 'line2': SEED[sid][1]}))
+ ctx.route('**/tle.ivanstanojevic.me/**', ivan)
+ ctx.route('**/celestrak.org/**', lambda r: (calls.append('celestrak'), r.fulfill(status=403, body='blocked')))
+ pg.add_init_script("localStorage.removeItem('rig_sat_tles')")
+ start(); pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(3000)
+ st=pg.evaluate("JSON.parse(localStorage.getItem('rig_sat_tles'))")
+ check('a refusal from celestrak counts as no answer: one request, longer wait', calls.count('celestrak')==1 and st.get('cfails')==1, (calls.count('celestrak'), st.get('cfails')))
+ pg.add_init_script("const real=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==='rig_sat_tles') throw new Error('blocked'); return real.apply(this,arguments); };")
+ calls.clear(); start(); pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(3000)
+ left=pg.evaluate("(Plugins.rig_skin._satTrack.info().next-Date.now())/60000"); n=len(calls)
+ check('storage blocked: the download still ran and the pace is kept in memory', n>=22 and 8 < left <= 10 and pg.evaluate("localStorage.getItem('rig_sat_tles')") is None, (n, round(left,1)))
  b.close()
 print('RESULT', 'ALL PASS' if not fails else 'FAILED: '+', '.join(fails))

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.22 (2026-11-23)
+
+- Flags in Chrome and Edge on Windows (issue #16, thanks ea7cl): where
+  the browser cannot draw flag pictures, the DX cluster shows the
+  country code, like ES or IT. Nothing is downloaded for it.
+- Damaged saved settings no longer stop the skin from loading.
+- A priority watch near the edge of the receiver window returns home
+  after its jump.
+- Satellites: with browser storage blocked, orbits are no longer
+  fetched again every ten minutes. A refusal from celestrak counts as
+  no answer.
+- Selecting the rig theme while the receiver panel is hidden starts
+  the spot feed.
+
 ## 0.10.21 (2026-11-23)
 
 Fixes from a full review of the code.
