@@ -513,8 +513,76 @@ body.theme-rig #openwebrx-smeter {
 /* band scope strip: narrow spectrum centered on the tuned frequency */
 #owrx-rig-bscope {
     display: none;
+    position: relative;
     margin: 4px 0 2px 0;
     line-height: 0;
+}
+
+/* the chevron in a scope's corner folds it away */
+.owrx-rig-scope-fold {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    color: #9fb0bd;
+    background: rgba(13, 16, 19, 0.6);
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.owrx-rig-scope-fold:hover {
+    opacity: 1;
+    color: #fff;
+    background: rgba(46, 55, 64, 0.95);
+}
+
+.owrx-rig-scope-fold svg,
+.owrx-rig-scope-bar svg {
+    width: 10px;
+    height: 10px;
+    flex: none;
+}
+
+body.theme-rig.rig-phone .owrx-rig-scope-fold {
+    width: 26px;
+    height: 26px;
+    opacity: 0.75;
+}
+
+/* a folded scope leaves a slim bar; a click opens it again */
+.owrx-rig-scope-bar {
+    display: none;
+}
+
+body.theme-rig .owrx-rig-scope-bar.visible {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 4px 0 2px 0;
+    padding: 2px 6px;
+    color: #6f7b86;
+    font-size: 7pt;
+    letter-spacing: 1px;
+    line-height: 12px;
+    border: 1px solid #1a2026;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+body.theme-rig .owrx-rig-scope-bar.visible:hover {
+    color: var(--rig-lcd);
+    border-color: #36414b;
+}
+
+body.theme-rig.rig-phone .owrx-rig-scope-bar.visible {
+    padding: 6px 8px;
 }
 
 body.theme-rig #owrx-rig-bscope.visible {
@@ -531,6 +599,7 @@ body.theme-rig #owrx-rig-bscope.visible {
 /* audio scope strip below the meter */
 #owrx-rig-scope {
     display: none;
+    position: relative;
     margin: 4px 0 2px 0;
     line-height: 0;
 }

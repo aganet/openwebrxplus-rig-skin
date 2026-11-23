@@ -9,7 +9,7 @@
  * knob step follows the tuning step selector.
  */
 
-Plugins.rig_skin._version = '0.10.22';
+Plugins.rig_skin._version = '0.10.23';
 Plugins.rig_skin._author = 'SV1DOD / HB9ISH';
 
 // where this script was loaded from, for fetching companion files
@@ -2911,28 +2911,28 @@ Plugins.rig_skin.createSatScreen = function () {
     // built-in orbits, used only when nothing newer is at hand;
     // refreshed with tools/sat_seed.py before a release
     var SAT_SEED = { date: "2026-11-23", tles: {
-        7530: { line1: "1 07530U 74089B   26326.80579521 -.00000030  00000-0  10164-3 0  9998", line2: "2 07530 101.9865 341.6848 0012221 187.6247 346.7300 12.53700709380394" },
+        7530: { line1: "1 07530U 74089B   26327.01253691 -.00000031  00000-0  96824-4 0  9998", line2: "2 07530 101.9865 341.8935 0012223 187.2351 199.8169 12.53700722380426" },
         24278: { line1: "1 24278U 96046B   26326.38187627 -.00000022  00000-0  12153-4 0  9990", line2: "2 24278  98.5099 153.5261 0350608  45.9700 316.9765 13.53281222494569" },
-        25544: { line1: "1 25544U 98067A   26326.88107702  .00007004  00000-0  13256-3 0  9993", line2: "2 25544  51.6321 234.7611 0007401  54.9189 305.2493 15.49554967596351" },
-        26931: { line1: "1 26931U 01043C   26326.00718177  .00000086  00000-0  63018-4 0  9995", line2: "2 26931  67.0497 196.0592 0006349 277.7887  82.2494 14.32006472313045" },
+        25544: { line1: "1 25544U 98067A   26327.20353680  .00007096  00000-0  13418-3 0  9999", line2: "2 25544  51.6320 233.1644 0007426  56.0849 304.0845 15.49560282596403" },
+        26931: { line1: "1 26931U 01043C   26327.26435429  .00000079  00000-0  60421-4 0  9997", line2: "2 26931  67.0496 192.8074 0006367 277.8505  82.1874 14.32006821313220" },
         27607: { line1: "1 27607U 02058C   26325.59433638  .00000971  00000-0  13188-3 0  9997", line2: "2 27607  64.5532   1.8664 0067388 233.3373 126.1527 14.83359513287801" },
         39444: { line1: "1 39444U 13066AE  26326.65217846  .00005555  00000-0  32759-3 0  9997", line2: "2 39444  97.8471 301.8171 0035704  26.8654 333.4415 15.11460867703588" },
-        43017: { line1: "1 43017U 17073E   26326.85287752  .00005540  00000-0  23049-3 0  9991", line2: "2 43017  97.4440 190.8255 0145348 139.1457 222.0780 15.14958052489394" },
-        43678: { line1: "1 43678U 18084H   26326.92666786  .00002053  00000-0  16597-3 0  9999", line2: "2 43678  98.1159 170.1195 0011979  11.5307 348.6188 15.00967005440022" },
-        43803: { line1: "1 43803U 18099AX  26326.91799568  .00012883  00000-0  33866-3 0  9999", line2: "2 43803  97.3945  30.6686 0006375  67.5054 292.6866 15.38705147437996" },
-        44909: { line1: "1 44909U 19096E   26326.16337789  .00000009  00000-0 -16678-4 0  9996", line2: "2 44909  82.5223 234.7182 0218188 134.7909 227.1168 12.79750010322554" },
-        57166: { line1: "1 57166U 23091A   26326.96091947 -.00000012  00000-0  13595-4 0  9995", line2: "2 57166  98.5885  18.5190 0004996  74.4693 285.7037 14.24057048177119" },
-        59051: { line1: "1 59051U 24039A   26326.94449207 -.00000001  00000-0  19399-4 0  9993", line2: "2 59051  98.7255 284.4160 0008121  72.7672 287.4394 14.22444288141839" },
-        61781: { line1: "1 61781U 24199AY  26326.91693571  .00005970  00000-0  16180-3 0  9998", line2: "2 61781  97.2736 194.1497 0014957  96.0001 264.2949 15.37911314158304" },
-        63213: { line1: "1 63213U 25052D   26326.16245944  .00017710  00000-0  44086-3 0  9994", line2: "2 63213  97.3731 223.2319 0000402  99.1183 261.0109 15.40319849 94383" },
-        63214: { line1: "1 63214U 25052E   26326.20537623  .00017094  00000-0  42949-3 0  9999", line2: "2 63214  97.3725 223.1672 0000399  86.7372 273.3920 15.40045936 94385" },
-        63215: { line1: "1 63215U 25052F   26326.15601842  .00017482  00000-0  43960-3 0  9994", line2: "2 63215  97.3730 223.1038 0000471  75.6641 284.4657 15.40015546 94378" },
-        63217: { line1: "1 63217U 25052H   26326.96535910  .00012975  00000-0  33498-3 0  9994", line2: "2 63217  97.3700 223.3274 0000651  13.5524 346.5739 15.39274263 94475" },
+        43017: { line1: "1 43017U 17073E   26327.05103132  .00005429  00000-0  22592-3 0  9991", line2: "2 43017  97.4439 191.0196 0145356 138.4646 222.7741 15.14960399489425" },
+        43678: { line1: "1 43678U 18084H   26327.25999253  .00001568  00000-0  12795-3 0  9990", line2: "2 43678  98.1160 170.4673 0011966  10.5047 349.6424 15.00966484440073" },
+        43803: { line1: "1 43803U 18099AX  26327.11309090  .00012493  00000-0  32843-3 0  9990", line2: "2 43803  97.3945  30.8653 0006367  66.8832 293.3084 15.38710725438022" },
+        44909: { line1: "1 44909U 19096E   26327.17973268  .00000021  00000-0  32887-4 0  9999", line2: "2 44909  82.5224 234.0431 0218217 132.4238 229.5552 12.79750057322686" },
+        57166: { line1: "1 57166U 23091A   26327.31222834 -.00000003  00000-0  17331-4 0  9998", line2: "2 57166  98.5885  18.8622 0004990  73.6554 286.5174 14.24057100177168" },
+        59051: { line1: "1 59051U 24039A   26327.29619813 -.00000006  00000-0  17224-4 0  9994", line2: "2 59051  98.7256 284.7642 0008117  71.8936 288.3125 14.22444309141887" },
+        61781: { line1: "1 61781U 24199AY  26327.24226331  .00006479  00000-0  17537-3 0  9993", line2: "2 61781  97.2735 194.4722 0014965  94.9595 265.3359 15.37916434158351" },
+        63213: { line1: "1 63213U 25052D   26327.13690667  .00014247  00000-0  35486-3 0  9994", line2: "2 63213  97.3730 224.2141 0000433 114.3065 245.8227 15.40351542 94533" },
+        63214: { line1: "1 63214U 25052E   26327.17999669  .00015980  00000-0  40124-3 0  9993", line2: "2 63214  97.3725 224.1492 0000421  96.0939 264.0355 15.40079436 94533" },
+        63215: { line1: "1 63215U 25052F   26327.19563303  .00016311  00000-0  40986-3 0  9993", line2: "2 63215  97.3733 224.1512 0000453  92.1500 267.9798 15.40051223 94539" },
+        63217: { line1: "1 63217U 25052H   26327.16038275  .00013851  00000-0  35736-3 0  9990", line2: "2 63217  97.3699 223.5237 0000671  13.4930 346.6333 15.39279572 94508" },
         63218: { line1: "1 63218U 25052J   26325.97715339  .00016552  00000-0  42562-3 0  9997", line2: "2 63218  97.3705 222.3824 0000871  27.6325 332.4967 15.39341764 94322" },
         63219: { line1: "1 63219U 25052K   26325.98903415  .00017053  00000-0  43952-3 0  9994", line2: "2 63219  97.3701 222.3521 0000781   9.4297 350.6964 15.39264997 94320" },
         63237: { line1: "1 63237U 25052AD  26326.97405157  .00011319  00000-0  31684-3 0  9992", line2: "2 63237  97.3760 222.3184 0003649 317.2587  42.8373 15.36801455 94370" },
         63238: { line1: "1 63238U 25052AE  26325.94471147  .00014863  00000-0  42143-3 0  9990", line2: "2 63238  97.3763 221.1211 0003820 325.4605  34.6390 15.36332886 94202" },
-        63239: { line1: "1 63239U 25052AF  26326.14947048  .00014944  00000-0  42367-3 0  9990", line2: "2 63239  97.3761 221.2977 0003906 317.9908  42.1036 15.36333852 94236" }
+        63239: { line1: "1 63239U 25052AF  26327.19157568  .00013597  00000-0  38541-3 0  9998", line2: "2 63239  97.3763 222.3422 0003767 312.6489  47.4437 15.36363568 94393" }
     } };
 
     function tuneSat(s) {
@@ -4420,7 +4420,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     var dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
-    var $bs = $('<div>').attr('id', 'owrx-rig-bscope').addClass('visible').append(canvas);
+    var $bs = $('<div>').attr('id', 'owrx-rig-bscope').append(canvas);
     $freq.append($bs);
 
     var ctx = canvas.getContext('2d');
@@ -4433,6 +4433,10 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     // scrolled by drawing the canvas onto itself, one row down: the
     // spec snapshots the source first, so no pixel readback happens
     var wfCtx = wf.getContext('2d');
+
+    function visible() {
+        return $bs.hasClass('visible');
+    }
 
     function span() {
         var s = SPANS[spanIdx];
@@ -4562,7 +4566,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
     // for the auto tune key as well
     // the scope draws from the skin's single FFT hook
     Plugins.rig_skin._scopeFeed = function (data) {
-        draw(data);
+        if (visible()) draw(data);
     };
 
     canvas.addEventListener('click', function (e) {
@@ -4586,6 +4590,7 @@ Plugins.rig_skin.createBandScope = function ($freq) {
         if (steps && typeof tuneBySteps === 'function') tuneBySteps(steps);
     }, { passive: false });
 
+    Plugins.rig_skin.scopeFold($bs, 'BAND SCOPE', 'rig_bscope');
 };
 
 // Audio scope inside the LCD: audio spectrum on the left, waveform on
@@ -4894,8 +4899,8 @@ Plugins.rig_skin.createScope = function ($freq) {
         timer = setTimeout(draw, 40);
     }
 
+    // the drawing loop only runs while the scope shows
     function setVisible(on) {
-        $scope.toggleClass('visible', on);
         if (on && !timer) draw();
         if (!on && timer) {
             clearTimeout(timer);
@@ -4929,7 +4934,35 @@ Plugins.rig_skin.createScope = function ($freq) {
         }
     });
 
-    setVisible(true);
+    Plugins.rig_skin.scopeFold($scope, 'AUDIO SCOPE', 'rig_scope', setVisible);
+};
+
+// A scope folds into a slim bar: the chevron in its corner hides it, a
+// click on the bar brings it back, and the choice is remembered. Shown
+// by default.
+Plugins.rig_skin.scopeFold = function ($scope, label, key, onChange) {
+    function chevron(d) {
+        return '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+            'stroke-linecap="round" stroke-linejoin="round"><path d="' + d + '"/></svg>';
+    }
+    var name = label.toLowerCase();
+    var $fold = $('<span>').addClass('owrx-rig-scope-fold').attr('title', 'Hide the ' + name)
+        .html(chevron('M2.5 7.5 6 4l3.5 3.5'));
+    var $bar = $('<div>').addClass('owrx-rig-scope-bar').attr('title', 'Show the ' + name)
+        .html(chevron('M2.5 4.5 6 8l3.5-3.5')).append($('<span>').text(label));
+    $scope.append($fold).after($bar);
+    function set(on) {
+        $scope.toggleClass('visible', on);
+        $bar.toggleClass('visible', !on);
+        if (typeof LS !== 'undefined') LS.save(key, on);
+        if (onChange) onChange(on);
+    }
+    $fold.on('click', function (e) {
+        e.stopPropagation();
+        set(false);
+    });
+    $bar.on('click', function () { set(true); });
+    set((typeof LS !== 'undefined' && LS.has(key)) ? LS.loadBool(key) : true);
 };
 
 Plugins.rig_skin.makeKey = function (label, title) {

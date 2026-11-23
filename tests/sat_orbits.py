@@ -135,12 +135,12 @@ with sync_playwright() as p:
  calls.clear(); reopen(); foot=pg.evaluate(FOOT)
  check('a failed update kept from 0.10.18: fresh orbits as soon as the window opens', re.search(r'orbits updated \d\d:\d\d UTC$', foot) is not None and sorted(calls)==sorted(IVAN), (foot, len(calls)))
  # 7. the ISS lists what it uses now (ARISS status, November 2026), each frequency tunes on its own
- iss=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text='ISS')).first
+ iss=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text=re.compile(r'^ISS$'))).first
  check('the ISS shows the voice repeater and APRS, not 145.800', iss.locator('td.freq span').all_inner_texts()==['437.800 FM', '437.825 APRS'], iss.locator('td.freq span').all_inner_texts())
  pg.evaluate("window.__tuned=[]; Plugins.rig_skin.tuneTo=function(f,m){ window.__tuned.push([f,m]); }; null")
  iss.scroll_into_view_if_needed()
  iss.locator('td.freq span', has_text='437.825 APRS').click(); iss.locator('td.freq span', has_text='437.800 FM').click(); iss.locator('td.name').click()
- ao7=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text='AO-7')).first
+ ao7=pg.locator('.owrx-rig-satwin-list tr', has=pg.locator('td.name', has_text=re.compile(r'^AO-7$'))).first
  check('AO-7 shows mode A and mode B', ao7.locator('td.freq span').all_inner_texts()==['29.450 SSB', '145.950 SSB'], ao7.locator('td.freq span').all_inner_texts())
  check('each ISS frequency tunes on its own, the row tunes the repeater', pg.evaluate("window.__tuned")==[[437825000,'nfm'],[437800000,'nfm'],[437800000,'nfm']], pg.evaluate("window.__tuned"))
  check('no page errors', not errs, errs[:3])

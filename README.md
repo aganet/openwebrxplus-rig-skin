@@ -142,6 +142,10 @@ Then two scopes:
   division. Fast settings draw a steady triggered sweep so you see the
   actual waveform shape; the slow settings roll as an amplitude envelope.
 
+Each scope has a small arrow in its top right corner. It folds the scope
+into a slim bar, and a click on the bar opens it again. Your choice is
+remembered.
+
 On large screens the rig widens into a two column face, LCD and dial on
 the left, modes and controls on the right. The
 chip in the top left corner names the switch it performs, "|&#8592; WIDE"

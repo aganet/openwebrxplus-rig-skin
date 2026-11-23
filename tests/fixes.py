@@ -9,7 +9,9 @@
 - a browser without flag pictures shows the country code
 - damaged saved values do not stop the skin from loading
 - a refusal from celestrak counts as no answer; the download pace holds
-  without usable storage"""
+  without usable storage
+- scopes show by default and fold only by their own arrow; a click on the
+  meter switches its face"""
 from playwright.sync_api import sync_playwright
 import json, datetime
 fails=[]
@@ -48,7 +50,10 @@ with sync_playwright() as p:
  for y in range(int(cv['y'])+6, int(cv['y']+cv['height']), 7):
   for x in range(int(cv['x'])+6, int(cv['x']+cv['width']), 7):
    pg.mouse.move(x,y)
-   if pg.evaluate("!!document.querySelector('#owrx-rig-dx .owrx-rig-dx-tip.show')"): tip=pg.evaluate("document.querySelector('#owrx-rig-dx .owrx-rig-dx-tip').innerHTML"); break
+   if pg.evaluate("!!document.querySelector('#owrx-rig-dx .owrx-rig-dx-tip.show')"):
+    t=pg.evaluate("document.querySelector('#owrx-rig-dx .owrx-rig-dx-tip').innerHTML")
+    # live spots share the map: only the simulated one counts
+    if 'onerror' in t: tip=t; break
   if tip: break
  pg.wait_for_timeout(300)
  check('the hostile spot is on the map', bool(tip), tip[:80])
@@ -128,5 +133,28 @@ with sync_playwright() as p:
  calls.clear(); start(); pg.click('#owrx-rig-sat-button'); pg.wait_for_timeout(3000)
  left=pg.evaluate("(Plugins.rig_skin._satTrack.info().next-Date.now())/60000"); n=len(calls)
  check('storage blocked: the download still ran and the pace is kept in memory', n>=22 and 8 < left <= 10 and pg.evaluate("localStorage.getItem('rig_sat_tles')") is None, (n, round(left,1)))
+ b.close()
+ # 10. scopes: shown by default, folded only by their own arrow; the meter click is the meter's
+ b=p.chromium.launch(); pg=b.new_page(viewport={'width':1400,'height':900})
+ def start():
+  pg.goto('http://localhost:8073/',wait_until='networkidle'); pg.wait_for_timeout(1200)
+  pg.select_option('#openwebrx-themes-listbox','rig'); pg.wait_for_timeout(1500)
+  ov=pg.locator('#openwebrx-autoplay-overlay')
+  if ov.count() and ov.is_visible(): ov.click(); pg.wait_for_timeout(600)
+ start(); pg.evaluate("LS.delete('rig_scope'); LS.delete('rig_bscope'); LS.save('rig_meter_style','bar')"); start()
+ shown=lambda: pg.evaluate("['#owrx-rig-bscope','#owrx-rig-scope'].map(s=>document.querySelector(s).offsetHeight>0)")
+ bars=lambda: pg.evaluate("[...document.querySelectorAll('.owrx-rig-scope-bar')].filter(e=>e.offsetHeight>0).map(e=>e.textContent)")
+ check('both scopes show by default', shown()==[True,True] and bars()==[], (shown(), bars()))
+ m=pg.locator('#owrx-rig-meter').bounding_box(); pg.mouse.click(m['x']+m['width']/2, m['y']+10); pg.wait_for_timeout(400)
+ check('a click on the meter switches its face and hides nothing', pg.evaluate("LS.loadStr('rig_meter_style')")=='needle' and shown()==[True,True], shown())
+ f0=pg.evaluate("UI.getFrequency()")
+ pg.locator('#owrx-rig-scope .owrx-rig-scope-fold').click(); pg.locator('#owrx-rig-bscope .owrx-rig-scope-fold').click(); pg.wait_for_timeout(300)
+ check('the arrow folds each scope into its bar, the dial stays', shown()==[False,False] and bars()==['BAND SCOPE','AUDIO SCOPE'] and pg.evaluate("UI.getFrequency()")==f0, (shown(), bars()))
+ start()
+ check('folded scopes stay folded after a reload', shown()==[False,False], shown())
+ for t in ['AUDIO SCOPE','BAND SCOPE']: pg.locator('.owrx-rig-scope-bar', has_text=t).click()
+ pg.wait_for_timeout(300)
+ check('a click on a bar opens the scope again', shown()==[True,True] and bars()==[], (shown(), bars()))
+ pg.evaluate("LS.save('rig_meter_style','bar')")
  b.close()
 print('RESULT', 'ALL PASS' if not fails else 'FAILED: '+', '.join(fails))

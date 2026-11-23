@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.23 (2026-11-23)
+
+- The band scope and the audio scope can be hidden again (issue #19,
+  thanks konstkarapan). Each one has a small arrow in its top right
+  corner that folds it into a slim bar. A click on the bar opens it
+  again, and the choice is remembered.
+- A click on the S-meter only switches between the bar and the needle.
+
 ## 0.10.22 (2026-11-23)
 
 - Flags in Chrome and Edge on Windows (issue #16, thanks ea7cl): where
